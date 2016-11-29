@@ -22,3 +22,4 @@ from .paths import Paths
 from .checkdir import checkdir
 from .load_sim import load_sim
 from . import simfunctions
+from .analysis import * 

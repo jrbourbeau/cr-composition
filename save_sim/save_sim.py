@@ -40,10 +40,11 @@ if __name__ == "__main__":
     keys += ['IceTopMaxSignal', 'IceTopMaxSignalString',
              'IceTopMaxSignalInEdge', 'IceTopNeighbourMaxSignal',
              'StationDensity', 'NStations']
-    keys += ['NChannels_1_60', 'InIce_charge_1_60']
-    keys += ['NChannels_1_45', 'InIce_charge_1_45']
-    keys += ['NChannels_1_30', 'InIce_charge_1_30']
-    keys += ['NChannels_1_15', 'InIce_charge_1_15']
+    keys += ['NChannels_1_60', 'InIce_charge_1_60', 'max_qfrac_1_60']
+    keys += ['NChannels_1_45', 'InIce_charge_1_45', 'max_qfrac_1_45']
+    keys += ['NChannels_1_30', 'InIce_charge_1_30', 'max_qfrac_1_30']
+    keys += ['NChannels_1_15', 'InIce_charge_1_15', 'max_qfrac_1_15']
+    keys += ['NChannels_1_6', 'InIce_charge_1_6', 'max_qfrac_1_6']
     keys += ['InIce_FractionContainment', 'IceTop_FractionContainment']
     keys += ['Laputop', 'LaputopParams']
 
@@ -97,6 +98,8 @@ if __name__ == "__main__":
              min_DOM=1, max_DOM=30)
     tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
              min_DOM=1, max_DOM=15)
+    tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
+             min_DOM=1, max_DOM=6)
 
     # Add containment to frame
     tray.Add(i3modules.AddMCContainment)

@@ -134,31 +134,33 @@ class AddInIceCharge(icetray.I3Module):
     def Physics(self, frame):
         q_tot = NaN
         n_channels = 0
-        # max_charge_frac = NaN
+        max_qfrac = NaN
         if self.inice_pulses in frame:
             VEMpulses = frame[self.inice_pulses]
             if VEMpulses.__class__ == dc.I3RecoPulseSeriesMapMask:
                 VEMpulses = VEMpulses.apply(frame)
                 # n_channels = 0
                 charge_list = []
-                for om, pulses in VEMpulses:
-                    if (om >= self.min_DOM) and (om <= self.max_DOM):
+                for omkey, pulses in VEMpulses:
+                    if (omkey.om >= self.min_DOM) and (omkey.om <= self.max_DOM):
                         n_channels += 1
                         for pulse in pulses:
                             charge_list += [pulse.charge]
-                q_tot = np.sum(charge_list)
-                # max_charge_frac = max(charge_list)/q_tot
                 # Check to see if DOMs with signal are in the min_DOM to
                 # max_DOM range
                 if n_channels == 0:
                     q_tot = NaN
+                    max_qfrac = NaN
+                else:
+                    q_tot = np.sum(charge_list)
+                    max_qfrac = np.max(charge_list)/q_tot
 
         frame.Put('InIce_charge_{}_{}'.format(self.min_DOM, self.max_DOM),
                   dc.I3Double(q_tot))
         frame.Put('NChannels_{}_{}'.format(self.min_DOM, self.max_DOM),
                   icetray.I3Int(n_channels))
-        # frame.Put('max_charge_frac_{}_{}'.format(self.min_DOM, self.max_DOM),
-        #           dc.I3Double(max_charge_frac))
+        frame.Put('max_qfrac_{}_{}'.format(self.min_DOM, self.max_DOM),
+                  dc.I3Double(max_qfrac))
         self.PushFrame(frame)
 
     def Finish(self):
