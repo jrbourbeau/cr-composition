@@ -9,12 +9,16 @@ from collections import OrderedDict
 from .paths import Paths
 
 
-def load_sim(config='IT73', bintype='logdist', return_cut_dict=False):
+def load_sim(config='IT73', bintype='logdist', return_cut_dict=False, old=False):
 
     # Load simulation dataframe
     mypaths = Paths()
-    infile = '{}/{}_sim/sim_dataframe.hdf5'.format(
-        mypaths.comp_data_dir, config, bintype)
+    if old:
+        infile = '{}/{}_sim/sim_dataframe_old.hdf5'.format(
+            mypaths.comp_data_dir, config, bintype)
+    else:
+        infile = '{}/{}_sim/sim_dataframe.hdf5'.format(
+            mypaths.comp_data_dir, config, bintype)
     df = pd.read_hdf(infile)
 
     # Quality Cuts #
@@ -23,11 +27,14 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False):
     # IT specific cuts
     cut_dict['ShowerLLH_reco_exists'] = df['reco_exists']
     cut_dict['MC_zenith'] = (np.cos(df['MC_zenith']) >= 0.8)
-    cut_dict['reco_zenith'] = (np.cos(df['reco_zenith']) >= 0.8)
-    # cut_dict['reco_zenith'] = (np.cos(np.pi - df['reco_zenith']) >= 0.8)
+    # cut_dict['reco_zenith'] = (np.cos(df['reco_zenith']) >= 0.85)
+    cut_dict['LLHlap_zenith'] = (np.cos(df['LLHlap_zenith']) >= 0.8)
+    cut_dict['LLHLF_zenith'] = (np.cos(df['LLHLF_zenith']) >= 0.8)
+    cut_dict['ShowerLLH_zenith'] = (np.cos(np.pi - df['reco_zenith']) >= 0.8)
     cut_dict['MC_IT_containment'] = (df['IceTop_FractionContainment'] < 1.0)
     cut_dict['reco_IT_containment'] = (df['reco_IT_containment'] < 1.0)
     cut_dict['LLHlap_IT_containment'] = (df['LLHlap_IT_containment'] < 1.0)
+    cut_dict['LLHLF_IT_containment'] = (df['LLHLF_IT_containment'] < 1.0)
     cut_dict['IceTopMaxSignalInEdge'] = np.logical_not(
         df['IceTopMaxSignalInEdge'].astype(bool))
     cut_dict['IceTopMaxSignal'] = (df['IceTopMaxSignal'] >= 6)
@@ -51,22 +58,24 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False):
     cut_dict['max_qfrac_1_6'] = (df['max_qfrac_1_6'] < 0.3)
     cut_dict['MC_InIce_containment'] = (df['InIce_FractionContainment'] < 1.0)
     cut_dict['reco_InIce_containment'] = (df['reco_InIce_containment'] < 1.0)
-    cut_dict['LLHlap_InIce_containment'] = (
-        df['LLHlap_InIce_containment'] < 1.0)
+    cut_dict['LLHlap_InIce_containment'] = (df['LLHlap_InIce_containment'] < 1.0)
+    cut_dict['LLHLF_InIce_containment'] = (df['LLHLF_InIce_containment'] < 0.95)
     # cut_dict['max_charge_frac'] = (df['max_charge_frac'] < 0.3)
+    cut_dict['lap_beta'] = (df['lap_beta'] < 9.5) & (df['lap_beta'] > 1.4)
 
     # Some conbined cuts
-    cut_dict['combined_reco_exists'] = df['combined_reco_exists']
-    cut_dict['reco_exists'] = cut_dict[
-        'ShowerLLH_reco_exists'] & cut_dict['combined_reco_exists']
+    cut_dict['LLHlap_reco_exists'] = df['LLHlap_reco_exists'] & (cut_dict['lap_beta'])
+    cut_dict['LLHLF_reco_exists'] = df['LLHLF_reco_exists']
+    # cut_dict['reco_exists'] = cut_dict['ShowerLLH_reco_exists'] & cut_dict['combined_reco_exists']
     cut_dict['num_hits'] = cut_dict['NChannels_1_60'] & cut_dict['NStations']
     cut_dict['num_hits_1_60'] = cut_dict['NChannels_1_60'] & cut_dict['NStations']
     cut_dict['num_hits_1_45'] = cut_dict['NChannels_1_45'] & cut_dict['NStations']
     cut_dict['num_hits_1_30'] = cut_dict['NChannels_1_30'] & cut_dict['NStations']
     cut_dict['num_hits_1_15'] = cut_dict['NChannels_1_15'] & cut_dict['NStations']
     cut_dict['num_hits_1_6'] = cut_dict['NChannels_1_6'] & cut_dict['NStations']
-    cut_dict['reco_containment'] = cut_dict[
-        'reco_IT_containment'] & cut_dict['LLHlap_InIce_containment']
+    cut_dict['reco_containment'] = cut_dict['reco_IT_containment'] & cut_dict['reco_InIce_containment']
+    cut_dict['LLHlap_containment'] = cut_dict['LLHlap_IT_containment'] & cut_dict['LLHlap_InIce_containment']
+    cut_dict['LLHLF_containment'] = cut_dict['LLHLF_IT_containment'] & cut_dict['LLHLF_InIce_containment']
     # cut_dict['reco_containment'] = cut_dict[
     #     'reco_IT_containment'] & cut_dict['reco_InIce_containment']
     cut_dict['IT_signal'] = cut_dict['IceTopMaxSignalInEdge'] & cut_dict[
@@ -82,15 +91,17 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False):
     df['InIce_log_charge_1_15'] = np.nan_to_num(np.log10(df['InIce_charge_1_15']))
     df['InIce_log_charge_1_6'] = np.nan_to_num(np.log10(df['InIce_charge_1_6']))
     df['reco_cos_zenith'] = np.cos(np.pi - df['reco_zenith'])
-    df['ShowerPlane_cos_zenith'] = np.cos(df['ShowerPlane_zenith'])
+    df['LLHlap_cos_zenith'] = np.cos(df['LLHlap_zenith'])
+    df['LLHLF_cos_zenith'] = np.cos(df['LLHLF_zenith'])
+    # df['ShowerPlane_cos_zenith'] = np.cos(df['ShowerPlane_zenith'])
     df['log_s125'] = np.log10(df['s125'])
 
     if return_cut_dict:
         return df, cut_dict
     else:
         selection_mask = np.array([True] * len(df))
-        standard_cut_keys = ['reco_exists', 'reco_zenith', 'num_hits', 'IT_signal',
-                             'StationDensity', 'reco_containment', 'energy_range']
+        standard_cut_keys = ['LLHlap_reco_exists', 'LLHlap_zenith', 'num_hits_1_60', 'IT_signal',
+                             'StationDensity', 'max_qfrac_1_60', 'LLHlap_containment', 'energy_range']
                             #  'StationDensity', 'reco_containment', 'max_charge_frac', 'energy_range']
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]

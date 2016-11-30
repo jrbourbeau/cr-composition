@@ -13,7 +13,7 @@ def get_train_test_sets(df, feature_list, weight_type=None):
     X, y = df[feature_list].values , df.MC_comp.values
     # Convert comp string labels to numerical labels
     le = LabelEncoder()
-    # y = le.fit_transform(y)
+    y = le.fit_transform(y)
 
     # Split data into training and test samples
     sss = StratifiedShuffleSplit(n_splits=10, test_size=0.3, random_state=2)

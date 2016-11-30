@@ -37,21 +37,11 @@ if __name__ == "__main__":
                   'IceTopMaxSignalInEdge',
                   'IceTopMaxSignalString',
                   'IceTopNeighbourMaxSignal',
-                  'InIce_charge_1_60',
-                  'NChannels_1_60',
-                  'max_qfrac_1_60',
-                  'InIce_charge_1_45',
-                  'NChannels_1_45',
-                  'max_qfrac_1_45',
-                  'InIce_charge_1_30',
-                  'NChannels_1_30',
-                  'max_qfrac_1_30',
-                  'InIce_charge_1_15',
-                  'NChannels_1_15',
-                  'max_qfrac_1_15',
-                  'InIce_charge_1_6',
-                  'NChannels_1_6',
-                  'max_qfrac_1_6',
+                  'InIce_charge_1_60', 'NChannels_1_60', 'max_qfrac_1_60',
+                  'InIce_charge_1_45', 'NChannels_1_45', 'max_qfrac_1_45',
+                  'InIce_charge_1_30', 'NChannels_1_30', 'max_qfrac_1_30',
+                  'InIce_charge_1_15', 'NChannels_1_15', 'max_qfrac_1_15',
+                  'InIce_charge_1_6', 'NChannels_1_6', 'max_qfrac_1_6',
                   'NStations',
                   'StationDensity',
                   'IceTop_FractionContainment',
@@ -77,6 +67,7 @@ if __name__ == "__main__":
         # Get Laputop reduced chi-squared
         sim_dict['lap_chi2'] = store.select('LaputopParams')[
             'chi2'] / store.select('LaputopParams')['ndf']
+        sim_dict['lap_beta'] = store.select('LaputopParams')['beta']
         sim_dict['lap_x'] = store.select('Laputop')['x']
         sim_dict['lap_y'] = store.select('Laputop')['y']
         store.close()
@@ -131,12 +122,21 @@ if __name__ == "__main__":
         LLH_dict['reco_InIce_containment'] = store.select(
             'ShowerLLH_InIce_containment').value
         # Get ShowerLLH+lap hybrid containment information
-        LLH_dict[
-            'LLHlap_IT_containment'] = store.select('LLHlap_IceTop_containment').value
-        LLH_dict[
-            'LLHlap_InIce_containment'] = store.select('LLHlap_InIce_containment').value
-        LLH_dict['combined_reco_exists'] = store.select(
-            'LLHlap_InIce_containment').exists.astype(bool)
+        LLHLF_particle = store.select('LLHLF_particle')
+        LLH_dict['LLHLF_zenith'] = LLHLF_particle.zenith
+        LLH_dict['LLHLF_IT_containment'] = store.select(
+                                            'LLHLF_IceTop_containment').value
+        LLH_dict['LLHLF_InIce_containment'] = store.select(
+                                            'LLHLF_InIce_containment').value
+        LLH_dict['LLHLF_reco_exists'] = LLHLF_particle.exists.astype(bool)
+        # Get ShowerLLH+lap hybrid containment information
+        LLHlap_particle = store.select('LLHlap_particle')
+        LLH_dict['LLHlap_zenith'] = LLHlap_particle.zenith
+        LLH_dict['LLHlap_IT_containment'] = store.select(
+                                            'LLHlap_IceTop_containment').value
+        LLH_dict['LLHlap_InIce_containment'] = store.select(
+                                            'LLHlap_InIce_containment').value
+        LLH_dict['LLHlap_reco_exists'] = LLHlap_particle.exists.astype(bool)
 
         store.close()
 

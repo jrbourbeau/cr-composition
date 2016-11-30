@@ -1,0 +1,9 @@
+universe = vanilla
+getenv = true
+executable = /home/jbourbeau/cr-composition/analysis/TPOT/tpot-test.py
+arguments = "-g 10 --popsize 20 --cvfolds 5"
+log = /home/jbourbeau/cr-composition/analysis/TPOT/tpot.log
+output = /home/jbourbeau/cr-composition/analysis/TPOT/tpot.out
+error = /home/jbourbeau/cr-composition/analysis/TPOT/tpot.error
+notification = Never
+queue
