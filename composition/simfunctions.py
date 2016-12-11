@@ -83,6 +83,7 @@ def sim2cfg(sim):
 def sim2comp(sim):
 
     sim_dict = {'7006': 'P', '7579': 'P', '7007': 'Fe', '7784': 'Fe'}
+    sim_dict.update({'7241': 'He'})
     return sim_dict[sim]
 
 
@@ -140,28 +141,31 @@ def get_level3_files(sim, just_gcd=False, testing=False, training=False):
     if just_gcd:
         return gcd_file
 
-    # Ensure that you are either training or testing
-    if not testing and not training:
-        raise('If you\'re not testing and you\'re not training, what ARE you doing?')
-    # Ensure that you are not both training and testing
-    if testing and training:
-        raise('If you\'re not testing and you\'re not training, what ARE you doing?')
+    # # Ensure that you are either training or testing
+    # if not testing and not training:
+    #     raise('If you\'re not testing and you\'re not training, what ARE you doing?')
+    # # Ensure that you are not both training and testing
+    # if testing and training:
+    #     raise('If you\'re not testing and you\'re not training, what ARE you doing?')
 
+    if sim in ['7241', '7263', '7791']:
+        prefix = '/data/user/jbourbeau/composition/IC79_sim/'
     files = glob.glob(prefix + sim + '/Level3_*.i3.gz')
     # Don't forget to sort files
     files = sorted(files)
 
-    # Split file list into training and testing batches
-    # First half --> training
-    # Second half --> testing
-    files = shuffle(files, random_state=2)
-    files_training = files[:len(files) // 2]
-    files_testing = files[len(files) // 2:]
+    # # Split file list into training and testing batches
+    # # First half --> training
+    # # Second half --> testing
+    # files = shuffle(files, random_state=2)
+    # files_training = files[:len(files) // 2]
+    # files_testing = files[len(files) // 2:]
 
-    if training:
-        return gcd_file, files_training
-    else:
-        return gcd_file, files_testing
+    # if training:
+    #     return gcd_file, files_training
+    # else:
+    #     return gcd_file, files_testing
+    return gcd_file, files
 
 
 def reco_pulses():

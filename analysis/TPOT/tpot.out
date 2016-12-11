@@ -1,0 +1,19 @@
+number training events = 36125
+Generation 1 - Current best internal CV score: 0.817549970944
+Timeout during evaluation of pipeline #28. Skipping to the next pipeline.
+Generation 2 - Current best internal CV score: 0.817549970944
+Timeout during evaluation of pipeline #42. Skipping to the next pipeline.
+Generation 3 - Current best internal CV score: 0.817549970944
+Generation 4 - Current best internal CV score: 0.817549970944
+Generation 5 - Current best internal CV score: 0.817549970944
+Generation 6 - Current best internal CV score: 0.821287010574
+Timeout during evaluation of pipeline #125. Skipping to the next pipeline.
+Generation 7 - Current best internal CV score: 0.821287010574
+Generation 8 - Current best internal CV score: 0.821287010574
+Timeout during evaluation of pipeline #172. Skipping to the next pipeline.
+Generation 9 - Current best internal CV score: 0.821287010574
+Generation 10 - Current best internal CV score: 0.821287010574
+Timeout during evaluation of pipeline #204. Skipping to the next pipeline.
+
+Best pipeline: ExtraTreesClassifier(FastICA(input_matrix, 0.57999999999999996), 19, 0.32000000000000001)
+0.828198669508

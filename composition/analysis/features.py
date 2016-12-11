@@ -16,16 +16,22 @@ def get_training_features():
     # feature_list = ['reco_log_energy', 'InIce_log_charge_1_6', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_6']
     # feature_list = ['reco_log_energy', 'InIce_log_charge_1_6', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_6', 'log_s125']
     # feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
-    feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHLF_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
+    feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'NChannels_1_30', 'log_s125']
+    # feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'NChannels_1_30', 'log_s125', 'lap_likelihood']
+    # feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
+    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHLF_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
 
     label_dict = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
+                  'lap_log_energy': '$\log_{10}(E_{\mathrm{Lap}}/\mathrm{GeV})$',
                   'log_s125': '$\log_{10}(S_{\mathrm{125}})$',
+                  'lap_likelihood': '$r\log_{10}(l)$',
                   'InIce_log_charge_1_60': 'InIce charge',
                   'InIce_log_charge_1_45': 'InIce charge (top 75\%)',
                   'InIce_log_charge_1_30': 'InIce charge (top 50\%)',
                   'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
                   'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
                   'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
+                  'lap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
                   'LLHlap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
                   'LLHLF_cos_zenith': '$\cos(\\theta_{\mathrm{LLH+COG}})$',
                   'lap_chi2': '$\chi^2_{\mathrm{Lap}}/\mathrm{n.d.f}$',

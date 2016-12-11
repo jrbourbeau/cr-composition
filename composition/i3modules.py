@@ -101,6 +101,13 @@ class AddInIceRecoContainment(icetray.I3Module):  # Kath's containment
         self.PushFrame(frame)
 
     def Physics(self, frame):
+        if 'Laputop' in frame:
+            lap_particle = frame['Laputop']
+            if (lap_particle.fit_status == dc.I3Particle.OK):
+                frame.Put('Laputop_InIce_FractionContainment',
+                        dc.I3Double(self.scaling.scale_inice(lap_particle)))
+                frame.Put('Laputop_IceTop_FractionContainment',
+                        dc.I3Double(self.scaling.scale_icetop(lap_particle)))
         if 'CoincMuonReco_LineFit' in frame:
             I3_particle = frame['CoincMuonReco_LineFit']
             frame.Put('LineFit_InIce_FractionContainment',
@@ -142,6 +149,9 @@ class AddInIceCharge(icetray.I3Module):
                 # n_channels = 0
                 charge_list = []
                 for omkey, pulses in VEMpulses:
+                    # Throw out Deep Core strings (want homogenized total charge)
+                    if omkey.string >= 79:
+                        continue
                     if (omkey.om >= self.min_DOM) and (omkey.om <= self.max_DOM):
                         n_channels += 1
                         for pulse in pulses:

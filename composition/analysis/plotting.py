@@ -51,6 +51,7 @@ def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.
                         y=X[(y == cl) & fraction_event_selection_mask, 1],
                         alpha=0.5, c=cmap(idx),
                         marker=markers[idx], label=cl)
+    plt.legend()
 
 @export
 def histogram_2D(x, y, bins, log_counts=False, make_prob=False, ax=None, **opts):

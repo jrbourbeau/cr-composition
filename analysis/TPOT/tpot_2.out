@@ -1,0 +1,10 @@
+number training events = 36125
+Generation 1 - Current best internal CV score: 0.817024088604
+Generation 2 - Current best internal CV score: 0.820069083568
+Timeout during evaluation of pipeline #41. Skipping to the next pipeline.
+Timeout during evaluation of pipeline #50. Skipping to the next pipeline.
+Generation 3 - Current best internal CV score: 0.820069083568
+Timeout during evaluation of pipeline #67. Skipping to the next pipeline.
+
+Best pipeline: RandomForestClassifier(PCA(GaussianNB(input_matrix), 31))
+0.829684169735
