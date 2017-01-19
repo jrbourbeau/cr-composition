@@ -10,6 +10,7 @@ import argparse
 import os
 from collections import defaultdict
 
+import pyprind
 # from icecube.weighting.weighting import from_simprod
 # from icecube.weighting.fluxes import GaisserH3a, GaisserH4a
 
@@ -23,6 +24,13 @@ if __name__ == "__main__":
 
     p = argparse.ArgumentParser(
         description='Runs extra modules over a given fileList')
+    p.add_argument('--type', dest='type',
+                   choices=['data', 'sim'],
+                   default='sim',
+                   help='Option to process simulation or data')
+    p.add_argument('-c', '--config', dest='config',
+                   default='IC79',
+                   help='Detector configuration')
     p.add_argument('-o', '--outfile', dest='outfile',
                    help='Output file')
     args = p.parse_args()
@@ -31,56 +39,83 @@ if __name__ == "__main__":
 
     # Get simulation information
     t_sim = time.time()
-    print('Loading simulation information...')
+    # print('Loading simulation information...')
     file_list = sorted(glob.glob(mypaths.comp_data_dir +
-                                 '/IT73_sim/files/sim_????.hdf5'))
+                                 '/{}_{}/files/{}_*.hdf5'.format(args.config, args.type, args.type)))
+    file_list = [f for f in file_list if 'part' not in f]
+    # if args.type == 'sim':
+    #     high_energy_sim = ['7579', '7791', '7851', '7784']
+    #     file_list = [f for f in file_list if os.path.splitext(f)[0].split('_')[-1] in high_energy_sim]
+    #     print('file_list = {}'.format(file_list))
     value_keys = ['IceTopMaxSignal',
                   'IceTopMaxSignalInEdge',
                   'IceTopMaxSignalString',
                   'IceTopNeighbourMaxSignal',
-                  'InIce_charge_1_60', 'NChannels_1_60', 'max_qfrac_1_60',
-                #   'InIce_charge_1_45', 'NChannels_1_45', 'max_qfrac_1_45',
-                  'InIce_charge_1_30', 'NChannels_1_30', 'max_qfrac_1_30',
-                #   'InIce_charge_1_15', 'NChannels_1_15', 'max_qfrac_1_15',
-                  'InIce_charge_45_60', 'NChannels_45_60', 'max_qfrac_45_60',
-                #   'InIce_charge_1_6', 'NChannels_1_6', 'max_qfrac_1_6',
+                  'NChannels_1_60', 'NHits_1_60', 'InIce_charge_1_60', 'max_qfrac_1_60',
+                  'NChannels_1_30', 'NHits_1_30', 'InIce_charge_1_30', 'max_qfrac_1_30',
+                  #   'InIce_charge_1_45', 'NChannels_1_45', 'max_qfrac_1_45',
+                  #   'InIce_charge_1_30', 'NChannels_1_30', 'max_qfrac_1_30',
+                  #   'InIce_charge_1_15', 'NChannels_1_15', 'max_qfrac_1_15',
+                  #   'InIce_charge_45_60', 'NChannels_45_60', 'max_qfrac_45_60',
+                  #   'InIce_charge_1_6', 'NChannels_1_6', 'max_qfrac_1_6',
                   'NStations',
                   'StationDensity',
-                  'IceTop_FractionContainment',
-                  'InIce_FractionContainment',
                   'Laputop_IceTop_FractionContainment',
                   'Laputop_InIce_FractionContainment']
-    for f in file_list:
-        print('\tWorking on {}'.format(f))
-        sim_dict = {}
+    # Add MC containment
+    if args.type == 'sim':
+        value_keys += ['IceTop_FractionContainment',
+                       'InIce_FractionContainment']
+
+    if args.type == 'data':
+        file_list = file_list[:200]
+
+    bar = pyprind.ProgBar(len(file_list), bar_char='#',
+                          monitor=True, title='Save DataFrame', width=60)
+    for i, f in enumerate(file_list):
+        # print('\tWorking on {} [file {} of {}]'.format(f, i+1, len(file_list)))
+        hdf5_dict = {}
         store = pd.HDFStore(f)
         for key in value_keys:
-            sim_dict[key] = store.select(key).value
+            hdf5_dict[key] = store.select(key).value
         # Get MCPrimary information
-        for key in ['x', 'y', 'energy', 'zenith', 'azimuth', 'type']:
-            sim_dict['MC_{}'.format(key)] = store.select('MCPrimary')[key]
-        # Add simulation set number and corresponding composition
-        sim_num = os.path.splitext(f)[0].split('_')[-1]
-        sim_dict['sim'] = np.array([sim_num] * len(store.select('MCPrimary')))
-        sim_dict['MC_comp'] = np.array(
-            [comp.simfunctions.sim2comp(sim_num)] * len(store.select('MCPrimary')))
+        if args.type == 'sim':
+            for key in ['x', 'y', 'energy', 'zenith', 'azimuth', 'type']:
+                hdf5_dict['MC_{}'.format(key)] = store.select('MCPrimary')[key]
+            # Add simulation set number and corresponding composition
+            sim_num = os.path.splitext(f)[0].split('_')[-1]
+            hdf5_dict['sim'] = np.array(
+                [sim_num] * len(store.select('MCPrimary')))
+            hdf5_dict['MC_comp'] = np.array(
+                [comp.simfunctions.sim2comp(sim_num)] * len(store.select('MCPrimary')))
+            hdf5_dict['MC_comp_class'] = np.array(
+                ['light' if comp.simfunctions.sim2comp(sim_num) in ['P', 'He'] else 'heavy'] * len(store.select('MCPrimary')))
+        # Get timing information
+        hdf5_dict['start_time_mjd'] = store.select('I3EventHeader')[
+            'time_start_mjd']
+        hdf5_dict['end_time_mjd'] = store.select('I3EventHeader')[
+            'time_end_mjd']
         # Get Laputop data
-        sim_dict['lap_fitstatus_ok'] = store.select('Laputop_fitstatus_ok').value.astype(bool)
         Laputop_particle = store.select('Laputop')
-        sim_dict['lap_s125'] = store.select('LaputopParams')['s125']
-        sim_dict['lap_chi2'] = store.select('LaputopParams')[
+        for dist in ['50', '80', '125', '180', '250', '500']:
+            hdf5_dict['lap_s{}'.format(dist)] = store.select(
+                'LaputopParams')['s{}'.format(dist)]
+        hdf5_dict['lap_chi2'] = store.select('LaputopParams')[
             'chi2'] / store.select('LaputopParams')['ndf']
-        sim_dict['lap_ndf'] = store.select('LaputopParams')['ndf']
-        sim_dict['lap_beta'] = store.select('LaputopParams')['beta']
-        sim_dict['lap_x'] = store.select('Laputop')['x']
-        sim_dict['lap_y'] = store.select('Laputop')['y']
-        sim_dict['lap_zenith'] = store.select('Laputop')['zenith']
-        sim_dict['lap_energy'] = store.select('LaputopParams')['e_h4a']
-        sim_dict['lap_likelihood'] = store.select('LaputopParams')['rlogl']
-        # sim_dict['lap_ang_res'] = store.select('LaputopParams')['angular_resolution']
+        hdf5_dict['lap_ndf'] = store.select('LaputopParams')['ndf']
+        hdf5_dict['lap_beta'] = store.select('LaputopParams')['beta']
+        hdf5_dict['lap_x'] = store.select('Laputop')['x']
+        hdf5_dict['lap_y'] = store.select('Laputop')['y']
+        hdf5_dict['lap_zenith'] = store.select('Laputop')['zenith']
+        hdf5_dict['lap_energy'] = store.select('LaputopParams')['e_h4a']
+        hdf5_dict['lap_likelihood'] = store.select('LaputopParams')['rlogl']
+        hdf5_dict['lap_fitstatus_ok'] = store.select(
+            'Laputop_fitstatus_ok').value.astype(bool)
         store.close()
-        for key in sim_dict.keys():
-            dataframe_dict[key] += sim_dict[key].tolist()
+        for key in hdf5_dict.keys():
+            dataframe_dict[key] += hdf5_dict[key].tolist()
+
+        bar.update(force_flush=True)
 
     # # Calculate simulation event weights
     # print('\nCalculating simulation event weights...\n')
@@ -100,7 +135,7 @@ if __name__ == "__main__":
     #     generator(dataframe_dict['MC_energy'], dataframe_dict['MC_type'])
     # dataframe_dict['areas'] = 1.0 / generator(dataframe_dict['MC_energy'], dataframe_dict['MC_type'])
     print('Time taken: {}'.format(time.time() - t_sim))
-    print('Time per file: {}\n'.format((time.time() - t_sim) / 4))
+    print('Time per file: {}\n'.format((time.time() - t_sim) / len(file_list)))
 
     # # Get ShowerLLH reconstruction information
     # t_LLH = time.time()
@@ -159,5 +194,5 @@ if __name__ == "__main__":
         dataframe_dict[key] = np.asarray(dataframe_dict[key])
 
     df = pd.DataFrame.from_dict(dataframe_dict)
-    df.to_hdf('{}/IT73_sim/sim_dataframe.hdf5'.format(mypaths.comp_data_dir),
+    df.to_hdf('{}/{}_{}/{}_dataframe.hdf5'.format(mypaths.comp_data_dir, args.config, args.type, args.type),
               'dataframe', mode='w')

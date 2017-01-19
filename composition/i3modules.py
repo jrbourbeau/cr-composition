@@ -141,12 +141,12 @@ class AddInIceCharge(icetray.I3Module):
     def Physics(self, frame):
         q_tot = NaN
         n_channels = 0
+        n_hits = 0
         max_qfrac = NaN
         if self.inice_pulses in frame:
             VEMpulses = frame[self.inice_pulses]
             if VEMpulses.__class__ == dc.I3RecoPulseSeriesMapMask:
                 VEMpulses = VEMpulses.apply(frame)
-                # n_channels = 0
                 charge_list = []
                 for omkey, pulses in VEMpulses:
                     # Throw out Deep Core strings (want homogenized total charge)
@@ -163,12 +163,15 @@ class AddInIceCharge(icetray.I3Module):
                     max_qfrac = NaN
                 else:
                     q_tot = np.sum(charge_list)
+                    n_hits = len(charge_list)
                     max_qfrac = np.max(charge_list)/q_tot
 
         frame.Put('InIce_charge_{}_{}'.format(self.min_DOM, self.max_DOM),
                   dc.I3Double(q_tot))
         frame.Put('NChannels_{}_{}'.format(self.min_DOM, self.max_DOM),
                   icetray.I3Int(n_channels))
+        frame.Put('NHits_{}_{}'.format(self.min_DOM, self.max_DOM),
+                  icetray.I3Int(n_hits))
         frame.Put('max_qfrac_{}_{}'.format(self.min_DOM, self.max_DOM),
                   dc.I3Double(max_qfrac))
         self.PushFrame(frame)

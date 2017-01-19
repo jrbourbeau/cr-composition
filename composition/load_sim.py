@@ -54,13 +54,13 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False, old=False)
     cut_dict['NChannels_1_60'] = (df['NChannels_1_60'] >= 8)
     # cut_dict['NChannels_1_45'] = (df['NChannels_1_45'] >= 8)
     cut_dict['NChannels_1_30'] = (df['NChannels_1_30'] >= 8)
-    cut_dict['NChannels_45_60'] = (df['NChannels_45_60'] >= 8)
+    # cut_dict['NChannels_45_60'] = (df['NChannels_45_60'] >= 8)
     # cut_dict['NChannels_1_15'] = (df['NChannels_1_15'] >= 8)
     # cut_dict['NChannels_1_6'] = (df['NChannels_1_6'] >= 8)
     cut_dict['max_qfrac_1_60'] = (df['max_qfrac_1_60'] < 0.3)
     # cut_dict['max_qfrac_1_45'] = (df['max_qfrac_1_45'] < 0.3)
     cut_dict['max_qfrac_1_30'] = (df['max_qfrac_1_30'] < 0.3)
-    cut_dict['max_qfrac_45_60'] = (df['max_qfrac_45_60'] < 0.3)
+    # cut_dict['max_qfrac_45_60'] = (df['max_qfrac_45_60'] < 0.3)
     # cut_dict['max_qfrac_1_15'] = (df['max_qfrac_1_15'] < 0.3)
     # cut_dict['max_qfrac_1_6'] = (df['max_qfrac_1_6'] < 0.3)
     cut_dict['MC_InIce_containment'] = (df['InIce_FractionContainment'] < 1.0)
@@ -83,7 +83,7 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False, old=False)
     # cut_dict['num_hits_1_45'] = cut_dict['NChannels_1_45'] & cut_dict['NStations']
     cut_dict['num_hits_1_30'] = cut_dict['NChannels_1_30'] & cut_dict['NStations']
     # cut_dict['num_hits_1_15'] = cut_dict['NChannels_1_15'] & cut_dict['NStations']
-    cut_dict['num_hits_45_60'] = cut_dict['NChannels_45_60'] & cut_dict['NStations']
+    # cut_dict['num_hits_45_60'] = cut_dict['NChannels_45_60'] & cut_dict['NStations']
     # cut_dict['num_hits_1_6'] = cut_dict['NChannels_1_6'] & cut_dict['NStations']
     # cut_dict['reco_containment'] = cut_dict['reco_IT_containment'] & cut_dict['reco_InIce_containment']
     cut_dict['lap_containment'] = cut_dict['lap_IT_containment'] & cut_dict['lap_InIce_containment']
@@ -105,8 +105,9 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False, old=False)
     df['InIce_log_charge_1_30'] = np.nan_to_num(np.log10(df['InIce_charge_1_30']))
     # df['InIce_log_charge_1_15'] = np.nan_to_num(np.log10(df['InIce_charge_1_15']))
     # df['InIce_log_charge_1_6'] = np.nan_to_num(np.log10(df['InIce_charge_1_6']))
-    df['InIce_log_charge_45_60'] = np.nan_to_num(np.log10(df['InIce_charge_45_60']))
+    # df['InIce_log_charge_45_60'] = np.nan_to_num(np.log10(df['InIce_charge_45_60']))
     df['log_NChannels_1_30'] = np.nan_to_num(np.log10(df['NChannels_1_30']))
+    df['log_NHits_1_30'] = np.nan_to_num(np.log10(df['NHits_1_30']))
     # df['reco_cos_zenith'] = np.cos(np.pi - df['reco_zenith'])
     df['lap_cos_zenith'] = np.cos(df['lap_zenith'])
     # df['LLHlap_cos_zenith'] = np.cos(df['LLHlap_zenith'])
@@ -114,15 +115,20 @@ def load_sim(config='IT73', bintype='logdist', return_cut_dict=False, old=False)
     # df['ShowerPlane_cos_zenith'] = np.cos(df['ShowerPlane_zenith'])
     df['log_s125'] = np.log10(df['lap_s125'])
 
+    # Add ratio of features (could help improve RF classification)
+    df['charge_nchannels_ratio'] = df['InIce_charge_1_30']/df['NChannels_1_30']
+    df['charge_nhits_ratio'] = df['InIce_charge_1_30']/df['NHits_1_30']
+    df['nchannels_nhits_ratio'] = df['NChannels_1_30']/df['NHits_1_30']
+    df['stationdensity_charge_ratio'] = df['StationDensity']/df['InIce_charge_1_30']
+    df['stationdensity_nchannels_ratio'] = df['StationDensity']/df['NChannels_1_30']
+    df['stationdensity_nhits_ratio'] = df['StationDensity']/df['NHits_1_30']
+
     if return_cut_dict:
         return df, cut_dict
     else:
         selection_mask = np.array([True] * len(df))
         standard_cut_keys = ['lap_reco_success', 'lap_zenith', 'num_hits_1_30', 'IT_signal',
                      'StationDensity', 'max_qfrac_1_30', 'lap_containment', 'energy_range_lap']
-        # standard_cut_keys = ['LLHlap_reco_exists', 'LLHlap_zenith', 'num_hits_1_60', 'IT_signal',
-        #                      'StationDensity', 'max_qfrac_1_60', 'LLHlap_containment', 'energy_range']
-        #                     #  'StationDensity', 'reco_containment', 'max_charge_frac', 'energy_range']
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]
         # Print cut event flow

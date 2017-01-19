@@ -10,4 +10,6 @@ from .pipelines import *
 from .preprocessing import *
 from .features import *
 from .data_functions import *
+from .effective_area import *
+from .SBS import SBS
 # from .plotting_functions import *

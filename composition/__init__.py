@@ -3,8 +3,8 @@
 from __future__ import division, print_function
 
 # Let users know if they're missing any of our hard dependencies
-hard_dependencies = ('numpy', 'matplotlib', 'pandas',
-                     'sklearn', 'icecube', 'I3Tray')
+hard_dependencies = ('numpy', 'pandas', 'matplotlib',
+                     'sklearn', 'mlxtend', 'icecube', 'I3Tray')
 missing_dependencies = []
 
 for dependency in hard_dependencies:
@@ -21,5 +21,9 @@ del hard_dependencies, dependency, missing_dependencies
 from .paths import Paths
 from .checkdir import checkdir
 from .load_sim import load_sim
+from .load_data import load_data
+from .load_dataframe import load_dataframe
 from . import simfunctions
-from .analysis import * 
+from . import datafunctions
+from .analysis import *
+from .serialize import serialize_SFS, deserialize_SFS

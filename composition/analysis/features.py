@@ -5,29 +5,33 @@ from . import export
 
 @export
 def get_training_features():
-    # feature_list = np.array(['MC_log_energy', 'InIce_log_charge'])
-    # feature_list = np.array(['reco_log_energy', 'InIce_log_charge'])
-    # feature_list = np.array(['reco_log_energy', 'InIce_log_charge', 'reco_cos_zenith'])
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_60', 'LLHlap_cos_zenith', 'lap_chi2']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_60', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_60']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_45', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_45']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_30']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_15', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_15']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_6', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_6']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_6', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_6', 'log_s125']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHlap_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
-    feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'NChannels_1_30', 'log_s125']
-    # feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'NChannels_1_30', 'log_s125', 'lap_likelihood']
-    # feature_list = ['lap_log_energy', 'InIce_log_charge_1_30', 'lap_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
-    # feature_list = ['reco_log_energy', 'InIce_log_charge_1_30', 'LLHLF_cos_zenith', 'lap_chi2', 'NChannels_1_30', 'log_s125']
+
+    feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
+                    'nchannels_nhits_ratio', 'lap_likelihood', 'log_NHits_1_30',
+                    'StationDensity', 'stationdensity_charge_ratio', 'nchannels_nhits_ratio',
+                    'log_s50', 'log_s125', 'log_s500', 'lap_beta']
+    # feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
+    #                 'nchannels_nhits_ratio', 'lap_likelihood', 'log_NHits_1_30',
+    #                 'StationDensity', 'stationdensity_charge_ratio', 'nchannels_nhits_ratio',
+    #                 'log_s50', 'log_s80', 'log_s125', 'log_s180', 'log_s250', 'log_s500',
+    #                 'lap_beta']
 
     label_dict = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
                   'lap_log_energy': '$\log_{10}(E_{\mathrm{Lap}}/\mathrm{GeV})$',
+                  'log_s50': '$\log_{10}(S_{\mathrm{50}})$',
+                  'log_s80': '$\log_{10}(S_{\mathrm{80}})$',
                   'log_s125': '$\log_{10}(S_{\mathrm{125}})$',
+                  'log_s180': '$\log_{10}(S_{\mathrm{180}})$',
+                  'log_s250': '$\log_{10}(S_{\mathrm{250}})$',
+                  'log_s500': '$\log_{10}(S_{\mathrm{500}})$',
                   'lap_likelihood': '$r\log_{10}(l)$',
+                  'lap_beta': 'lap beta',
                   'InIce_log_charge_1_60': 'InIce charge',
                   'InIce_log_charge_1_45': 'InIce charge (top 75\%)',
-                  'InIce_log_charge_1_30': 'InIce charge (top 50\%)',
+                  'InIce_charge_1_30': 'InIce charge (top 50\%)',
+                  'InIce_log_charge_1_30': '$\log_{10}(InIce charge (top 50))$',
+                #   'InIce_log_charge_1_30': '$\log_{10}$(InIce charge (top 50\%))',
+                #   'InIce_log_charge_1_30': 'InIce charge (top 50\%)',
                   'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
                   'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
                   'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
@@ -39,7 +43,18 @@ def get_training_features():
                   'NChannels_1_45': 'NChannels (top 75\%)',
                   'NChannels_1_30': 'NChannels (top 50\%)',
                   'NChannels_1_15': 'NChannels (top 25\%)',
-                  'NChannels_1_6': 'NChannels (top 10\%)'}
+                  'NChannels_1_6': 'NChannels (top 10\%)',
+                  'log_NChannels_1_30' : '$\log_{10}$(NChannels (top 50\%))',
+                  'StationDensity': 'StationDensity',
+                  'charge_nchannels_ratio': 'Charge/NChannels',
+                  'stationdensity_charge_ratio': 'StationDensity/Charge',
+                  'NHits_1_30': 'NHits',
+                  'log_NHits_1_30': '$\log_{10}$(NHits (top 50\%))',
+                  'charge_nhits_ratio': 'Charge/NHits',
+                  'nchannels_nhits_ratio': 'NChannels/NHits',
+                  'stationdensity_nchannels_ratio': 'StationDensity/NChannels',
+                  'stationdensity_nhits_ratio': 'StationDensity/NHits'
+                  }
     feature_labels = np.array([label_dict[feature] for feature in feature_list])
 
     return feature_list, feature_labels

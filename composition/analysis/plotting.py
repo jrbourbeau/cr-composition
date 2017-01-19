@@ -115,3 +115,33 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     x = np.arange(6.2, 8.1, 0.1)
 
     return im
+
+@export
+def plot_steps(x, y, y_err, ax, color, label):
+    step_x = x
+    x_widths = x[1:]-x[:-1]
+    if len(np.unique(x_widths)) != 1:
+        raise('Unequal bins...')
+    x_width = np.unique(x_widths)[0]
+    step_x = np.append(step_x[0]-x_width/2, step_x)
+    step_x = np.append(step_x, step_x[-1]+x_width/2)
+
+    step_y = y
+    step_y = np.append(step_y[0], step_y)
+    step_y = np.append(step_y, step_y[-1])
+
+    err_upper = y + y_err
+    err_upper = np.append(err_upper[0], err_upper)
+    err_upper = np.append(err_upper, err_upper[-1])
+    err_lower = y - y_err
+    err_lower = np.append(err_lower[0], err_lower)
+    err_lower = np.append(err_lower, err_lower[-1])
+
+    ax.step(step_x, step_y, where='mid',
+            marker='None', color=color, linewidth=1,
+            linestyle='-', label=label, alpha=0.8)
+    ax.fill_between(step_x, err_upper, err_lower,
+                    alpha=0.15, color=color,
+                    step='mid', linewidth=1)
+
+    return step_x, step_y

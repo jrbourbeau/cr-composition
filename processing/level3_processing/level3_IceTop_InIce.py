@@ -18,7 +18,7 @@ def get_run_from_filename(input_file):
 
 def get_dataset_from_filename(input_file):
     result = None
-    m = re.search("icetop.00([0-9]+).", input_file) # Works for IC79 MC 
+    m = re.search("icetop.00([0-9]+).", input_file) # Works for IC79 MC
     if not m:
         raise ValueError("cannot parse %s for dataset" % input_file)
     return int(m.group(1))
@@ -30,7 +30,7 @@ def main(args, outputLevel=2):
 
     icetray.I3Logger.global_logger.set_level(icetray.I3LogLevel.LOG_ERROR)
     icetray.I3Logger.global_logger.set_level_for_unit("MakeQualityCuts",icetray.I3LogLevel.LOG_INFO)
-    
+
     if not args.L3_gcdfile:
         if args.isMC:
             gcdfile=["/data/ana/CosmicRay/IceTop_level3/sim/%s/GCD/Level3_%i_GCD.i3.gz"%(args.detector, args.dataset)]
@@ -38,18 +38,19 @@ def main(args, outputLevel=2):
             gcdfile=glob.glob("/data/ana/CosmicRay/IceTop_level3/data/%s/GCD/Level3_%s_data_Run00%i_????_GCD.i3.gz"%(args.detector, args.detector, args.run))
     else:
         gcdfile = [args.L3_gcdfile]
-        
+
     # Instantiate a tray
     tray = I3Tray()
+    tray.context['I3FileStager'] = dataio.get_stagers(staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
     tray.AddModule( 'I3Reader', 'Reader', FilenameList = gcdfile + args.inputFiles)
 
     #---------------------------------------------------------------------------------------------------------------
 
     from icecube.frame_object_diff.segments import uncompress
-    
+
     # If the L2 gcd file is not specified, use the base_filename which is used for compressing. Check First whether it exists.
-    # If the L2 gcd file is provided (probably in the case when running on your own cluster and when you copied the diff and L2 GCDs there), 
-    # then you use this, but you check first whether the filename makes sense (is the same as the base_filename used for compression). 
+    # If the L2 gcd file is provided (probably in the case when running on your own cluster and when you copied the diff and L2 GCDs there),
+    # then you use this, but you check first whether the filename makes sense (is the same as the base_filename used for compression).
     def CheckL2GCD(frame):
         geodiff=frame["I3GeometryDiff"]
         if args.L2_gcdfile:
@@ -67,7 +68,7 @@ def main(args, outputLevel=2):
 
     tray.Add(uncompress,
              base_filename=args.L2_gcdfile) # works correctly if L2_gcdfile is None
-        
+
     #---------------------------------------------------------------------------------------------------------------
 
     tray.AddSegment(icetop_Level3_scripts.segments.level3_IceTop, "level3_IceTop",
@@ -76,12 +77,12 @@ def main(args, outputLevel=2):
                     isMC=args.isMC,
                     add_jitter=args.add_jitter
                     )
-    
+
     #---------------------------------------------------------------------------------------------------------------
 
     if args.do_inice:
         itpulses='IceTopHLCSeedRTPulses'
-            
+
         tray.AddSegment(icetop_Level3_scripts.segments.level3_Coinc,"level3_Coinc",
                         Detector=args.detector,
                         isMC=args.isMC,
@@ -99,8 +100,8 @@ def main(args, outputLevel=2):
                             count_stations(dataclasses.I3RecoPulseSeriesMap.from_frame(frame, icetop_globals.icetop_hlc_pulses)) >= 5)
 
         tray.AddSegment(icetop_Level3_scripts.segments.ExtractWaveforms, 'IceTop',
-                       If= lambda frame: "IceTopWaveformWeight" in frame and frame["IceTopWaveformWeight"].value!=0)    
-                  
+                       If= lambda frame: "IceTopWaveformWeight" in frame and frame["IceTopWaveformWeight"].value!=0)
+
     #---------------------------------------------------------------------------------------------------------------
 
     ## Which keys to keep:
@@ -122,7 +123,7 @@ def main(args, outputLevel=2):
 
     wanted_icetop_filter=['IceTop_EventPrescale',
                           'IceTop_StandardFilter']
- 
+
     wanted_icetop_pulses=[icetop_globals.icetop_hlc_pulses,
                           icetop_globals.icetop_slc_pulses,
                           icetop_globals.icetop_clean_hlc_pulses,
@@ -132,10 +133,10 @@ def main(args, outputLevel=2):
                           icetop_globals.icetop_HLCseed_excluded_tanks,
                           icetop_globals.icetop_HLCseed_clean_hlc_pulses+'_SnowCorrected',
                           'TankPulseMergerExcludedSLCTanks',
-                          'IceTopLaputopSeededSelectedHLC',  
-                          'IceTopLaputopSeededSelectedSLC',                                                                                                                                               
-                          'IceTopLaputopSmallSeededSelectedHLC',  
-                          'IceTopLaputopSmallSeededSelectedSLC',                                                                                                                                         
+                          'IceTopLaputopSeededSelectedHLC',
+                          'IceTopLaputopSeededSelectedSLC',
+                          'IceTopLaputopSmallSeededSelectedHLC',
+                          'IceTopLaputopSmallSeededSelectedSLC',
                           ]
 
     wanted_icetop_waveforms=['IceTopVEMCalibratedWaveforms',
@@ -151,7 +152,7 @@ def main(args, outputLevel=2):
                         'LaputopSmallParams',
                         'IsSmallShower'
                         ]
-    
+
     wanted_icetop_cuts=['Laputop_FractionContainment',
                         'Laputop_OnionContainment',
                         'Laputop_NearestStationIsInfill',
@@ -165,7 +166,7 @@ def main(args, outputLevel=2):
                         ]
 
     wanted=wanted_general+wanted_icetop_filter+wanted_icetop_pulses+wanted_icetop_waveforms+wanted_icetop_reco+wanted_icetop_cuts
-    
+
     if args.do_inice:
         wanted_inice_filter=['IceTopInIce_EventPrescale',
                              'IceTopInIce_StandardFilter']
@@ -187,7 +188,7 @@ def main(args, outputLevel=2):
                            "I3MuonEnergyLaputopCascadeParams",
                            "I3MuonEnergyLaputopParams"
                            ]
-   
+
         wanted_inice_cuts=['NCh_'+icetop_globals.inice_clean_coinc_pulses,
                            'IT73AnalysisInIceQualityCuts']
 
@@ -215,7 +216,7 @@ def main(args, outputLevel=2):
     tray.AddModule("Keep", 'DropObjects',
                    Keys = wanted
                    )
-    
+
     if args.output.replace('.bz2', '').replace('.gz','')[-3:] == '.i3':
         tray.AddModule("I3Writer", "i3-writer",
                        Filename = args.output,
@@ -234,7 +235,7 @@ def main(args, outputLevel=2):
     if args.print_usage:
         tray.PrintUsage(fraction=1.0)
     tray.Finish()
-    
+
 
 if __name__ == "__main__":
     import sys
@@ -261,7 +262,7 @@ if __name__ == "__main__":
 
     (args) = parser.parse_args()
     ok=True
-    
+
     icetray.I3Logger.global_logger.set_level(icetray.I3LogLevel.LOG_INFO)
 
     if not len(args.inputFiles)>0:
@@ -316,6 +317,6 @@ if __name__ == "__main__":
 
     if not ok:
         parser.print_help()
-    
+
     else:
         main(args, outputLevel=args.log_level)

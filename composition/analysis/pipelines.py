@@ -6,7 +6,8 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, Gradien
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, NuSVC
 from sklearn.decomposition import PCA
-from sklearn.linear_model import LogisticRegression
+from mlxtend.feature_extraction import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.naive_bayes import GaussianNB
@@ -22,13 +23,17 @@ def get_pipeline(classifier_name):
 
     if classifier_name == 'RF':
         classifier = RandomForestClassifier(
-            # n_estimators=100, max_depth=10, n_jobs=20,
-            n_estimators=100, max_depth=10, min_samples_leaf=25, n_jobs=20,
+            n_estimators=100, max_depth=5, n_jobs=20,
+            # n_estimators=100, max_depth=7, min_samples_leaf=150, n_jobs=20,
             random_state=2)
-    elif classifier_name == 'AB':
-        classifier = AdaBoostClassifier(random_state=2)
+    elif classifier_name == 'Ada':
+        classifier = AdaBoostClassifier(n_estimators=50, learning_rate=0.85, random_state=2)
     elif classifier_name == 'KN':
         classifier = KNeighborsClassifier(n_neighbors=100, n_jobs=10)
+    elif classifier_name == 'SGD':
+        classifier = SGDClassifier(random_state=2, n_jobs=20)
+        params = {'loss': 'log', 'penalty': 'none'}
+        classifier.set_params(**params)
     elif classifier_name == 'NuSVC':
         classifier = NuSVC()
     elif classifier_name == 'GBC':
@@ -53,7 +58,8 @@ def get_pipeline(classifier_name):
 
     pipeline = Pipeline([
         ('scaler', StandardScaler()),
-        # ('pca', PCA(n_components=2, random_state=2)),
+        # ('pca', PCA(n_components=4, random_state=2)),
+        # ('lda', LinearDiscriminantAnalysis(n_discriminants=6)),
         ('classifier', classifier)])
 
     return pipeline

@@ -22,6 +22,10 @@ if __name__ == "__main__":
         description='Runs extra modules over a given fileList')
     p.add_argument('-f', '--files', dest='files', nargs='*',
                    help='Files to run over')
+    p.add_argument('--type', dest='type',
+                   choices=['data', 'sim'],
+                   default='sim',
+                   help='Option to process simulation or data')
     p.add_argument('-s', '--sim', dest='sim',
                    help='Simulation dataset')
     p.add_argument('-o', '--outfile', dest='outfile',
@@ -29,24 +33,26 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     # Starting parameters
-    IT_pulses, inice_pulses = comp.simfunctions.reco_pulses()
+    IT_pulses, inice_pulses = comp.datafunctions.reco_pulses()
 
     # Keys to write to frame
     keys = []
+    if args.type == 'sim':
+        keys += ['MCPrimary']
+        keys += ['InIce_FractionContainment', 'IceTop_FractionContainment']
+
     keys += ['I3EventHeader']
-    keys += ['ShowerPlane']
-    keys += ['ShowerCOG']
-    keys += ['MCPrimary']
+    # keys += ['ShowerPlane']
+    # keys += ['ShowerCOG']
     keys += ['IceTopMaxSignal', 'IceTopMaxSignalString',
              'IceTopMaxSignalInEdge', 'IceTopNeighbourMaxSignal',
              'StationDensity', 'NStations']
-    keys += ['NChannels_1_60', 'InIce_charge_1_60', 'max_qfrac_1_60']
-    # keys += ['NChannels_1_45', 'InIce_charge_1_45', 'max_qfrac_1_45']
-    keys += ['NChannels_1_30', 'InIce_charge_1_30', 'max_qfrac_1_30']
-    # keys += ['NChannels_1_15', 'InIce_charge_1_15', 'max_qfrac_1_15']
-    # keys += ['NChannels_1_6', 'InIce_charge_1_6', 'max_qfrac_1_6']
-    keys += ['NChannels_45_60', 'InIce_charge_45_60', 'max_qfrac_45_60']
-    keys += ['InIce_FractionContainment', 'IceTop_FractionContainment']
+    keys += ['NChannels_1_60', 'NHits_1_60', 'InIce_charge_1_60', 'max_qfrac_1_60']
+    keys += ['NChannels_1_45', 'NHits_1_45', 'InIce_charge_1_45', 'max_qfrac_1_45']
+    keys += ['NChannels_1_30', 'NHits_1_30', 'InIce_charge_1_30', 'max_qfrac_1_30']
+    keys += ['NChannels_1_15', 'NHits_1_15', 'InIce_charge_1_15', 'max_qfrac_1_15']
+    keys += ['NChannels_1_6', 'NHits_1_6', 'InIce_charge_1_6', 'max_qfrac_1_6']
+    keys += ['NChannels_45_60', 'NHits_45_60', 'InIce_charge_45_60', 'max_qfrac_45_60']
     keys += ['Laputop_InIce_FractionContainment',
              'Laputop_IceTop_FractionContainment']
     keys += ['Laputop', 'LaputopParams']
@@ -96,20 +102,21 @@ if __name__ == "__main__":
     # Add total inice charge to frame
     tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
              min_DOM=1, max_DOM=60)
-    # tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
-    #          min_DOM=1, max_DOM=45)
+    tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
+             min_DOM=1, max_DOM=45)
     tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
              min_DOM=1, max_DOM=30)
-    # tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
-    #          min_DOM=1, max_DOM=15)
-    # tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
-    #          min_DOM=1, max_DOM=6)
+    tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
+             min_DOM=1, max_DOM=15)
+    tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
+             min_DOM=1, max_DOM=6)
     tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
              min_DOM=45, max_DOM=60)
 
     # Add containment to frame
-    tray.Add(i3modules.AddMCContainment)
     tray.Add(i3modules.AddInIceRecoContainment)
+    if args.type == 'sim':
+        tray.Add(i3modules.AddMCContainment)
 
     # Add Laputop fit status to frame
     def lap_fitstatus_ok(frame):

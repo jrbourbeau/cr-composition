@@ -11,6 +11,12 @@ def ratio_error(num, num_err, den, den_err):
     ratio_err = ratio * np.sqrt((num_err / num)**2 + (den_err / den)**2)
     return ratio, ratio_err
 
+@export
+def product_error(term1, term1_err, term2, term2_err):
+    product = term1 * term2
+    product_err = product * np.sqrt((term1_err / term1)**2 + (term2_err / term2)**2)
+    return product, product_err
+
 def get_bin_mids(bins, infvalue=None):
     abins = np.asarray(bins)
     if infvalue != None:

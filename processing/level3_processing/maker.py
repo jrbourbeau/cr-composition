@@ -26,22 +26,19 @@ def get_argdict(comp_data_dir, **args):
         if args['test']:
             args['n'] = 2
 
-        # List of existing files to possibly check against
-        existing_files = glob.glob('{}/Level2a_*.i3.bz2'.format(outdir))
-        existing_files.sort()
-
         if args['test']:
             files = files[:2]
 
         for fi, f in enumerate(files):
 
-            if not args['overwrite']:
-                if (f in existing_files):
-                    continue
-
             # Name output hdf5 file
             run = os.path.basename(f).split('.')[-3]
             out = '{}/Level3_IC79_{}_Run{:06d}.i3.gz'.format(outdir, sim, int(run))
+
+            # If not overwriting, and outfile already exists, then continue onto next file
+            if not args['overwrite']:
+                if os.path.exists(out):
+                    continue
 
             arg = '{} --isMC --do-inice --dataset {} --det IC79 --waveform -o {}'.format(f, sim, out)
 
@@ -61,9 +58,7 @@ def make_submit_script(executable, jobID, script_path, condor_dir):
              "arguments = $(ARGS)\n",
              "log = {}/logs/{}.log\n".format(condor_dir, jobID),
              "output = /data/user/jbourbeau/composition/condor/outs/{}.out\n".format(jobID),
-            #  "output = {}/outs/{}.out\n".format(condor_dir, jobID),
              "error = /data/user/jbourbeau/composition/condor/errors/{}.error\n".format(jobID),
-            #  "error = {}/errors/{}.error\n".format(condor_dir, jobID),
              "notification = Never\n",
             #  "request_memory = 5000\n",
              "queue \n"]
@@ -119,6 +114,8 @@ if __name__ == "__main__":
 
     cwd = os.getcwd()
     jobID = 'level3_process'
+    for sim in args.sim:
+        jobID += '_{}'.format(sim)
     jobID = getjobID(jobID, condor_dir)
     cmd = '{}/level3_IceTop_InIce.py'.format(cwd)
     argdict = get_argdict(mypaths.comp_data_dir, **vars(args))
@@ -127,10 +124,13 @@ if __name__ == "__main__":
 
     # Set up dag file
     jobID = 'level3_process_dag'
+    for sim in args.sim:
+        jobID += '_{}'.format(sim)
     jobID = getjobID(jobID, condor_dir)
     dag_file = '{}/submit_scripts/{}.submit'.format(condor_dir, jobID)
     comp.checkdir(dag_file)
     with open(dag_file, 'w') as dag:
+        # dag.write('CONFIG {}/dagman.config\n'.format(cwd))
         for sim in argdict.keys():
             if len(argdict[sim]) < 1:
                 continue

@@ -4,17 +4,40 @@ import glob
 from sklearn.utils import shuffle
 
 
+def comp2mass(composition):
+    mass_dict = {'P': 1,
+                 'He': 2,
+                 'O': 3,
+                 'Fe': 4}
+    # mass_dict = {'P': 0.938272013,
+    #              'He': 3.727379,
+    #              'O': 14.8950815346,
+    #              'Fe': 52.0898090795}
+    try:
+        return mass_dict[composition]
+    except KeyError, error:
+        raise('Got a KeyError:\n\t{}'.format(error))
+
 def getSimDict():
 
+    # # Simulation info for various detector configurations and compositions
+    # s = {}
+    # s['IT81'] = {'P': ['9166'], 'Fe': ['9165']}
+    # s['IT73'] = {}
+    # # Note - need to look into the lowE simulation. Appears to be more.
+    # s['IT73']['P'] = ['7351', '7006', '7579']
+    # s['IT73']['He'] = ['7483', '7241', '7263', '7791']
+    # s['IT73']['O'] = ['7486', '7242', '7262', '7851']
+    # s['IT73']['Fe'] = ['7394', '7007', '7784']
     # Simulation info for various detector configurations and compositions
     s = {}
-    s['IT81'] = {'P': ['9166'], 'Fe': ['9165']}
-    s['IT73'] = {}
+    s['IC86'] = {'P': ['9166'], 'Fe': ['9165']}
+    s['IC79'] = {}
     # Note - need to look into the lowE simulation. Appears to be more.
-    s['IT73']['P'] = ['7351', '7006', '7579']
-    s['IT73']['He'] = ['7483', '7241', '7263', '7791']
-    s['IT73']['O'] = ['7486', '7242', '7262', '7851']
-    s['IT73']['Fe'] = ['7394', '7007', '7784']
+    s['IC79']['P'] = ['7351', '7006', '7579']
+    s['IC79']['He'] = ['7483', '7241', '7263', '7791']
+    s['IC79']['O'] = ['7486', '7242', '7262', '7851']
+    s['IC79']['Fe'] = ['7394', '7007', '7784']
 
     return s
 
@@ -133,10 +156,11 @@ def getSimFiles(sim):
     return sorted(files)
 
 
-def get_level3_files(sim, just_gcd=False, testing=False, training=False):
+def get_level3_sim_files(sim, just_gcd=False, testing=False, training=False):
 
     # Get GCD file
-    prefix = '/data/ana/CosmicRay/IceTop_level3/sim/IC79/'
+    config = sim2cfg(sim)
+    prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}/'.format(config)
     gcd_file = prefix + 'GCD/Level3_{}_GCD.i3.gz'.format(sim)
     if just_gcd:
         return gcd_file
@@ -148,8 +172,9 @@ def get_level3_files(sim, just_gcd=False, testing=False, training=False):
     # if testing and training:
     #     raise('If you\'re not testing and you\'re not training, what ARE you doing?')
 
-    if sim in ['7241', '7263', '7791']:
-        prefix = '/data/user/jbourbeau/composition/IC79_sim/'
+    if sim not in ['7006', '7579', '7007', '7784']:
+        prefix = '/data/user/jbourbeau/composition/level3_processed/'.format(config)
+        # prefix = '/data/user/jbourbeau/composition/{}_sim/'.format(config)
     files = glob.glob(prefix + sim + '/Level3_*.i3.gz')
     # Don't forget to sort files
     files = sorted(files)
