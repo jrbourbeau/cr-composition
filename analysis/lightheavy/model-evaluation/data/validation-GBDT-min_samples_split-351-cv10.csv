@@ -1,0 +1,2 @@
+,classifier,cv-folds,param_name,param_value,train_mean,train_std,validation_mean,validation_std
+0,GBDT,10,min_samples_split,351,0.750650151383,0.000416054421219,0.747953858309,0.00205632860957

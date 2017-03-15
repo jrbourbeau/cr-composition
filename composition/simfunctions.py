@@ -15,7 +15,7 @@ def comp2mass(composition):
     #              'Fe': 52.0898090795}
     try:
         return mass_dict[composition]
-    except KeyError, error:
+    except KeyError as error:
         raise('Got a KeyError:\n\t{}'.format(error))
 
 def getSimDict():
@@ -103,11 +103,11 @@ def sim2cfg(sim):
 #         comp = fullDict[comp]
 #     return comp
 
-def sim2comp(sim):
-
-    sim_dict = {'7006': 'P', '7579': 'P', '7007': 'Fe', '7784': 'Fe'}
-    sim_dict.update({'7241': 'He'})
-    return sim_dict[sim]
+# def sim2comp(sim):
+#
+#     sim_dict = {'7006': 'P', '7579': 'P', '7007': 'Fe', '7784': 'Fe'}
+#     sim_dict.update({'7241': 'He'})
+#     return sim_dict[sim]
 
 
 def sim2comp(sim, full=False, convert=False):
@@ -160,36 +160,20 @@ def get_level3_sim_files(sim, just_gcd=False, testing=False, training=False):
 
     # Get GCD file
     config = sim2cfg(sim)
+    # prefix = '/data/ana/CosmicRay/IceTop_level3/sim/v1/{}/'.format(config)
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}/'.format(config)
-    gcd_file = prefix + 'GCD/Level3_{}_GCD.i3.gz'.format(sim)
+    gcd_prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}/'.format(config)
+    gcd_file = gcd_prefix + 'GCD/Level3_{}_GCD.i3.gz'.format(sim)
     if just_gcd:
         return gcd_file
 
-    # # Ensure that you are either training or testing
-    # if not testing and not training:
-    #     raise('If you\'re not testing and you\'re not training, what ARE you doing?')
-    # # Ensure that you are not both training and testing
-    # if testing and training:
-    #     raise('If you\'re not testing and you\'re not training, what ARE you doing?')
-
-    if sim not in ['7006', '7579', '7007', '7784']:
-        prefix = '/data/user/jbourbeau/composition/level3_processed/'.format(config)
-        # prefix = '/data/user/jbourbeau/composition/{}_sim/'.format(config)
+    # if sim not in ['7006', '7579', '7007', '7784']:
+    #     prefix = '/data/user/jbourbeau/composition/level3_processed/'.format(config)
+    #     # prefix = '/data/user/jbourbeau/composition/{}_sim/'.format(config)
     files = glob.glob(prefix + sim + '/Level3_*.i3.gz')
     # Don't forget to sort files
     files = sorted(files)
 
-    # # Split file list into training and testing batches
-    # # First half --> training
-    # # Second half --> testing
-    # files = shuffle(files, random_state=2)
-    # files_training = files[:len(files) // 2]
-    # files_testing = files[len(files) // 2:]
-
-    # if training:
-    #     return gcd_file, files_training
-    # else:
-    #     return gcd_file, files_testing
     return gcd_file, files
 
 

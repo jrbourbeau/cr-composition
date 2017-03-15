@@ -7,7 +7,7 @@ from . import export
 def get_training_features():
 
     feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
-                    'nchannels_nhits_ratio', 'lap_likelihood', 'log_NHits_1_30',
+                    'nchannels_nhits_ratio', 'rlogl', 'log_NHits_1_30',
                     'StationDensity', 'stationdensity_charge_ratio', 'nchannels_nhits_ratio',
                     'log_s50', 'log_s125', 'log_s500', 'lap_beta']
     # feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
@@ -24,7 +24,7 @@ def get_training_features():
                   'log_s180': '$\log_{10}(S_{\mathrm{180}})$',
                   'log_s250': '$\log_{10}(S_{\mathrm{250}})$',
                   'log_s500': '$\log_{10}(S_{\mathrm{500}})$',
-                  'lap_likelihood': '$r\log_{10}(l)$',
+                  'rlogl': '$r\log_{10}(l)$',
                   'lap_beta': 'lap beta',
                   'InIce_log_charge_1_60': 'InIce charge',
                   'InIce_log_charge_1_45': 'InIce charge (top 75\%)',

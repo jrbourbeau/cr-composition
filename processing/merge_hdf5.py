@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #!/bin/sh /cvmfs/icecube.opensciencegrid.org/py2-v1/icetray-start
 #METAPROJECT /data/user/jbourbeau/metaprojects/icerec/trunk/build
 

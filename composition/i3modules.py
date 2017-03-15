@@ -1,23 +1,122 @@
 #!/usr/bin/env python
 
 import numpy as np
+import cPickle as pickle
 from I3Tray import NaN, Inf
-from icecube import icetray, dataio, toprec, phys_services
-from icecube import dataclasses as dc
+from icecube import icetray, dataio, dataclasses, toprec, phys_services
 from icecube.icetop_Level3_scripts import icetop_globals
 from icecube.icetop_Level3_scripts.functions import count_stations
 
-# ============================================================================
-# Generally useful modules
+
+class AddMuonRadius(icetray.I3Module):
+
+    def __init__(self, context):
+        icetray.I3Module.__init__(self, context)
+        self.AddParameter('track', 'Track to calculate distances from', 'Laputop')
+        self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        self.AddOutBox('OutBox')
+
+    def Configure(self):
+        self.track = self.GetParameter('track')
+        self.pulses = self.GetParameter('pulses')
+        self.get_dist = phys_services.I3Calculator.closest_approach_distance
+        pass
+
+    def Geometry(self, frame):
+        self.geometry = frame['I3Geometry']
+        self.geomap = self.geometry.omgeo
+        self.PushFrame(frame)
+
+    def Physics(self, frame):
+        try:
+            track = frame[self.track]
+            pulses = frame[self.pulses]
+            if pulses.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
+                pulses = pulses.apply(frame)
+        except KeyError:
+            # icetray.logging.log_info('Frame doesn\'t contain MCPrimary')
+            self.PushFrame(frame)
+            return
+
+        dists = []
+        charges = []
+        dists_hit_weighted = []
+        for omkey, pulses in pulses:
+            # Throw out Deep Core strings (want homogenized total charge)
+            if omkey.string >= 79:
+                continue
+            # Get distance of clostest approach to DOM from track
+            dist = self.get_dist(track, self.geomap[omkey].position)
+            dists.append(dist)
+            # Get charge recorded in DOM
+            charge = 0.0
+            for pulse in pulses:
+                charge += pulse.charge
+                dists_hit_weighted.append(dist)
+            charges.append(charge)
+
+        # Convert to ndarrays for easy array manipulation
+        dists = np.array(dists)
+        charges = np.array(charges)
+        dists_hit_weighted = np.array(dists_hit_weighted)
+
+        # Add to frame
+        avg_inice_radius = np.mean(dists)
+        frame.Put('avg_inice_radius', dataclasses.I3Double(avg_inice_radius))
+
+        # hits_weighted_inice_radius = np.mean(dists_hit_weighted)
+        # frame.Put('hits_weighted_inice_radius', dataclasses.I3Double(hits_weighted_inice_radius))
+
+        invcharge_inice_radius = np.sum([dist/charge for charge, dist in zip(charges, dists)])/np.sum(1/charges)
+        frame.Put('invcharge_inice_radius', dataclasses.I3Double(invcharge_inice_radius))
+
+        max_inice_radius = dists.max()
+        frame.Put('max_inice_radius', dataclasses.I3Double(max_inice_radius))
+
+        # charge_inice_radius = np.sum([charge*dist for charge, dist in zip(charges, dists)])/np.sum(charges)
+        # frame.Put('charge_inice_radius', dataclasses.I3Double(charge_inice_radius))
+        #
+        # chargesquared_inice_radius = np.sum([dist*charge**2 for charge, dist in zip(charges, dists)])/np.sum(charges**2)
+        # frame.Put('chargesquared_inice_radius', dataclasses.I3Double(chargesquared_inice_radius))
+        #
+        # charge_inice_radiussquared = np.sum([charge*dist**2 for charge, dist in zip(charges, dists)])/np.sum(charges)
+        # frame.Put('charge_inice_radiussquared', dataclasses.I3Double(charge_inice_radiussquared))
+
+        self.PushFrame(frame)
+
+    def Finish(self):
+        return
+
+def add_num_mil_particles(frame):
+    n_particles = 0
+    if 'Millipede_dEdX' in frame:
+        for i3particle in frame['Millipede_dEdX']:
+            n_particles += 1
+    frame.Put('num_millipede_particles', icetray.I3Int(n_particles))
+
+def addMCprimarykeys(frame):
+
+    if 'MCPrimary' in frame:
+        i3primary = frame['MCPrimary']
+        frame.Put('MC_x', dataclasses.I3Double(i3primary.pos.x))
+        frame.Put('MC_y', dataclasses.I3Double(i3primary.pos.y))
+        frame.Put('MC_azimuth', dataclasses.I3Double(i3primary.dir.azimuth))
+        frame.Put('MC_zenith', dataclasses.I3Double(i3primary.dir.zenith))
+        frame.Put('MC_energy', dataclasses.I3Double(i3primary.energy))
+        ts = i3primary.type_string
+        print('type_string = {}'.format(ts))
+        print('type(type_string) = {}'.format(type(ts)))
+        frame.Put('MC_type', dataclasses.I3String(ts))
+
+    return
+
 
 """ Output number of stations triggered in IceTop """
-
-
 def GetStations(frame, InputITpulses, output):
     nstation = 0
     if InputITpulses in frame:
         vemPulses = frame[InputITpulses]
-        if vemPulses.__class__ == dc.I3RecoPulseSeriesMapMask:
+        if vemPulses.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
             vemPulses = vemPulses.apply(frame)
         stationList = set([pulse.key().string for pulse in vemPulses])
         nstation = len(stationList)
@@ -47,7 +146,7 @@ class AddITContainment(icetray.I3Module):  # Kath's containment
             ShowerLLH_particle = 'ShowerLLH_' + comp
             if ShowerLLH_particle in frame:
                 frame.Put('ShowerLLH_FractionContainment_{}'.format(comp),
-                          dc.I3Double(self.scaling.scale_icetop(frame[ShowerLLH_particle])))
+                          dataclasses.I3Double(self.scaling.scale_icetop(frame[ShowerLLH_particle])))
 
         self.PushFrame(frame)
 
@@ -74,9 +173,9 @@ class AddMCContainment(icetray.I3Module):  # Kath's containment
     def Physics(self, frame):
         if 'MCPrimary' in frame:
             frame.Put('InIce_FractionContainment',
-                      dc.I3Double(self.scaling.scale_inice(frame['MCPrimary'])))
+                      dataclasses.I3Double(self.scaling.scale_inice(frame['MCPrimary'])))
             frame.Put('IceTop_FractionContainment',
-                      dc.I3Double(self.scaling.scale_icetop(frame['MCPrimary'])))
+                      dataclasses.I3Double(self.scaling.scale_icetop(frame['MCPrimary'])))
 
         self.PushFrame(frame)
 
@@ -103,15 +202,15 @@ class AddInIceRecoContainment(icetray.I3Module):  # Kath's containment
     def Physics(self, frame):
         if 'Laputop' in frame:
             lap_particle = frame['Laputop']
-            if (lap_particle.fit_status == dc.I3Particle.OK):
+            if (lap_particle.fit_status == dataclasses.I3Particle.OK):
                 frame.Put('Laputop_InIce_FractionContainment',
-                        dc.I3Double(self.scaling.scale_inice(lap_particle)))
+                        dataclasses.I3Double(self.scaling.scale_inice(lap_particle)))
                 frame.Put('Laputop_IceTop_FractionContainment',
-                        dc.I3Double(self.scaling.scale_icetop(lap_particle)))
+                        dataclasses.I3Double(self.scaling.scale_icetop(lap_particle)))
         if 'CoincMuonReco_LineFit' in frame:
             I3_particle = frame['CoincMuonReco_LineFit']
             frame.Put('LineFit_InIce_FractionContainment',
-                      dc.I3Double(self.scaling.scale_inice(I3_particle)))
+                      dataclasses.I3Double(self.scaling.scale_inice(I3_particle)))
 
         self.PushFrame(frame)
 
@@ -145,7 +244,7 @@ class AddInIceCharge(icetray.I3Module):
         max_qfrac = NaN
         if self.inice_pulses in frame:
             VEMpulses = frame[self.inice_pulses]
-            if VEMpulses.__class__ == dc.I3RecoPulseSeriesMapMask:
+            if VEMpulses.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
                 VEMpulses = VEMpulses.apply(frame)
                 charge_list = []
                 for omkey, pulses in VEMpulses:
@@ -167,13 +266,44 @@ class AddInIceCharge(icetray.I3Module):
                     max_qfrac = np.max(charge_list)/q_tot
 
         frame.Put('InIce_charge_{}_{}'.format(self.min_DOM, self.max_DOM),
-                  dc.I3Double(q_tot))
+                  dataclasses.I3Double(q_tot))
         frame.Put('NChannels_{}_{}'.format(self.min_DOM, self.max_DOM),
                   icetray.I3Int(n_channels))
         frame.Put('NHits_{}_{}'.format(self.min_DOM, self.max_DOM),
                   icetray.I3Int(n_hits))
         frame.Put('max_qfrac_{}_{}'.format(self.min_DOM, self.max_DOM),
-                  dc.I3Double(max_qfrac))
+                  dataclasses.I3Double(max_qfrac))
+        self.PushFrame(frame)
+
+    def Finish(self):
+        return
+
+class AddIceTopCharge(icetray.I3Module):
+
+    def __init__(self, context):
+        icetray.I3Module.__init__(self, context)
+        self.AddOutBox('OutBox')
+        self.AddParameter('icetop_pulses',
+                          'I3RecoPulseSeriesMapMask to use for total charge',
+                          'IceTopHLCSeedRTPulses')
+
+    def Configure(self):
+        self.icetop_pulses = self.GetParameter('icetop_pulses')
+        pass
+
+    def Physics(self, frame):
+        q_tot = NaN
+        if self.icetop_pulses in frame:
+            VEMpulses = frame[self.icetop_pulses]
+            if VEMpulses.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
+                VEMpulses = VEMpulses.apply(frame)
+                charge_list = []
+                for omkey, pulses in VEMpulses:
+                    for pulse in pulses:
+                        charge_list.append(pulse.charge)
+                q_tot = np.sum(charge_list)
+
+        frame.Put('IceTop_charge', dataclasses.I3Double(q_tot))
         self.PushFrame(frame)
 
     def Finish(self):
@@ -248,7 +378,7 @@ class FindLoudestStation(icetray.I3Module):
             return
 
         vem = frame[self.pulses]
-        if vem.__class__ == dc.I3RecoPulseSeriesMapMask:
+        if vem.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
             vem = vem.apply(frame)
 
         loudPulse, loudStaCharge, avStaCharge = 0, 0, 0
@@ -284,12 +414,12 @@ class FindLoudestStation(icetray.I3Module):
                     sat_stations.append(key.string)
 
         # Write to frame
-        frame['StationWithLoudestPulse'] = dc.I3Double(loudStation1)
-        frame['LoudestStation'] = dc.I3Double(loudStation2)
+        frame['StationWithLoudestPulse'] = dataclasses.I3Double(loudStation1)
+        frame['LoudestStation'] = dataclasses.I3Double(loudStation2)
         # Option for writing saturated stations
         if self.outputName != '':
             sat_stations = set(sat_stations)
-            sta_list = dc.I3VectorInt()
+            sta_list = dataclasses.I3VectorInt()
             for sta in sat_stations:
                 sta_list.append(sta)
             frame[self.outputName] = sta_list
@@ -342,11 +472,11 @@ class LoudestStationOnEdge(icetray.I3Module):
         edgeList = self.edgeDict[self.config]
 
         # Check if loudest station on edge
-        if loud.__class__ == dc.I3Double:
+        if loud.__class__ == dataclasses.I3Double:
             if loud.value in edgeList:
                 edge = True
         # Check if any saturated stations on edge
-        elif loud.__class__ == dc.I3VectorInt:
+        elif loud.__class__ == dataclasses.I3VectorInt:
             for station in loud:
                 if station in edgeList:
                     edge = True
@@ -379,7 +509,7 @@ class LargestTankCharges(icetray.I3Module):
             return
 
         tank_map = frame[self.recoPulses]
-        if tank_map.__class__ == dc.I3RecoPulseSeriesMapMask:
+        if tank_map.__class__ == dataclasses.I3RecoPulseSeriesMapMask:
             tank_map = tank_map.apply(frame)
 
         # Build list of charges and corresponding om's
@@ -417,13 +547,13 @@ class LargestTankCharges(icetray.I3Module):
             index = stringList.index(q1_dom.string)
             q1b_dom = omList[index]
             q1b = tank_map[q1b_dom][0].charge
-            frame['Q1b'] = dc.I3Double(q1b)
+            frame['Q1b'] = dataclasses.I3Double(q1b)
 
         # Write charges to frame
         bookedN = 0
         while (bookedN < self.nPulses) and (bookedN < charge_map.__len__()):
             name = 'Q%i' % (bookedN + 1)
-            frame[name] = dc.I3Double(charge_map[bookedN][0])
+            frame[name] = dataclasses.I3Double(charge_map[bookedN][0])
             bookedN += 1
 
         self.PushFrame(frame)

@@ -4,6 +4,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
 import seaborn.apionly as sns
 
@@ -15,8 +16,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import validation_curve, GridSearchCV
 
 from . import export
-
-# Plotting decision regions
+from .data_functions import ratio_error
 
 
 def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.025, ax=None):
@@ -117,11 +117,11 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     return im
 
 @export
-def plot_steps(x, y, y_err, ax, color, label):
+def plot_steps(x, y, y_err, ax, color, label=None):
+
     step_x = x
     x_widths = x[1:]-x[:-1]
-    if len(np.unique(x_widths)) != 1:
-        raise('Unequal bins...')
+
     x_width = np.unique(x_widths)[0]
     step_x = np.append(step_x[0]-x_width/2, step_x)
     step_x = np.append(step_x, step_x[-1]+x_width/2)
@@ -130,10 +130,10 @@ def plot_steps(x, y, y_err, ax, color, label):
     step_y = np.append(step_y[0], step_y)
     step_y = np.append(step_y, step_y[-1])
 
-    err_upper = y + y_err
+    err_upper = y + y_err if y_err.ndim == 1 else y + y_err[1]
     err_upper = np.append(err_upper[0], err_upper)
     err_upper = np.append(err_upper, err_upper[-1])
-    err_lower = y - y_err
+    err_lower = y - y_err if y_err.ndim == 1 else y - y_err[0]
     err_lower = np.append(err_lower[0], err_lower)
     err_lower = np.append(err_lower, err_lower[-1])
 
@@ -145,3 +145,50 @@ def plot_steps(x, y, y_err, ax, color, label):
                     step='mid', linewidth=1)
 
     return step_x, step_y
+
+
+def make_verification_plot(data_df, sim_df, key, bins, label):
+
+    if not isinstance(data_df, pd.DataFrame):
+        raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(data_df)))
+    if not isinstance(sim_df, pd.DataFrame):
+        raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(sim_df)))
+
+    # Extract numpy arrays (and lengths) from DataFrame
+    data_array, sim_array = data_df[key].values, sim_df[key].values
+    n_data, n_sim = data_array.shape[0], sim_array.shape[0]
+
+    counts_data = np.histogram(data_array, bins)[0]
+    rate_data, rate_data_err = ratio_error(counts_data, np.sqrt(counts_data),
+                                           n_data, np.sqrt(n_data))
+
+    counts_sim = np.histogram(sim_array, bins)[0]
+    rate_sim, rate_sim_err = ratio_error(counts_sim, np.sqrt(counts_sim),
+                                         n_sim, np.sqrt(n_sim))
+
+    ratio, ratio_err = ratio_error(rate_data, rate_data_err,
+                                   rate_sim, rate_sim_err)
+
+    bin_midpoints = (bins[1:] + bins[:-1]) / 2
+
+    gs = gridspec.GridSpec(2, 1, height_ratios=[2,1], hspace=0.0)
+    ax1 = plt.subplot(gs[0])
+    ax2 = plt.subplot(gs[1], sharex=ax1)
+
+    ax1.errorbar(bin_midpoints, rate_sim, yerr=rate_sim_err, label='MC',
+                 marker='.', ms=8, ls='None', color='C0')
+    ax1.errorbar(bin_midpoints, rate_data, yerr=rate_data_err, label='Data',
+                 marker='.', ms=8, ls='None', color='C1')
+    ax1.set_yscale('log', nonposy='clip')
+    ax1.set_ylabel('Rate [Hz]')
+    ax1.grid(True)
+    ax1.legend()
+
+    ax2.errorbar(bin_midpoints, ratio, yerr=ratio_err, marker='.', ms=8, ls='None', color='C2')
+    ax2.set_ylabel('Data/MC')
+    ax2.set_xlabel(label)
+    ax2.grid(True)
+
+    plt.show()
+
+    return

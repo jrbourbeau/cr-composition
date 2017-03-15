@@ -1,20 +1,36 @@
 #!/usr/bin/env python
 
-import cPickle
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.cluster import KMeans
 from . import export
-from ..load_dataframe import load_dataframe
+from ..dataframe_functions import load_dataframe
+from .base import DataSet
 
 
 @export
 def get_training_features():
 
-    feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
-                    'nchannels_nhits_ratio', 'lap_likelihood', 'log_NHits_1_30',
-                    'StationDensity', 'stationdensity_charge_ratio', 'nchannels_nhits_ratio',
-                    'log_s50', 'log_s125', 'log_s500', 'lap_beta']
+    # Features used in the 3-year analysis
+    feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard', 'num_millipede_particles']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard',
+    #                 'n_he_stoch_standard', 'n_he_stoch_standard']
+
+
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'InIce_log_charge_1_30',
+    #     'charge_nchannels_ratio', 'nhits_nchannels_ratio',
+    #     'eloss_1500_standard']
+    # feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
+    #                 'nhits_nchannels_ratio', 'lap_rlogl', 'log_NHits_1_30',
+    #                 'StationDensity', 'stationdensity_charge_ratio',
+    #                 'log_s50', 'log_s125', 'log_s500',
+    #                 'eloss_1500_standard', 'n_he_stoch_standard', 'n_he_stoch_standard',
+    #                 '']
+
     # feature_list = ['lap_log_energy', 'lap_cos_zenith', 'log_NChannels_1_30',
     #                 'nchannels_nhits_ratio', 'lap_likelihood', 'log_NHits_1_30',
     #                 'StationDensity', 'stationdensity_charge_ratio', 'nchannels_nhits_ratio',
@@ -29,14 +45,12 @@ def get_training_features():
                   'log_s180': '$\log_{10}(S_{\mathrm{180}})$',
                   'log_s250': '$\log_{10}(S_{\mathrm{250}})$',
                   'log_s500': '$\log_{10}(S_{\mathrm{500}})$',
-                  'lap_likelihood': '$r\log_{10}(l)$',
+                  'lap_rlogl': '$r\log_{10}(l)$',
                   'lap_beta': 'lap beta',
                   'InIce_log_charge_1_60': 'InIce charge',
                   'InIce_log_charge_1_45': 'InIce charge (top 75\%)',
                   'InIce_charge_1_30': 'InIce charge (top 50\%)',
                   'InIce_log_charge_1_30': '$\log_{10}(InIce charge (top 50))$',
-                  #   'InIce_log_charge_1_30': '$\log_{10}$(InIce charge (top 50\%))',
-                  #   'InIce_log_charge_1_30': 'InIce charge (top 50\%)',
                   'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
                   'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
                   'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
@@ -56,9 +70,20 @@ def get_training_features():
                   'NHits_1_30': 'NHits',
                   'log_NHits_1_30': '$\log_{10}$(NHits (top 50\%))',
                   'charge_nhits_ratio': 'Charge/NHits',
-                  'nchannels_nhits_ratio': 'NChannels/NHits',
+                  'nhits_nchannels_ratio': 'NHits/NChannels',
                   'stationdensity_nchannels_ratio': 'StationDensity/NChannels',
-                  'stationdensity_nhits_ratio': 'StationDensity/NHits'
+                  'stationdensity_nhits_ratio': 'StationDensity/NHits',
+                  'llhratio': 'llhratio',
+                  'n_he_stoch_standard': 'Num HE stochastics (standard)',
+                  'n_he_stoch_strong': 'Num HE stochastics (strong)',
+                  'eloss_1500_standard': 'dE/dX (standard)',
+                  'log_dEdX': '$\log_{10}$(dE/dX)',
+                  'eloss_1500_strong': 'dE/dX (strong)',
+                  'num_millipede_particles': '$N_{\mathrm{mil}}$',
+                  'avg_inice_radius': '$R_{\mathrm{core}}$',
+                  'Laputop_InIce_FractionContainment': '$C_{\mathrm{IC}}$',
+                  'max_inice_radius': '$R_{\mathrm{max}}$',
+                  'invcharge_inice_radius': '$R_{\mathrm{q,core}}$'
                   }
     feature_labels = np.array([label_dict[feature]
                                for feature in feature_list])
@@ -67,8 +92,7 @@ def get_training_features():
 
 
 @export
-def get_train_test_sets(df, feature_list, comp_class=False,
-                        train_he=True, test_he=True, return_energy=False):
+def get_sim_datasets(df, feature_list, comp_class=False, return_energy=False):
 
     # Load and preprocess training data
     if comp_class:
@@ -85,96 +109,106 @@ def get_train_test_sets(df, feature_list, comp_class=False,
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-    if not train_he:
-        # Take out all He from training set
-        He_mask = (le.inverse_transform(y_train) == 'He')
-        X_train = X_train[np.logical_not(He_mask)]
-        y_train = y_train[np.logical_not(He_mask)]
-    if not test_he:
-        # Take out all He from training set
-        He_mask = (le.inverse_transform(y_test) == 'He')
-        X_test = X_test[np.logical_not(He_mask)]
-        y_test = y_test[np.logical_not(He_mask)]
-
+    # Create DataSet objects
+    sim_train = DataSet(X=X_train, y=y_train, le=le)
+    sim_test = DataSet(X=X_test, y=y_test, le=le)
     if return_energy:
-        energy_test = X_test[:, 0]
-        return X_train, X_test, y_train, y_test, le, energy_test
+        energy = df['lap_energy'].values
+        energy_train, energy_test = energy[train_index], energy[test_index]
+        sim_train.energy = energy_train
+        sim_test.energy = energy_test
 
-    else:
-        return X_train, X_test, y_train, y_test, le
+        log_energy = df['lap_log_energy'].values
+        log_energy_train, log_energy_test = log_energy[train_index], log_energy[test_index]
+        sim_train.log_energy = log_energy_train
+        sim_test.log_energy = log_energy_test
+
+    return sim_train, sim_test
+
+
+# def deserialize_feature_selector(comp_class=True):
+#     # Deserialize feature selection algorithm
+#     if comp_class:
+#         with open(
+#                 '/home/jbourbeau/cr-composition/analysis/lightheavy/feature-selection/sfs_nfeatures_7_xgboost.pkl', 'rb') as f_obj:
+#             sfs = cPickle.load(f_obj)
+#     else:
+#         with open(
+#                 '../../analysis/fourcompositions/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
+#             sfs = cPickle.load(f_obj)
+#
+#     return sfs
 
 
 @export
-def preprocess_sim(config='IC79', comp_class=True, return_energy=False, f_selection='sffs'):
+def preprocess_sim(config='IC79', comp_class=True, return_energy=False,
+                   features=None, f_selection=None, cluster=False):
 
-    # Load sim dataframe
+    # Load simulation dataframe
     df = load_dataframe(datatype='sim', config=config)
 
-    # Format testing and training sets (with full set of features)
+    # Format testing and training sets
     feature_list, feature_labels = get_training_features()
-    X_train, X_test, y_train, y_test, le = get_train_test_sets(
-        df, feature_list, comp_class=comp_class)
+    features_str = ''
+    for label in feature_labels:
+        features_str += label + '\n\t'
+    print('Selecting the following features:\n\t'+features_str)
+    sim_train, sim_test = get_sim_datasets(df, feature_list,
+        comp_class=comp_class, return_energy=return_energy)
 
-    # Extract reconstructed energy feature for later use
-    energy_train = X_train[:, 0]
-    energy_test = X_test[:, 0]
+    # if cluster:
+    #     kmeans = KMeans(n_clusters=2)
+    #     pred = kmeans.fit_predict(sim_train.X)
 
-    # Deserialize feature selection algorithm
-    if comp_class:
-        with open(
-        '../../analysis/lightheavy/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
-            sfs = cPickle.load(f_obj)
-    else:
-        with open(
-        '../../analysis/fourcompositions/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
-            sfs = cPickle.load(f_obj)
-    print('\nFeatures selected = {}\n'.format([feature_list[idx] for idx in sfs.k_feature_idx_]))
+    # if f_selection:
+    #     # Deserialize feature selection algorithm
+    #     sfs = deserialize_feature_selector(comp_class)
+    #     print('\nFeatures selected = {}\n'.format(
+    #         [feature_list[idx] for idx in sfs.k_feature_idx_]))
+    #
+    #     # Feature transformation
+    #     sim_train.X = sfs.transform(sim_train.X)
+    #     sim_test.X = sfs.transform(sim_test.X)
 
-    # Feature transformation
-    X_train_sfs = sfs.transform(X_train)
-    X_test_sfs = sfs.transform(X_test)
+    print('Number training events = {}'.format(len(sim_train)))
+    print('Number testing events = {}'.format(len(sim_test)))
 
-    print('Number training events = ' + str(y_train.shape[0]))
-    print('Number testing events = ' + str(y_test.shape[0]))
-
-    if return_energy:
-        return X_train_sfs, X_test_sfs, y_train, y_test, le, energy_train, energy_test
-    else:
-        return X_train_sfs, X_test_sfs, y_train, y_test, le
+    return sim_train, sim_test
 
 
 @export
-def preprocess_data(config='IC79', comp_class=True, return_energy=False, f_selection='sffs'):
+def preprocess_data(config='IC79', comp_class=True, return_energy=False,
+                   features=None, f_selection=None):
 
     # Load sim dataframe
     df = load_dataframe(datatype='data', config=config)
-
-    # Format testing and training sets (with full set of features)
+    # Format testing set
     feature_list, feature_labels = get_training_features()
-    # Shuffle rows in data frame
-    df = df.sample(frac=1).reset_index(drop=True)
+    features_str = ''
+    for label in feature_labels:
+        features_str += label + '\n\t'
+    print('Selecting the following features:\n\t'+features_str)
     X_test = df[feature_list].values
+    # n_events = X_test.shape[0]
+    # # Shuffle rows in test data
+    # shuffle_array = np.random.choice(n_events, size=n_events, replace=False)
+    # X_test = X_test[shuffle_array]
 
-    # Extract reconstructed energy feature for later use
-    energy_test = X_test[:, 0]
 
-    # Deserialize feature selection algorithm
-    if comp_class:
-        with open(
-        '../../analysis/lightheavy/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
-            sfs = cPickle.load(f_obj)
-    else:
-        with open(
-        '../../analysis/fourcompositions/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
-            sfs = cPickle.load(f_obj)
-    print('\nFeatures selected = {}\n'.format([feature_list[idx] for idx in sfs.k_feature_idx_]))
+    # if f_selection:
+    #     # Deserialize feature selection algorithm
+    #     sfs = deserialize_feature_selector(comp_class)
+    #     print('\nFeatures selected = {}\n'.format(
+    #         [feature_list[idx] for idx in sfs.k_feature_idx_]))
+    #
+    #     # Feature transformation
+    #     X_test = sfs.transform(X_test)
 
-    # Feature transformation
-    X_test_sfs = sfs.transform(X_test)
+    print('Number testing events = ' + str(X_test.shape[0]))
 
-    print('Number testing events = ' + str(X_test_sfs.shape[0]))
-
+    dataset = DataSet(X=X_test)
     if return_energy:
-        return X_test_sfs, energy_test
-    else:
-        return X_test_sfs
+        # IMPORTANT: shuffle energys with same shuffle array used to randomize
+        dataset.log_energy = df['lap_log_energy'].values
+
+    return dataset

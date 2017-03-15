@@ -17,6 +17,19 @@ def product_error(term1, term1_err, term2, term2_err):
     product_err = product * np.sqrt((term1_err / term1)**2 + (term2_err / term2)**2)
     return product, product_err
 
+@export
+def averaging_error(**data):
+    values = data['values']
+    errors = data['errors']
+    if not isinstance(values, np.ndarray):
+        values = np.array(values)
+    if not isinstance(errors, np.ndarray):
+        errors = np.array(errors)
+    sum_value = values.sum()
+    sum_error = np.sum([np.sqrt(error**2) for error in errors])
+    
+    return sum_value/len(values), sum_error/len(values)
+
 def get_bin_mids(bins, infvalue=None):
     abins = np.asarray(bins)
     if infvalue != None:
