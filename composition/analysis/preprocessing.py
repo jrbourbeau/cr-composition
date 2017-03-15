@@ -13,7 +13,8 @@ from .base import DataSet
 def get_training_features():
 
     # Features used in the 3-year analysis
-    feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+    feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard', 'num_millipede_particles']
