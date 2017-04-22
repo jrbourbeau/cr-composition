@@ -45,7 +45,7 @@ if __name__ == "__main__":
             dataframes.append(store['dataframe'])
 
     print('Merging {} DataFrames...'.format(len(dataframes)))
-    merged_dataframe = pd.concat(dataframes, ignore_index=True)
+    merged_dataframe = pd.concat(dataframes, ignore_index=True, copy=False)
 
     with pd.HDFStore(output) as output_store:
         output_store['dataframe'] = merged_dataframe

@@ -2,19 +2,19 @@
 
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn.cluster import KMeans
+from sklearn.model_selection import StratifiedShuffleSplit, KFold
 from . import export
 from ..dataframe_functions import load_dataframe
 from .base import DataSet
 
 
 @export
-def get_training_features():
+def get_training_features(feature_list=None):
 
     # Features used in the 3-year analysis
-    # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
-    feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
+    if feature_list is None:
+        feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'IT_charge_ratio']
+    # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard', 'num_millipede_particles']
@@ -82,9 +82,17 @@ def get_training_features():
                   'eloss_1500_strong': 'dE/dX (strong)',
                   'num_millipede_particles': '$N_{\mathrm{mil}}$',
                   'avg_inice_radius': '$R_{\mathrm{core}}$',
+                  'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
                   'Laputop_InIce_FractionContainment': '$C_{\mathrm{IC}}$',
+                  'Laputop_IceTop_FractionContainment': '$C_{\mathrm{IT}}$',
                   'max_inice_radius': '$R_{\mathrm{max}}$',
-                  'invcharge_inice_radius': '$R_{\mathrm{q,core}}$'
+                  'invcharge_inice_radius': '$R_{\mathrm{q,core}}$',
+                  'lap_zenith': 'zenith',
+                  'NStations': 'NStations',
+                  'IceTop_charge': 'IT charge',
+                  'IceTop_charge_175m': 'Signal greater 175m',
+                  'log_IceTop_charge_175m': '$\log_{10}(Q_{IT, 175})$',
+                  'IT_charge_ratio': 'IT charge ratio'
                   }
     feature_labels = np.array([label_dict[feature]
                                for feature in feature_list])
@@ -93,20 +101,22 @@ def get_training_features():
 
 
 @export
-def get_sim_datasets(df, feature_list, comp_class=False, return_energy=False):
+def get_sim_datasets(df, feature_list, target='MC_comp_class', labelencode=True,
+    return_energy=False, return_comp=False):
 
     # Load and preprocess training data
-    if comp_class:
-        X, y = df[feature_list].values, df.MC_comp_class.values
-    else:
-        X, y = df[feature_list].values, df.MC_comp.values
+    X, y = df[feature_list].values, df[target].values
     # Convert comp string labels to numerical labels
-    le = LabelEncoder()
-    y = le.fit_transform(y)
+    if labelencode:
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+    else:
+        le = None
 
     # Split data into training and test samples
-    sss = StratifiedShuffleSplit(n_splits=10, test_size=0.3, random_state=2)
-    for train_index, test_index in sss.split(X, y):
+    if labelencode: splitter = StratifiedShuffleSplit(n_splits=10, test_size=0.3, random_state=2)
+    else: splitter = KFold(n_splits=10, shuffle=True, random_state=2)
+    for train_index, test_index in splitter.split(X, y):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
@@ -124,52 +134,31 @@ def get_sim_datasets(df, feature_list, comp_class=False, return_energy=False):
         sim_train.log_energy = log_energy_train
         sim_test.log_energy = log_energy_test
 
+    if return_comp:
+        comp_class = df['MC_comp_class'].values
+        comp_train, comp_test = comp_class[train_index], comp_class[test_index]
+        sim_train.comp = comp_train
+        sim_test.comp = comp_test
+
+
     return sim_train, sim_test
 
 
-# def deserialize_feature_selector(comp_class=True):
-#     # Deserialize feature selection algorithm
-#     if comp_class:
-#         with open(
-#                 '/home/jbourbeau/cr-composition/analysis/lightheavy/feature-selection/sfs_nfeatures_7_xgboost.pkl', 'rb') as f_obj:
-#             sfs = cPickle.load(f_obj)
-#     else:
-#         with open(
-#                 '../../analysis/fourcompositions/feature-selection/{}_nfeatures_8.pkl'.format(f_selection), 'rb') as f_obj:
-#             sfs = cPickle.load(f_obj)
-#
-#     return sfs
-
-
 @export
-def preprocess_sim(config='IC79', comp_class=True, return_energy=False,
-                   features=None, f_selection=None, cluster=False):
+def preprocess_sim(config='IC79', feature_list=None, target='MC_comp_class', labelencode=True,
+    return_energy=False, return_comp=False):
 
     # Load simulation dataframe
     df = load_dataframe(datatype='sim', config=config)
 
     # Format testing and training sets
-    feature_list, feature_labels = get_training_features()
+    feature_list, feature_labels = get_training_features(feature_list)
     features_str = ''
     for label in feature_labels:
         features_str += label + '\n\t'
     print('Selecting the following features:\n\t'+features_str)
-    sim_train, sim_test = get_sim_datasets(df, feature_list,
-        comp_class=comp_class, return_energy=return_energy)
-
-    # if cluster:
-    #     kmeans = KMeans(n_clusters=2)
-    #     pred = kmeans.fit_predict(sim_train.X)
-
-    # if f_selection:
-    #     # Deserialize feature selection algorithm
-    #     sfs = deserialize_feature_selector(comp_class)
-    #     print('\nFeatures selected = {}\n'.format(
-    #         [feature_list[idx] for idx in sfs.k_feature_idx_]))
-    #
-    #     # Feature transformation
-    #     sim_train.X = sfs.transform(sim_train.X)
-    #     sim_test.X = sfs.transform(sim_test.X)
+    sim_train, sim_test = get_sim_datasets(df, feature_list, target=target,
+        labelencode=labelencode, return_energy=return_energy, return_comp=return_comp)
 
     print('Number training events = {}'.format(len(sim_train)))
     print('Number testing events = {}'.format(len(sim_test)))
@@ -178,8 +167,7 @@ def preprocess_sim(config='IC79', comp_class=True, return_energy=False,
 
 
 @export
-def preprocess_data(config='IC79', comp_class=True, return_energy=False,
-                   features=None, f_selection=None):
+def preprocess_data(config='IC79', feature_list=None, return_energy=False):
 
     # Load sim dataframe
     df = load_dataframe(datatype='data', config=config)
@@ -190,20 +178,6 @@ def preprocess_data(config='IC79', comp_class=True, return_energy=False,
         features_str += label + '\n\t'
     print('Selecting the following features:\n\t'+features_str)
     X_test = df[feature_list].values
-    # n_events = X_test.shape[0]
-    # # Shuffle rows in test data
-    # shuffle_array = np.random.choice(n_events, size=n_events, replace=False)
-    # X_test = X_test[shuffle_array]
-
-
-    # if f_selection:
-    #     # Deserialize feature selection algorithm
-    #     sfs = deserialize_feature_selector(comp_class)
-    #     print('\nFeatures selected = {}\n'.format(
-    #         [feature_list[idx] for idx in sfs.k_feature_idx_]))
-    #
-    #     # Feature transformation
-    #     X_test = sfs.transform(X_test)
 
     print('Number testing events = ' + str(X_test.shape[0]))
 

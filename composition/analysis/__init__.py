@@ -13,5 +13,5 @@ from .SBS import SBS
 from .base import get_energybins, DataSet, get_color_dict
 from .effective_area import get_effective_area
 from .subsample import get_random_subsample
-# from unfold import Unfolder
-from .modelevaluation import get_frac_correct
+from .modelevaluation import get_frac_correct, get_CV_frac_correct
+from .spectrumfunctions import get_num_particles, get_flux

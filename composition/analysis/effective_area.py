@@ -17,11 +17,18 @@ from . import export
 @export
 def effective_area(df, log_energy_bins):
 
-    sim_id = df['sim'].values
-    num_ptype = len(np.unique(df['MC_type']))
+    # MC_energy = df['MC_energy'].values
+    # log_MC_energy = np.log10(MC_energy)
+    # # Throw out particles outside energy range
+    # mask = (log_MC_energy > log_energy_bins[0]) & (log_MC_energy < log_MC_energy[-1])
+    # MC_energy = MC_energy[mask]
+    # log_MC_energy = log_MC_energy[mask]
+    log_MC_energy = df['MC_log_energy'].values
+    print(log_MC_energy)
 
-    MC_energy = df['MC_energy'].values
-    log_MC_energy = np.log10(MC_energy)
+    sim_id = df['sim'].values
+    # sim_id = df[mask]['sim'].values
+    num_ptype = len(np.unique(df['MC_type']))
 
     # Set radii for finding effective area
     energy_range_to_radii = np.array([800, 1100, 1700, 2600, 2900])
@@ -31,6 +38,7 @@ def effective_area(df, log_energy_bins):
     weights = []
     resamples = 100
     for energy_bin_idx, sim in zip(event_energy_bins, sim_id):
+        if energy_bin_idx < 0 or energy_bin_idx > len(energy_range_to_radii): continue
         weight = np.pi * energy_range_to_radii[energy_bin_idx]**2
         if sim in ['7579', '7791', '7851', '7784']:
             num_thrown = 480*resamples
@@ -46,6 +54,7 @@ def effective_area(df, log_energy_bins):
         else:
             weight = weight/num_thrown
         weights.append(weight)
+    print(np.array(weights))
 
     energy_hist = np.histogram(log_MC_energy, bins=log_energy_bins, weights=weights)[0]
     error_hist = np.sqrt(np.histogram(log_MC_energy, bins=log_energy_bins,

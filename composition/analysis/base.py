@@ -9,6 +9,10 @@ class DataSet(object):
         self.X = X  # features array
         self.y = y  # targets array
         self.le = le # target LabelEncoder, if exists
+        # If both y and a le are provided, store the
+        # LabelEncoder inverse_transform-ed array as 'labels'
+        if all(item is not None for item in [y, le]):
+            self.labels = le.inverse_transform(y)
 
     def __repr__(self):
         output = 'DataSet(name={},\nX={},\ny={})'.format(self.name, self.X, self.y)
@@ -76,14 +80,19 @@ def get_energybins():
     # energy_bin_widths_full = energy_bins[1:] - energy_bins[:-1]
 
     # Define energy range for this analysis
-    log_energy_min = 6.3
+    log_energy_min = 6.4
+    log_energy_break = 8.0
     log_energy_max = 9.0
     energy_min = 10**log_energy_min
     energy_max = 10**log_energy_max
     # Define energy binning for this analysis
     log_energy_bin_width = 0.1
-    log_energy_bins = np.arange(log_energy_min,
-        log_energy_max+log_energy_bin_width, log_energy_bin_width)
+    # log_energy_small_bins = np.arange(log_energy_min,
+    #     log_energy_max+log_energy_bin_width, log_energy_bin_width)
+    log_energy_small_bins = np.arange(log_energy_min, log_energy_break, log_energy_bin_width)
+    log_energy_large_bins = np.arange(log_energy_break,
+        log_energy_max+2*log_energy_bin_width, 2*log_energy_bin_width)
+    log_energy_bins = np.append(log_energy_small_bins, log_energy_large_bins)
     log_energy_midpoints = (log_energy_bins[1:] + log_energy_bins[:-1]) / 2
 
     energy_bins = 10**log_energy_bins
@@ -107,6 +116,16 @@ def get_energybins():
 
 def get_color_dict():
     color_dict = {'light': 'C0', 'heavy': 'C1', 'total': 'C2',
-                 'P': 'C0', 'He': 'C1', 'O': 'C3', 'Fe':'C4'}
+                 'P': 'C0', 'He': 'C1', 'O': 'C3', 'Fe':'C4',
+                 'data': 'k'}
 
     return color_dict
+
+def cast_to_ndarray(input):
+    if isinstance(input, np.ndarray):
+        return input
+    else:
+        try:
+            return np.array(input)
+        except:
+            raise TypeError('Input wasn\'t able to be cast to a numpy.ndarray. Got type {}.'.format(type(input)))

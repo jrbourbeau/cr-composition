@@ -1,14 +1,22 @@
 #!/usr/bin/env python
 
 import numpy as np
-import cPickle as pickle
+from scipy import optimize
 from I3Tray import NaN, Inf
-from icecube import icetray, dataio, dataclasses, toprec, phys_services
+from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclasses
 from icecube.icetop_Level3_scripts import icetop_globals
 from icecube.icetop_Level3_scripts.functions import count_stations
 
 
-class AddMuonRadius(icetray.I3Module):
+def add_MC_Laputop_angle(frame):
+    angle_MC_Laputop = NaN
+    if ('MCPrimary' in frame) and ('Laputop' in frame):
+        angle_MC_Laputop = phys_services.I3Calculator.angle(frame['MCPrimary'],
+                                                         frame['Laputop'])
+    frame.Put('angle_MC_Laputop', dataclasses.I3Double(angle_MC_Laputop))
+
+
+class AddIceTopChargeDistance(icetray.I3Module):
 
     def __init__(self, context):
         icetray.I3Module.__init__(self, context)
@@ -20,6 +28,130 @@ class AddMuonRadius(icetray.I3Module):
         self.track = self.GetParameter('track')
         self.pulses = self.GetParameter('pulses')
         self.get_dist = phys_services.I3Calculator.closest_approach_distance
+        self.charge_vs_dist_list = []
+        pass
+
+    def Geometry(self, frame):
+        self.geometry = frame['I3Geometry']
+        self.geomap = self.geometry.omgeo
+        self.PushFrame(frame)
+
+    def fit_beta(self, charges, distances, log_s125, lap_beta):
+
+        charges = np.asarray(charges)
+        distances = np.asarray(distances)
+        # print('charges = {}'.format(charges))
+        # print('distances = {}'.format(distances))
+        # print('log_s125 = {}'.format(log_s125))
+        # print('lap_beta = {}'.format(lap_beta))
+
+        def top_ldf_sigma(r, logq):
+            a = [-.5519,-.078]
+            b = [-.373, -.658, .158]
+            trans = [.340, 2.077]
+
+            if logq > trans[1]:
+                logq = trans[1]
+            if (logq < trans[0]):
+                return 10**(a[0] + a[1] * logq)
+            else:
+                return 10**(b[0] + b[1] * logq + b[2]*logq*logq)
+
+        charge_sigmas = []
+        for r, logq in zip(distances, np.log10(charges)):
+            charge_sigmas.append(10**top_ldf_sigma(r, logq))
+        charge_sigmas = np.asarray(charge_sigmas)
+
+        def LDF(dists, beta):
+            return 10**log_s125 * (dists/125)**(-beta-0.303*np.log10(dists/125))
+            # return log_s125 - beta*np.log10(dists/125) - 0.303*np.log10(np.log10(dists/125))
+
+        # popt, pcov = optimize.curve_fit(LDF, distances, np.log10(charges))
+        popt, pcov = optimize.curve_fit(LDF, distances, np.log10(charges),
+            sigma=charge_sigmas, p0=lap_beta)
+        beta = popt[0]
+
+        return beta
+
+
+    def Physics(self, frame):
+        try:
+            track = frame[self.track]
+            frame['I3RecoPulseSeriesMap_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
+            pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'I3RecoPulseSeriesMap_union')
+        except:
+            # icetray.logging.log_info('Frame doesn\'t contain MCPrimary')
+            self.PushFrame(frame)
+            return
+
+        dists = []
+        charges = []
+        for omkey, pulses in pulse_map:
+            # Get distance of clostest approach to DOM from track
+            dist = self.get_dist(track, self.geomap[omkey].position)
+            dists.append(dist)
+            # Get charge recorded in DOM
+            charge = 0.0
+            for pulse in pulses:
+                charge += pulse.charge
+            charges.append(charge)
+
+        # # Create charge vs distance histogram
+        # dist_bins = np.logspace(-2, 4, 50)
+        # charge_bins = np.logspace(0, 3, 50)
+        # # dist_bins = np.linspace(1e-2, 1e4, 128)
+        # # charge_bins = np.linspace(0, 1e3, 128)
+        # hist, _ , _ = np.histogram2d(dists, charges, bins=(charge_bins, dist_bins))
+        # print(hist.flatten().sum())
+
+        if dists and charges:
+            frame.Put('tank_charges', dataclasses.I3VectorDouble(charges))
+            frame.Put('tank_dists', dataclasses.I3VectorDouble(dists))
+            frame.Put('IceTop_charge', dataclasses.I3Double( np.sum(charges) ))
+
+            # Convert to ndarrays for easy array manipulation
+            dists = np.asarray(dists)
+            charges = np.asarray(charges)
+            distance_mask = dists > 175
+            charge_175m = np.sum(charges[distance_mask])
+            frame.Put('IceTop_charge_175m', dataclasses.I3Double(charge_175m))
+
+            try:
+                lap_params = frame['LaputopParams']
+                log_s125 = lap_params.value(recclasses.LaputopParameter.Log10_S125)
+                lap_beta = lap_params.value(recclasses.LaputopParameter.Beta)
+                beta = self.fit_beta(charges, dists, log_s125, lap_beta)
+                print('lap_beta = {}'.format(lap_beta))
+                print('refit_beta = {}'.format(beta))
+                print('='*20)
+                frame.Put('refit_beta', dataclasses.I3Double(beta))
+            except:
+                # print('Didn\'t work out')
+                pass
+            # print('='*20)
+
+        self.PushFrame(frame)
+
+    def Finish(self):
+        return
+
+class AddMuonRadius(icetray.I3Module):
+
+    def __init__(self, context):
+        icetray.I3Module.__init__(self, context)
+        self.AddParameter('track', 'Track to calculate distances from', 'Laputop')
+        self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        self.AddParameter('min_DOM', 'Minimum DOM number to be considered', 1)
+        self.AddParameter('max_DOM', 'Maximum DOM number to be considered', 60)
+        self.AddOutBox('OutBox')
+
+    def Configure(self):
+        self.track = self.GetParameter('track')
+        self.pulses = self.GetParameter('pulses')
+        self.min_DOM = self.GetParameter('min_DOM')
+        self.max_DOM = self.GetParameter('max_DOM')
+        self.get_dist = phys_services.I3Calculator.closest_approach_distance
+        self.get_time = phys_services.I3Calculator.time_residual
         pass
 
     def Geometry(self, frame):
@@ -40,47 +172,27 @@ class AddMuonRadius(icetray.I3Module):
 
         dists = []
         charges = []
-        dists_hit_weighted = []
         for omkey, pulses in pulses:
             # Throw out Deep Core strings (want homogenized total charge)
             if omkey.string >= 79:
                 continue
-            # Get distance of clostest approach to DOM from track
-            dist = self.get_dist(track, self.geomap[omkey].position)
-            dists.append(dist)
-            # Get charge recorded in DOM
-            charge = 0.0
-            for pulse in pulses:
-                charge += pulse.charge
-                dists_hit_weighted.append(dist)
-            charges.append(charge)
+            if (omkey.om >= self.min_DOM) and (omkey.om <= self.max_DOM):
+                # Get distance of clostest approach to DOM from track
+                dist = self.get_dist(track, self.geomap[omkey].position)
+                dists.append(dist)
+                # Get charge recorded in DOM
+                charge = 0.0
+                for pulse_idx, pulse in enumerate(pulses):
+                    charge += pulse.charge
+                charges.append(charge)
 
-        # Convert to ndarrays for easy array manipulation
-        dists = np.array(dists)
-        charges = np.array(charges)
-        dists_hit_weighted = np.array(dists_hit_weighted)
-
-        # Add to frame
-        avg_inice_radius = np.mean(dists)
-        frame.Put('avg_inice_radius', dataclasses.I3Double(avg_inice_radius))
-
-        # hits_weighted_inice_radius = np.mean(dists_hit_weighted)
-        # frame.Put('hits_weighted_inice_radius', dataclasses.I3Double(hits_weighted_inice_radius))
-
-        invcharge_inice_radius = np.sum([dist/charge for charge, dist in zip(charges, dists)])/np.sum(1/charges)
-        frame.Put('invcharge_inice_radius', dataclasses.I3Double(invcharge_inice_radius))
-
-        max_inice_radius = dists.max()
-        frame.Put('max_inice_radius', dataclasses.I3Double(max_inice_radius))
-
-        # charge_inice_radius = np.sum([charge*dist for charge, dist in zip(charges, dists)])/np.sum(charges)
-        # frame.Put('charge_inice_radius', dataclasses.I3Double(charge_inice_radius))
-        #
-        # chargesquared_inice_radius = np.sum([dist*charge**2 for charge, dist in zip(charges, dists)])/np.sum(charges**2)
-        # frame.Put('chargesquared_inice_radius', dataclasses.I3Double(chargesquared_inice_radius))
-        #
-        # charge_inice_radiussquared = np.sum([charge*dist**2 for charge, dist in zip(charges, dists)])/np.sum(charges)
-        # frame.Put('charge_inice_radiussquared', dataclasses.I3Double(charge_inice_radiussquared))
+        # Ensure that both dists and charges have non-zero size
+        if dists and charges:
+            # Add variables to frame
+            frame.Put('avg_inice_radius_{}_{}'.format(self.min_DOM, self.max_DOM),
+                dataclasses.I3Double( np.mean(dists) ))
+            frame.Put('max_inice_radius_{}_{}'.format(self.min_DOM, self.max_DOM),
+                dataclasses.I3Double( np.amax(dists) ))
 
         self.PushFrame(frame)
 
@@ -226,10 +338,8 @@ class AddInIceCharge(icetray.I3Module):
         self.AddParameter('inice_pulses',
                           'I3RecoPulseSeriesMapMask to use for total charge',
                           'SRTCoincPulses')
-        self.AddParameter('min_DOM',
-                          'Minimum DOM number to be considered', 1)
-        self.AddParameter('max_DOM',
-                          'Maximum DOM number to be considered', 60)
+        self.AddParameter('min_DOM', 'Minimum DOM number to be considered', 1)
+        self.AddParameter('max_DOM', 'Maximum DOM number to be considered', 60)
 
     def Configure(self):
         self.inice_pulses = self.GetParameter('inice_pulses')

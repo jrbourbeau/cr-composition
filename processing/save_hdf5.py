@@ -5,6 +5,7 @@
 import time
 import argparse
 import os
+import socket
 
 from icecube import dataio, toprec, dataclasses, icetray, phys_services, stochastics, millipede
 from icecube.frame_object_diff.segments import uncompress
@@ -15,7 +16,6 @@ from icecube.icetop_Level3_scripts.functions import count_stations
 
 import composition as comp
 import composition.i3modules as i3modules
-from composition.llh_ratio_i3_module import IceTop_LLH_Ratio
 
 
 if __name__ == "__main__":
@@ -48,24 +48,32 @@ if __name__ == "__main__":
     keys += ['IceTopMaxSignal', 'IceTopMaxSignalString',
              'IceTopMaxSignalInEdge', 'IceTopNeighbourMaxSignal',
              'StationDensity', 'NStations', 'IceTop_charge']
+    for i in ['1_60', '1_30']:
+        keys += ['avg_inice_radius_'+i, 'max_inice_radius_'+i]
     for i in ['1_60']:
-    # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         keys += ['NChannels_'+i, 'NHits_'+i, 'InIce_charge_'+i, 'max_qfrac_'+i]
     keys += ['Laputop_InIce_FractionContainment',
              'Laputop_IceTop_FractionContainment']
     keys += ['Laputop', 'LaputopParams']
     keys += ['Laputop_fitstatus_ok']
 
-    # keys += ['IceTopLLHRatio']
     keys += ['IceTopQualityCuts', 'InIceQualityCuts']
     for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
         keys += ['InIceQualityCuts_{}'.format(cut)]
     keys += ['Stoch_Reco', 'Stoch_Reco2', 'MillipedeFitParams', 'num_millipede_particles']
-    keys += ['avg_inice_radius',
-        # 'charge_inice_radius',
-        # 'chargesquared_inice_radius', 'charge_inice_radiussquared', 'hits_weighted_inice_radius',
-        'invcharge_inice_radius',
-        'max_inice_radius']
+
+    # keys += ['avg_inice_radius', 'max_inice_radius']
+    # for track in ['Laputop', 'CoincMuonReco_LineFit']:
+    #     keys += ['avg_inice_radius_{}'.format(track),
+    #         'invcharge_inice_radius_{}'.format(track),
+    #         'max_inice_radius_{}'.format(track),
+    #         'sum_earliest_tr_dist_{}'.format(track)]
+    keys += ['angle_MC_Laputop']
+
+    keys += ['tank_dists']
+    keys += ['tank_charges']
+    keys += ['IceTop_charge_175m']
+    keys += ['refit_beta']
 
     t0 = time.time()
 
@@ -75,8 +83,9 @@ if __name__ == "__main__":
     for test_file in args.files:
         try:
             test_tray = I3Tray()
-            test_tray.context['I3FileStager'] = dataio.get_stagers(
-                staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
+            if 'cobalt' not in socket.gethostname():
+                test_tray.context['I3FileStager'] = dataio.get_stagers(
+                    staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
             test_tray.Add('I3Reader', FileName=test_file)
             test_tray.Add(uncompress, 'uncompress')
             test_tray.Execute()
@@ -88,19 +97,20 @@ if __name__ == "__main__":
     del test_tray
 
     tray = I3Tray()
-    tray.context['I3FileStager'] = dataio.get_stagers(
-        staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
+    if 'cobalt' not in socket.gethostname():
+        tray.context['I3FileStager'] = dataio.get_stagers(
+            staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
     tray.Add('I3Reader', FileNameList=good_file_list)
     # Uncompress Level3 diff files
     tray.Add(uncompress, 'uncompress')
     hdf = I3HDFTableService(args.outfile)
 
+    # if args.type == 'data':
     # Filter out all events that don't pass standard IceTop cuts
+    # tray.Add(lambda frame: frame['IT73AnalysisIceTopQualityCuts']['IceTop_StandardFilter'])
     tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
     # Filter out non-coincident P frames
     tray.Add(lambda frame: inice_pulses in frame)
-    # tray.Add(lambda frame: 'CoincPulses' in frame)
-    # tray.Add(lambda frame: frame['NCh_CoincLaputopCleanedPulses'].value)
 
     def add_quality_cuts_to_frame(frame):
         if 'IT73AnalysisIceTopQualityCuts' in frame:
@@ -124,7 +134,7 @@ if __name__ == "__main__":
 
     tray.Add(get_nstations)
 
-    tray.Add(i3modules.AddIceTopCharge, icetop_pulses=IT_pulses)
+    # tray.Add(i3modules.AddIceTopCharge, icetop_pulses=IT_pulses)
 
     # Add total inice charge to frame
     tray.Add(i3modules.AddInIceCharge, inice_pulses=inice_pulses,
@@ -141,7 +151,11 @@ if __name__ == "__main__":
     #          min_DOM=45, max_DOM=60)
 
     # Add muon radius
-    tray.Add(i3modules.AddMuonRadius, track='Laputop', pulses=inice_pulses)
+    # tray.Add(i3modules.AddMuonRadius, track='CoincMuonReco_LineFit', pulses=inice_pulses)
+    tray.Add(i3modules.AddMuonRadius, track='Laputop', pulses='CoincLaputopCleanedPulses',
+        min_DOM=1, max_DOM=60)
+    tray.Add(i3modules.AddMuonRadius, track='Laputop', pulses='CoincLaputopCleanedPulses',
+        min_DOM=1, max_DOM=30)
 
     # Add containment to frame
     tray.Add(i3modules.AddInIceRecoContainment)
@@ -164,16 +178,12 @@ if __name__ == "__main__":
     # Add num_millipede_cascades to frame
     tray.Add(i3modules.add_num_mil_particles)
 
-    # # Add llh ratio module
-    # TwoDPDFPickle = '/data/user/hpandya/gamma_combined_scripts/resources/12533_L3_burnsample_2012_8Months.pickle'
-    # if args.type == 'data':
-    #     SLCTimeCorrectionPickle = '/data/user/hpandya/gamma_combined_scripts/resources/SLCTimeCorrectionPickles/data_2012_SLCTimeCorrection.pickle'
-    # else:
-    #     SLCTimeCorrectionPickle = '/data/user/hpandya/gamma_combined_scripts/resources/SLCTimeCorrectionPickles/sim_12360_SLCTimeCorrection.pickle'
-    # tray.AddModule(IceTop_LLH_Ratio,
-    #                SLCTimeCorrectionPickle=SLCTimeCorrectionPickle,
-    #                TwoDPDFPickle=TwoDPDFPickle,
-    #                highEbins=True)
+    tray.Add(i3modules.add_MC_Laputop_angle)
+
+
+    # tray.Add(i3modules.AddIceTopChargeDistance, track='Laputop', pulses=IT_pulses)
+    tray.Add(i3modules.AddIceTopChargeDistance, track='Laputop',
+        pulses=['IceTopLaputopSeededSelectedHLC', 'IceTopLaputopSeededSelectedSLC'])
 
     #====================================================================
     # Finish

@@ -40,7 +40,7 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # IT specific cuts
     cut_dict['IceTopQualityCuts'] = df['IceTopQualityCuts'].astype(bool)
     cut_dict['lap_fitstatus_ok'] = df['lap_fitstatus_ok']
-    cut_dict['lap_IT_containment'] = df[
+    cut_dict['lap_IT_frac_containment'] = df[
         'Laputop_IceTop_FractionContainment'] < 0.96
     cut_dict['lap_beta'] = (df['lap_beta'] < 9.5) & (df['lap_beta'] > 1.4)
     cut_dict['lap_rlogl'] = df['lap_rlogl'] < 2
@@ -50,9 +50,10 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
     cut_dict['NStations'] = df['NStations'] >= 5
     cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
-    cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.3
-    cut_dict['max_energy_lap'] = df['lap_energy'] < 10**8.0
-    # cut_dict['llhratio'] = np.logical_not(np.isnan(df['llhratio'].values))
+    cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
+    cut_dict['max_energy_lap'] = df['lap_energy'] < 10**9.2
+    cut_dict['IceTop_charge_175m'] = np.logical_not(df['IceTop_charge_175m'].isnull())
+    cut_dict['IceTop_charge'] = np.logical_not(df['IceTop_charge'].isnull()) & cut_dict['IceTop_charge_175m']
 
     # InIce specific cuts
     cut_dict['InIceQualityCuts'] = df['InIceQualityCuts'].astype(bool)
@@ -77,27 +78,30 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         cut_dict['num_hits_'+i] = cut_dict['NChannels_'+i] & cut_dict['NStations']
     cut_dict['lap_containment'] = cut_dict[
-        'lap_IT_containment'] & cut_dict['lap_InIce_containment']
+        'lap_IT_frac_containment'] & cut_dict['lap_InIce_containment']
     cut_dict['IT_signal'] = cut_dict['IceTopMaxSignalInEdge'] & cut_dict[
         'IceTopMaxSignal'] & cut_dict['IceTopNeighbourMaxSignal']
     cut_dict['reco_energy_range'] = cut_dict['min_energy_lap'] & cut_dict['max_energy_lap']
+    cut_dict['lap_IT_containment'] = cut_dict['lap_IT_frac_containment'] & cut_dict['IT_signal']
     # cut_dict['mil_reco_success'] = cut_dict['mil_rlogl'] & cut_dict[
     #     'mil_qtot_ratio'] & cut_dict['num_millipede_cascades']
 
     if return_cut_dict:
+        print('Returning without applying quality cuts')
         return df, cut_dict
     else:
         selection_mask = np.array([True] * len(df))
         if dataprocessing:
             # standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment',
             #     'reco_energy_range', 'num_hits_1_60', 'max_qfrac_1_60']
-            standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment']
+            standard_cut_keys = ['num_hits_1_60']
+            # standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment']
         else:
             # standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment',
             #     'reco_energy_range', 'num_hits_1_30', 'max_qfrac_1_30',
             #     'InIceQualityCuts']
             standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment',
-                'InIceQualityCuts', 'num_hits_1_60']
+                'InIceQualityCuts', 'num_hits_1_60', 'reco_energy_range', 'IceTop_charge']
             # standard_cut_keys = ['IceTopQualityCuts', 'lap_InIce_containment',
             #     'reco_energy_range', 'num_hits_1_30', 'max_qfrac_1_30']
         for key in standard_cut_keys:
@@ -135,6 +139,12 @@ def add_convenience_variables(df):
     for dist in ['50', '80', '125', '180', '250', '500']:
         df['log_s'+dist] = np.log10(df['lap_s'+dist])
     df['log_dEdX'] = np.log10(df['eloss_1500_standard'])
+    df['log_dEdX_standard'] = np.log10(df['eloss_1500_standard'])
+    df['log_dEdX_strong'] = np.log10(df['eloss_1500_strong'])
+    df['log_IceTop_charge'] = np.log10(df['IceTop_charge'])
+    df['log_IceTop_charge_175m'] = np.log10(df['IceTop_charge_175m'])
+    df['IT_charge_ratio'] = df['IceTop_charge_175m']/df['IceTop_charge']
+    df['charge_ratio'] = df['InIce_charge_1_60']/df['IceTop_charge']
 
     # Add ratio of features (could help improve RF classification)
     # df['charge_nchannels_ratio'] = df['InIce_charge_1_30'] / df['NChannels_1_30']
@@ -149,14 +159,16 @@ def add_convenience_variables(df):
     return df
 
 
-def load_dataframe(datatype='sim', config='IC79', return_cut_dict=False):
+def load_dataframe(df_file=None, datatype='sim', config='IC79', return_cut_dict=False):
     '''Loads pandas DataFrame object with appropreiate information
     '''
     validate_datatype(datatype)
     # Load simulation dataframe
     mypaths = Paths()
-    df_file = '{}/{}_{}/{}_dataframe.hdf5'.format(mypaths.comp_data_dir,
-                                                  config, datatype, datatype)
+    # If file is not specified, replace with default value
+    if df_file is None:
+        df_file = '{}/{}_{}/{}_dataframe.hdf5'.format(mypaths.comp_data_dir,
+                                                      config, datatype, datatype)
     # df = pd.read_hdf(df_file)
     with pd.HDFStore(df_file) as store:
         df = store['dataframe']

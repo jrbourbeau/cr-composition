@@ -17,6 +17,7 @@ from sklearn.model_selection import validation_curve, GridSearchCV
 
 from . import export
 from .data_functions import ratio_error
+from .base import cast_to_ndarray
 
 
 def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.025, ax=None):
@@ -54,7 +55,13 @@ def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.
     plt.legend()
 
 @export
-def histogram_2D(x, y, bins, log_counts=False, make_prob=False, ax=None, **opts):
+def histogram_2D(x, y, bins, log_counts=False, make_prob=False, colorbar=True,
+        logx=False, logy=False, ax=None, **opts):
+    # Validate inputs
+    x = cast_to_ndarray(x)
+    y = cast_to_ndarray(y)
+    bins = cast_to_ndarray(bins)
+
     h, xedges, yedges = np.histogram2d(x, y, bins=bins, normed=False)
     h = np.rot90(h)
     h = np.flipud(h)
@@ -68,20 +75,22 @@ def histogram_2D(x, y, bins, log_counts=False, make_prob=False, ax=None, **opts)
     # extent = [yedges[0], yedges[-1], xedges[0], xedges[-1]]
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
     colormap = 'viridis'
-    if ax != None:
-        im = ax.imshow(h, extent=extent, origin='lower',
-                   interpolation='none', cmap=colormap, aspect='auto')
-    else:
-        im = plt.imshow(h, extent=extent, origin='lower',
-                   interpolation='none', cmap=colormap, aspect='auto')
-    # if log_counts:
-    #     plt.colorbar(im, label='$\log_{10}(\mathrm{Counts})$')
-    # else:
-    #     plt.colorbar(im, label='$Counts$')
-    if not make_prob and not log_counts:
-        cb = plt.colorbar(im, label='Counts')
-    if not make_prob and log_counts:
-        cb = plt.colorbar(im, label='$\log_{10}(\mathrm{Counts})$')
+
+    if ax is None:
+        ax = plt.gca()
+
+    im = ax.imshow(h, extent=extent, origin='lower',
+               interpolation='none', cmap=colormap, aspect='auto')
+    if logx:
+        ax.set_xscale('log', nonposy='clip')
+    if logy:
+        ax.set_yscale('log', nonposy='clip')
+
+    if colorbar:
+        if not make_prob and not log_counts:
+            cb = plt.colorbar(im, label='Counts')
+        if not make_prob and log_counts:
+            cb = plt.colorbar(im, label='$\log_{10}(\mathrm{Counts})$')
 
     return im
 
@@ -116,79 +125,115 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
 
     return im
 
+
 @export
-def plot_steps(x, y, y_err, ax, color, label=None):
+def plot_steps(edges, y, yerr=None, color='C0', lw=1, fillalpha=0.15, label=None, ax=None):
 
-    step_x = x
-    x_widths = x[1:]-x[:-1]
+    # Ensure we're dealing with numpy.ndarray objects
+    edges = cast_to_ndarray(edges)
+    y = cast_to_ndarray(y)
+    if yerr is not None:
+        yerr = cast_to_ndarray(yerr)
 
-    x_width = np.unique(x_widths)[0]
-    step_x = np.append(step_x[0]-x_width/2, step_x)
-    step_x = np.append(step_x, step_x[-1]+x_width/2)
+    if ax is None:
+        ax = plt.gca()
 
-    step_y = y
-    step_y = np.append(step_y[0], step_y)
-    step_y = np.append(step_y, step_y[-1])
-
-    err_upper = y + y_err if y_err.ndim == 1 else y + y_err[1]
-    err_upper = np.append(err_upper[0], err_upper)
-    err_upper = np.append(err_upper, err_upper[-1])
-    err_lower = y - y_err if y_err.ndim == 1 else y - y_err[0]
-    err_lower = np.append(err_lower[0], err_lower)
-    err_lower = np.append(err_lower, err_lower[-1])
-
-    ax.step(step_x, step_y, where='mid',
-            marker='None', color=color, linewidth=1,
+    ax.step(edges[:-1], y, where='post',
+            marker='None', color=color, linewidth=lw,
             linestyle='-', label=label, alpha=0.8)
-    ax.fill_between(step_x, err_upper, err_lower,
-                    alpha=0.15, color=color,
-                    step='mid', linewidth=1)
+    ax.plot(edges[-2:], 2*[y[-1]], marker='None',
+            color=color, linewidth=lw,
+            linestyle='-', alpha=0.8)
 
-    return step_x, step_y
+    if yerr is not None:
+        err_lower = y - yerr if yerr.ndim == 1 else y - yerr[0]
+        err_upper = y + yerr if yerr.ndim == 1 else y + yerr[1]
+
+        ax.fill_between(edges[:-1], y-yerr, y+yerr, step='post',
+                alpha=fillalpha, color=color, linewidth=0)
+        ax.fill_between(edges[-2:], 2*[(y-yerr)[-1]], 2*[(y+yerr)[-1]], step='post',
+                alpha=fillalpha, color=color, linewidth=0)
+
+    return ax
 
 
-def make_verification_plot(data_df, sim_df, key, bins, label):
+def make_verification_plot(bins, ax=None):
 
-    if not isinstance(data_df, pd.DataFrame):
-        raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(data_df)))
-    if not isinstance(sim_df, pd.DataFrame):
-        raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(sim_df)))
+    if ax is None:
+        ax = plt.gca()
 
-    # Extract numpy arrays (and lengths) from DataFrame
-    data_array, sim_array = data_df[key].values, sim_df[key].values
-    n_data, n_sim = data_array.shape[0], sim_array.shape[0]
-
-    counts_data = np.histogram(data_array, bins)[0]
-    rate_data, rate_data_err = ratio_error(counts_data, np.sqrt(counts_data),
-                                           n_data, np.sqrt(n_data))
-
-    counts_sim = np.histogram(sim_array, bins)[0]
-    rate_sim, rate_sim_err = ratio_error(counts_sim, np.sqrt(counts_sim),
-                                         n_sim, np.sqrt(n_sim))
-
-    ratio, ratio_err = ratio_error(rate_data, rate_data_err,
-                                   rate_sim, rate_sim_err)
-
-    bin_midpoints = (bins[1:] + bins[:-1]) / 2
+    log_s125_bins = np.linspace(-2, 4, 100)
 
     gs = gridspec.GridSpec(2, 1, height_ratios=[2,1], hspace=0.0)
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1], sharex=ax1)
-
-    ax1.errorbar(bin_midpoints, rate_sim, yerr=rate_sim_err, label='MC',
-                 marker='.', ms=8, ls='None', color='C0')
-    ax1.errorbar(bin_midpoints, rate_data, yerr=rate_data_err, label='Data',
-                 marker='.', ms=8, ls='None', color='C1')
-    ax1.set_yscale('log', nonposy='clip')
+    # fig, ax = plt.subplots()
+    log_s125_rate = {}
+    for composition in comp_list:
+        log_s125_rate[composition] = np.histogram(df_sim[MC_comp_mask[composition]]['log_s125'],
+                              bins=log_s125_bins, weights=df_sim[MC_comp_mask[composition]]['weights'])[0]
+        plotting.plot_steps(log_s125_bins, log_s125_rate[composition],
+                            color=color_dict[composition], label=composition, ax=ax1)
+    # Add data rate
+    log_s125_rate['data'] = np.histogram(df_data['log_s125'], bins=log_s125_bins)[0]/livetime
+    plotting.plot_steps(log_s125_bins, log_s125_rate['data'], color=color_dict['data'], label='data', ax=ax1)
+    ax1.set_yscale("log", nonposy='clip')
     ax1.set_ylabel('Rate [Hz]')
-    ax1.grid(True)
+    ax1.grid()
     ax1.legend()
 
-    ax2.errorbar(bin_midpoints, ratio, yerr=ratio_err, marker='.', ms=8, ls='None', color='C2')
-    ax2.set_ylabel('Data/MC')
-    ax2.set_xlabel(label)
-    ax2.grid(True)
+    for composition in comp_list:
+        plotting.plot_steps(log_s125_bins, log_s125_rate['data']/log_s125_rate[composition], log_s125_rate[composition],
+                           color=color_dict[composition], ax=ax2)
+    ax2.axhline(1, marker='None', ls='-.', color='k')
+    ax2.set_xlabel('$\log_{10}(S_{125})$')
+    ax2.grid()
+    ax2.legend()
 
     plt.show()
 
-    return
+# def make_verification_plot(data_df, sim_df, key, bins, label):
+#
+#     if not isinstance(data_df, pd.DataFrame):
+#         raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(data_df)))
+#     if not isinstance(sim_df, pd.DataFrame):
+#         raise TypeError('Expecting a pandas DataFrame, got {} instead'.format(type(sim_df)))
+#
+#     # Extract numpy arrays (and lengths) from DataFrame
+#     data_array, sim_array = data_df[key].values, sim_df[key].values
+#     n_data, n_sim = data_array.shape[0], sim_array.shape[0]
+#
+#     counts_data = np.histogram(data_array, bins)[0]
+#     rate_data, rate_data_err = ratio_error(counts_data, np.sqrt(counts_data),
+#                                            n_data, np.sqrt(n_data))
+#
+#     counts_sim = np.histogram(sim_array, bins)[0]
+#     rate_sim, rate_sim_err = ratio_error(counts_sim, np.sqrt(counts_sim),
+#                                          n_sim, np.sqrt(n_sim))
+#
+#     ratio, ratio_err = ratio_error(rate_data, rate_data_err,
+#                                    rate_sim, rate_sim_err)
+#
+#     bin_midpoints = (bins[1:] + bins[:-1]) / 2
+#
+#     gs = gridspec.GridSpec(2, 1, height_ratios=[2,1], hspace=0.0)
+#     ax1 = plt.subplot(gs[0])
+#     ax2 = plt.subplot(gs[1], sharex=ax1)
+#
+#     ax1.errorbar(bin_midpoints, rate_sim, yerr=rate_sim_err, label='MC',
+#                  marker='.', ms=8, ls='None', color='C0')
+#     ax1.errorbar(bin_midpoints, rate_data, yerr=rate_data_err, label='Data',
+#                  marker='.', ms=8, ls='None', color='C1')
+#     ax1.set_yscale('log', nonposy='clip')
+#     ax1.set_ylabel('Rate [Hz]')
+#     ax1.grid(True)
+#     ax1.legend()
+#
+#     ax2.errorbar(bin_midpoints, ratio, yerr=ratio_err, marker='.', ms=8, ls='None', color='C2')
+#     ax2.set_ylabel('Data/MC')
+#     ax2.set_xlabel(label)
+#     ax2.grid(True)
+#
+#     plt.show()
+#
+#     return

@@ -122,28 +122,29 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         [re.findall(r"\D(\d{8})\D", f) for f in data_files])
     if args['test']:
         run_numbers = run_numbers[:2]
-    for run in run_numbers:
-        # Create a save and merge CondorJobs
-        save_hdf5_name = 'save_hdf5_data_{}_run{}'.format(config, run)
-        save_hdf5_job = pycondor.Job(save_hdf5_name, save_hdf5_ex,
-                                     error=error, output=output,
-                                     log=log, submit=submit,
-                                     verbose=1)
-        merge_hdf5_name = 'merge_hdf5_data_{}_run{}'.format(config, run)
-        merge_hdf5_job = pycondor.Job(merge_hdf5_name, merge_hdf5_ex,
-                                      error=error, output=output,
-                                      log=log, submit=submit,
-                                      verbose=1)
-        # Ensure that save_hdf5_job completes before merge_hdf5_job
-        merge_hdf5_job.add_parent(save_hdf5_job)
 
-        save_df_name = 'save_df_data_{}_run{}'.format(config, run)
-        save_df_job = pycondor.Job(save_df_name, save_df_ex,
-                                   error=error, output=output,
-                                   log=log, submit=submit,
-                                   verbose=1)
-        # Ensure that merge_hdf5_job completes before save_df_job
-        save_df_job.add_parent(merge_hdf5_job)
+    # Create a save and merge CondorJobs
+    save_hdf5_name = 'save_hdf5_data_{}'.format(config)
+    save_hdf5_job = pycondor.Job(save_hdf5_name, save_hdf5_ex,
+                                 error=error, output=output,
+                                 log=log, submit=submit,
+                                 verbose=1)
+    merge_hdf5_name = 'merge_hdf5_data_{}'.format(config)
+    merge_hdf5_job = pycondor.Job(merge_hdf5_name, merge_hdf5_ex,
+                                  error=error, output=output,
+                                  log=log, submit=submit,
+                                  verbose=1)
+    # Ensure that save_hdf5_job completes before merge_hdf5_job
+    merge_hdf5_job.add_parent(save_hdf5_job)
+
+    save_df_name = 'save_df_data_{}'.format(config)
+    save_df_job = pycondor.Job(save_df_name, save_df_ex,
+                               error=error, output=output,
+                               log=log, submit=submit,
+                               verbose=1)
+    # Ensure that merge_hdf5_job completes before save_df_job
+    save_df_job.add_parent(merge_hdf5_job)
+    for run in run_numbers:
 
         # Get GCD file for this run
         gcd = glob.glob(
@@ -169,9 +170,6 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
             save_arg = '--files {} -o {}'.format(files_str, out)
             save_hdf5_job.add_arg(save_arg)
 
-        # Add save job to the dagmanager
-        dagman.add_job(save_hdf5_job)
-
         merge_arg = '--files {} -o {}'.format(merged_input, merged_output)
         if args['remove']:
             merge_arg += ' --remove'
@@ -179,8 +177,6 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
             merge_arg += ' --overwrite'
         # merge_argdict[run] = merge_arg
         merge_hdf5_job.add_arg(merge_arg)
-        # Add merge job to the dagman
-        dagman.add_job(merge_hdf5_job)
 
         # Add save save_df to dagmanager
         df_outfile = '{}/{}_data/dataframe_files/dataframe_run_{}.hdf5'.format(comp_data_dir, config, run)
@@ -189,7 +185,13 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         if args['overwrite']:
             df_arg += ' --overwrite'
         save_df_job.add_arg(df_arg)
-        dagman.add_job(save_df_job)
+
+    # Add save job to the dagmanager
+    dagman.add_job(save_hdf5_job)
+    # Add merge job to the dagman
+    dagman.add_job(merge_hdf5_job)
+
+    dagman.add_job(save_df_job)
 
     return dagman
 
@@ -240,7 +242,7 @@ if __name__ == "__main__":
 
     if not args.n:
         if args.type == 'sim':
-            args.n = 600
+            args.n = 1000
         else:
             args.n = 50
 
@@ -273,7 +275,7 @@ if __name__ == "__main__":
     merge_df_job = pycondor.Job(merge_df_name, merge_df_ex,
                                 error=error, output=output,
                                 log=log, submit=submit,
-                                request_memory='1GB' if args.type == 'sim' else '5GB',
+                                request_memory='3GB' if args.type == 'sim' else '5GB',
                                 verbose=1)
     merge_df_arg = '--type {} --config {}'.format(args.type, args.config)
     if args.overwrite:

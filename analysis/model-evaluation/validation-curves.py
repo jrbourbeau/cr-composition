@@ -46,8 +46,9 @@ if __name__ == "__main__":
     color_dict = comp.analysis.get_color_dict()
 
     comp_class = True
+    target = 'MC_comp_class' if comp_class else 'MC_comp'
     comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
-    sim_train, sim_test = comp.preprocess_sim(comp_class=comp_class, return_energy=False)
+    sim_train, sim_test = comp.preprocess_sim(target=target)
 
     pipeline_str = args.pipeline
     pipeline = comp.get_pipeline(pipeline_str)

@@ -12,6 +12,8 @@ from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestRegressor
+from mlxtend.classifier import StackingClassifier
 
 from xgboost import XGBClassifier
 
@@ -44,7 +46,15 @@ def get_pipeline(classifier_name):
         classifier = NuSVC()
     elif classifier_name == 'GBDT':
         classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
+            n_estimators=100, random_state=2)
+    elif classifier_name == 'stacked':
+        clf1 = GradientBoostingClassifier(loss='exponential', max_depth=5,
             n_estimators=125, random_state=2)
+        clf2 = LogisticRegression()
+        # meta_clf = LogisticRegression()
+        meta_clf = RandomForestClassifier(random_state=2)
+        classifier = StackingClassifier(classifiers=[clf1, clf2], use_probas=True,
+                                  meta_classifier=meta_clf, verbose=1)
     elif classifier_name == 'tpot':
         #2
         # exported_pipeline = make_pipeline(
@@ -64,7 +74,7 @@ def get_pipeline(classifier_name):
         raise('{} is not a valid classifier name...'.format(classifier_name))
 
     pipeline = Pipeline([
-        ('scaler', StandardScaler()),
+        # ('scaler', StandardScaler()),
         # ('pca', PCA(n_components=4, random_state=2)),
         # ('lda', LinearDiscriminantAnalysis(n_discriminants=6)),
         ('classifier', classifier)])

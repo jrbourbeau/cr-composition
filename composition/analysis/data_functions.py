@@ -27,7 +27,7 @@ def averaging_error(**data):
         errors = np.array(errors)
     sum_value = values.sum()
     sum_error = np.sum([np.sqrt(error**2) for error in errors])
-    
+
     return sum_value/len(values), sum_error/len(values)
 
 def get_bin_mids(bins, infvalue=None):
@@ -57,3 +57,38 @@ def get_medians(x, y, bins):
     bin_centers = get_bin_mids(bin_edges)
 
     return bin_centers, bin_medians, error
+
+
+def get_avg_std(x, y, bins):
+    lower_error = lambda x: np.percentile(x, 16)
+    upper_error = lambda x: np.percentile(x, 84)
+
+    averages, bin_edges, bin_edges = stats.binned_statistic(x, y,
+        statistic='mean', bins=bins)
+    standard_devs, bin_edges, bin_edges = stats.binned_statistic(x, y,
+        statistic=np.std, bins=bins)
+    err_up, err_up_edges, err_up_binnum = stats.binned_statistic(
+        x, y, statistic=upper_error, bins=bins)
+    err_down, err_down_edges, err_down_binnum = stats.binned_statistic(
+        x, y, statistic=lower_error, bins=bins)
+
+    return averages, standard_devs, bin_edges
+    # return averages, err_up-err_down, bin_edges
+
+
+def get_cumprob_sigma(values):
+
+    bins = np.linspace(values.min(), values.max(), 200)
+    bin_midpoints = (bins[1:] + bins[:-1]) / 2
+    binned_counts = np.histogram(values, bins=bins)[0]
+    cumulative_prob = np.cumsum(binned_counts)/binned_counts.sum()
+    sigma_index = np.where(cumulative_prob < 0.68)[0].max()
+    sigma_containment = bin_midpoints[sigma_index]/1.51
+
+    return sigma_containment
+
+def get_resolution(x, y, bins):
+    binned_statistic, bin_edges, binnumber = stats.binned_statistic(x, y,
+            statistic=get_cumprob_sigma, bins=bins)
+
+    return binned_statistic

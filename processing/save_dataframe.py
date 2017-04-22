@@ -50,17 +50,16 @@ if __name__ == "__main__":
                       'num_millipede_particles',
                       'IceTopQualityCuts',
                       'InIceQualityCuts',
-                      'avg_inice_radius',
-                    #   'charge_inice_radius',
-                    #   'chargesquared_inice_radius', 'charge_inice_radiussquared', 'hits_weighted_inice_radius',
-                      'invcharge_inice_radius',
-                      'max_inice_radius']
+                      'angle_MC_Laputop',
+                      'IceTop_charge_175m',
+                      'refit_beta']
 
         for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
             value_keys += ['InIceQualityCuts_{}'.format(cut)]
 
+        for i in ['1_60', '1_30']:
+            value_keys += ['avg_inice_radius_'+i, 'max_inice_radius_'+i]
         for i in ['1_60']:
-        # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
             value_keys += ['NChannels_'+i, 'NHits_'+i, 'InIce_charge_'+i, 'max_qfrac_'+i]
 
         # Add MC containment
@@ -69,6 +68,14 @@ if __name__ == "__main__":
                                'InIce_FractionContainment'])
         for key in value_keys:
             series_dict[key] = input_store[key]['value']
+
+        # Add IceTop tank charge and distance information
+        for key in ['dists', 'charges']:
+            grouped = input_store['tank_{}'.format(key)].groupby(['Run','Event'])
+            event_lists = []
+            for name, group in grouped:
+                event_lists.append(group['item'].values)
+            series_dict['tank_{}'.format(key)] = pd.Series(event_lists)
 
         # Get MCPrimary information
         if args.type == 'sim':
@@ -94,7 +101,7 @@ if __name__ == "__main__":
         # Get Laputop information
         laputop = input_store['Laputop']
         laputop_params = input_store['LaputopParams']
-        lap_keys = ['zenith', 'x', 'y']
+        lap_keys = ['zenith', 'azimuth', 'x', 'y']
         for key in lap_keys:
             series_dict['lap_{}'.format(key)] = laputop[key]
         lap_param_keys = ['s50', 's80', 's125', 's180', 's250', 's500',
@@ -106,9 +113,6 @@ if __name__ == "__main__":
             'chi2'] / laputop_params['ndf']
         series_dict['lap_fitstatus_ok'] = input_store[
             'Laputop_fitstatus_ok']['value'].astype(bool)
-
-        # Get LLHRatio info
-        # series_dict['llhratio'] = input_store['IceTopLLHRatio']['LLH_Ratio']
 
         # Get number of high energy stochastics
         series_dict['n_he_stoch_standard'] = input_store[
