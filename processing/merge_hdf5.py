@@ -8,12 +8,12 @@ import os
 import sys
 import numpy as np
 
-import composition as comp
+import comptools
 
 if __name__ == "__main__":
 
     # Set up global path names
-    mypaths = comp.Paths()
+    paths = comptools.get_paths()
 
     p = argparse.ArgumentParser(description='Merges simulation hdf5 files')
     p.add_argument('-f', '--files', dest='files', nargs='*',
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         os.remove(args.outfile)
 
     files = ' '.join(args.files)
-    hdf = '{}/build/hdfwriter/resources'.format(mypaths.metaproject)
+    hdf = '{}/build/hdfwriter/resources'.format(paths.metaproject)
     ex = 'python {}/scripts/merge.py -o {} {}'.format(hdf, args.outfile, files)
     os.system(ex)
 

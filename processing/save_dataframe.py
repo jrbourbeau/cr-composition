@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-import composition as comp
+import comptools
 
 
 if __name__ == "__main__":
@@ -52,7 +52,7 @@ if __name__ == "__main__":
                       'InIceQualityCuts',
                       'angle_MC_Laputop',
                       'IceTop_charge_175m',
-                      'refit_beta']
+                      'refit_beta', 'refit_log_s125']
 
         for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
             value_keys += ['InIceQualityCuts_{}'.format(cut)]
@@ -86,8 +86,8 @@ if __name__ == "__main__":
             sim_num = os.path.splitext(args.input)[0].split('_')[-1]
             series_dict['sim'] = pd.Series([sim_num] * series_size)
             series_dict['MC_comp'] = pd.Series(
-                [comp.simfunctions.sim2comp(sim_num)] * series_size)
-            MC_comp_class = 'light' if comp.simfunctions.sim2comp(sim_num) in [
+                [comptools.simfunctions.sim2comp(sim_num)] * series_size)
+            MC_comp_class = 'light' if comptools.simfunctions.sim2comp(sim_num) in [
                 'P', 'He'] else 'heavy'
             series_dict['MC_comp_class'] = pd.Series(
                 [MC_comp_class] * series_size)
@@ -135,7 +135,7 @@ if __name__ == "__main__":
         # Don't want to save data events that don't pass quality cuts
         # because there is just too much data for that
         if args.type == 'data':
-            dataframe = comp.apply_quality_cuts(dataframe, datatype='data',
+            dataframe = comptools.apply_quality_cuts(dataframe, datatype='data',
                 dataprocessing=True)
         # Add dataframe to output_store
         output_store['dataframe'] = dataframe

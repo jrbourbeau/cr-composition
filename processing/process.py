@@ -8,7 +8,7 @@ import time
 import getpass
 import numpy as np
 
-import composition as comp
+import comptools
 import pycondor
 
 
@@ -38,14 +38,14 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         save_df_job.add_parent(merge_hdf5_job)
 
         # Get config and simulation files
-        config = comp.simfunctions.sim2cfg(sim)
-        gcd, files = comp.simfunctions.get_level3_sim_files(sim)
+        config = comptools.simfunctions.sim2cfg(sim)
+        gcd, files = comptools.simfunctions.get_level3_sim_files(sim)
 
         # Set up output directory (also, make sure directory exists)
-        paths = comp.Paths()
+        paths = comptools.get_paths()
         comp_data_dir = paths.comp_data_dir
         outdir = '{}/{}_sim/hdf5_files'.format(comp_data_dir, config)
-        comp.checkdir(outdir + '/')
+        comptools.checkdir(outdir + '/')
         # if args['test']:
         #     args['n'] = 2
 
@@ -90,7 +90,7 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         dagman.add_job(merge_hdf5_job)
 
         df_outfile = '{}/{}_sim/dataframe_files/dataframe_{}.hdf5'.format(comp_data_dir, config, sim)
-        comp.checkdir(df_outfile)
+        comptools.checkdir(df_outfile)
         df_arg = '--input {} --output {} --type sim'.format(merger_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
@@ -108,14 +108,15 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
     if args['date'] is not None:
         month = args['date'][:2]
         year = args['date'][2:]
-        data_files = comp.datafunctions.get_level3_data_files(month=month,
+        data_files = comptools.datafunctions.get_level3_data_files(month=month,
                                                 year=year, config=config)
     else:
-        data_files = comp.datafunctions.get_level3_data_files(config=config)
+        data_files = comptools.datafunctions.get_level3_data_files(config=config)
+
     # Set up output directory (also, make sure directory exists)
     comp_data_dir = '/data/user/jbourbeau/composition'
     outdir = '{}/{}_data/hdf5_files'.format(comp_data_dir, config)
-    comp.checkdir(outdir + '/')
+    comptools.checkdir(outdir + '/')
 
     # Look at each run in files seperately
     run_numbers = np.unique(
@@ -148,7 +149,7 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
         # Get GCD file for this run
         gcd = glob.glob(
-            '/data/ana/CosmicRay/IceTop_level3/exp/{}/GCD/Level3_{}_data_Run{}_????_GCD.i3.gz'.format(config, config, run))
+            '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/GCD/Level3_{}_data_Run{}_????_GCD.i3.gz'.format(config, config, run))
         if len(gcd) != 1:
             raise('Found a number of GCD files for run {} not equal to one!'.format(run))
         gcd = gcd[0]
@@ -180,7 +181,7 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
         # Add save save_df to dagmanager
         df_outfile = '{}/{}_data/dataframe_files/dataframe_run_{}.hdf5'.format(comp_data_dir, config, run)
-        comp.checkdir(df_outfile)
+        comptools.checkdir(df_outfile)
         df_arg = '--input {} --output {} --type data'.format(merged_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
@@ -199,10 +200,10 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 if __name__ == "__main__":
 
     # Setup global path names
-    mypaths = comp.Paths()
-    comp.checkdir(mypaths.comp_data_dir)
+    mypaths = comptools.get_paths()
+    comptools.checkdir(mypaths.comp_data_dir)
 
-    simoutput = comp.simfunctions.getSimOutput()
+    simoutput = comptools.simfunctions.getSimOutput()
     default_sim_list = ['7006', '7579', '7241', '7263', '7791',
                         '7242', '7262', '7851', '7007', '7784']
 
@@ -255,7 +256,7 @@ if __name__ == "__main__":
     # Create Dagman instance
     name = 'processing_{}'.format(args.type)
     dagman = pycondor.Dagman('processing_{}'.format(args.type),
-                             submit=submit, verbose=2)
+                             submit=submit, verbose=1)
 
     # Define path to executables
     save_hdf5_ex = '{}/save_hdf5.py'.format(os.getcwd())

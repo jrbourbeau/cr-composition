@@ -7,7 +7,7 @@ import glob
 import numpy as np
 import pandas as pd
 
-import composition as comp
+import comptools
 
 
 if __name__ == "__main__":
@@ -28,7 +28,7 @@ if __name__ == "__main__":
                         help='Overwrite existing merged files')
     args = parser.parse_args()
 
-    paths = comp.Paths()
+    paths = comptools.get_paths()
     output = args.output if args.output else '{}/{}_{}/{}_dataframe.hdf5'.format(paths.comp_data_dir, args.config, args.type, args.type)
     # If output file already exists and you want to overwrite,
     # delete existing output file

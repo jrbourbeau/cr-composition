@@ -11,7 +11,7 @@ import scipy.stats as stats
 from sklearn.model_selection import validation_curve, StratifiedKFold
 from sklearn.metrics import get_scorer, accuracy_score
 
-import composition as comp
+import comptools as comp
 
 if __name__ == "__main__":
 
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     comp_class = True
     target = 'MC_comp_class' if comp_class else 'MC_comp'
     comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
-    sim_train, sim_test = comp.preprocess_sim(target=target)
+    feature_list, feature_labels = comp.get_training_features()
+    sim_train_df, sim_test_df = comp.load_dataframe(datatype='sim', target=target)
 
     pipeline_str = args.pipeline
     pipeline = comp.get_pipeline(pipeline_str)
@@ -72,45 +73,48 @@ if __name__ == "__main__":
     test_scores = defaultdict(list)
     ks_pval = defaultdict(list)
     skf = StratifiedKFold(n_splits=args.cv, shuffle=True, random_state=2)
-    for train_index, test_index in skf.split(sim_train.X, sim_train.y):
+    for train_index, test_index in skf.split(sim_train_df, sim_train_df['target']):
 
-        train_targets = sim_train.y[train_index]
-        test_targets = sim_train.y[test_index]
+        sim_train_fold, sim_test_fold = sim_train_df.iloc[train_index], sim_train_df.iloc[test_index]
 
-        pipeline = pipeline.fit(sim_train.X[train_index], train_targets)
+        X_train, y_train = comp.dataframe_functions.dataframe_to_X_y(sim_train_fold, feature_list)
+        X_test, y_test = comp.dataframe_functions.dataframe_to_X_y(sim_test_fold, feature_list)
 
-        train_pred = pipeline.predict(sim_train.X[train_index])
-        train_score = accuracy_score(train_targets, train_pred)
+        pipeline = pipeline.fit(X_train, y_train)
+
+        train_pred = pipeline.predict(X_train)
+        train_score = accuracy_score(y_train, train_pred)
         train_scores['total'].append(train_score)
-        train_probs = pipeline.predict_proba(sim_train.X[train_index])
+        train_probs = pipeline.predict_proba(X_train)
 
-        test_pred = pipeline.predict(sim_train.X[test_index])
-        test_score = accuracy_score(test_targets, test_pred)
+        test_pred = pipeline.predict(X_test)
+        test_score = accuracy_score(y_test, test_pred)
         test_scores['total'].append(test_score)
-        test_probs = pipeline.predict_proba(sim_train.X[test_index])
+        test_probs = pipeline.predict_proba(X_test)
 
         for class_ in pipeline.classes_:
-            composition = sim_train.le.inverse_transform([class_])[0]
-
-            comp_mask_train = sim_train.le.inverse_transform(train_targets) == composition
-            comp_score_train = accuracy_score(train_targets[comp_mask_train], train_pred[comp_mask_train])
-            train_scores[composition].append(comp_score_train)
-
-            comp_mask_test = sim_train.le.inverse_transform(test_targets) == composition
-            comp_score_test = accuracy_score(test_targets[comp_mask_test], test_pred[comp_mask_test])
-            test_scores[composition].append(comp_score_test)
-
-            pval = stats.ks_2samp(train_probs[comp_mask_train, class_], test_probs[comp_mask_test, class_])[1]
-            print(class_, pval)
-            ks_pval[composition].append(pval)
+            print(class_)
+            # composition = sim_train.le.inverse_transform([class_])[0]
+            #
+            # comp_mask_train = sim_train.le.inverse_transform(train_targets) == composition
+            # comp_score_train = accuracy_score(train_targets[comp_mask_train], train_pred[comp_mask_train])
+            # train_scores[composition].append(comp_score_train)
+            #
+            # comp_mask_test = sim_train.le.inverse_transform(test_targets) == composition
+            # comp_score_test = accuracy_score(test_targets[comp_mask_test], test_pred[comp_mask_test])
+            # test_scores[composition].append(comp_score_test)
+            #
+            # pval = stats.ks_2samp(train_probs[comp_mask_train, class_], test_probs[comp_mask_test, class_])[1]
+            # print(class_, pval)
+            # ks_pval[composition].append(pval)
 
     for label in comp_list + ['total']:
         data_dict['train_mean_{}'.format(label)] = [np.mean(train_scores[label])]
         data_dict['train_std_{}'.format(label)] = [np.std(train_scores[label])]
         data_dict['validation_mean_{}'.format(label)] = [np.mean(test_scores[label])]
         data_dict['validation_std_{}'.format(label)] = [np.std(test_scores[label])]
-        data_dict['ks_mean_{}'.format(label)] = [np.mean(ks_pval[label])]
-        data_dict['ks_std_{}'.format(label)] = [np.std(ks_pval[label])]
+        # data_dict['ks_mean_{}'.format(label)] = [np.mean(ks_pval[label])]
+        # data_dict['ks_std_{}'.format(label)] = [np.std(ks_pval[label])]
 
     print('data_dict = {}'.format(data_dict))
 

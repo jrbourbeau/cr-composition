@@ -10,7 +10,7 @@ import pycondor
 
 def add_hyperparameter(dagman, param_name, param_range, dtype, validation_ex, merge_ex, **args):
     validation_job = pycondor.Job('{}_job'.format(param_name), validation_ex, error=error, output=output,
-                        log=log, submit=submit, request_cpus=args['n_jobs'], verbose=1)
+                        log=log, submit=submit, request_memory='3GB', request_cpus=args['n_jobs'], verbose=1)
     dagman.add_job(validation_job)
     merge_job = pycondor.Job('merge_{}_job'.format(param_name), merge_ex, error=error, output=output,
                         log=log, submit=submit, verbose=1)
@@ -69,30 +69,30 @@ if __name__ == "__main__":
     validation_ex = os.path.join(os.getcwd(), 'validation-curves.py')
     merge_ex = os.path.join(os.getcwd(), 'merge_dataframe.py')
 
-    # Maximum tree depth
-    dagman = add_hyperparameter(dagman, 'max_depth', range(1, 11), 'int',
-                    validation_ex, merge_ex, **vars(args))
-
-    # Learning rate
-    dagman = add_hyperparameter(dagman, 'learning_rate', np.arange(0.1, 1.1, 0.1), 'float',
-                    validation_ex, merge_ex, **vars(args))
+    # # Maximum tree depth
+    # dagman = add_hyperparameter(dagman, 'max_depth', range(1, 11), 'int',
+    #                 validation_ex, merge_ex, **vars(args))
+    #
+    # # Learning rate
+    # dagman = add_hyperparameter(dagman, 'learning_rate', np.arange(0.1, 1.1, 0.1), 'float',
+    #                 validation_ex, merge_ex, **vars(args))
 
     # Number of estimators
-    dagman = add_hyperparameter(dagman, 'n_estimators', range(10, 220, 20), 'int',
+    dagman = add_hyperparameter(dagman, 'n_estimators', range(10, 500, 50), 'int',
                     validation_ex, merge_ex, **vars(args))
 
-    if args.pipeline == 'GBDT':
-        #Minimum samples in a leaf
-        dagman = add_hyperparameter(dagman, 'min_samples_leaf', range(1, 500, 50), 'int',
-                        validation_ex, merge_ex, **vars(args))
-
-        # Minimum samples to split
-        dagman = add_hyperparameter(dagman, 'min_samples_split', range(1, 500, 50), 'int',
-                        validation_ex, merge_ex, **vars(args))
-
-        # Subsample size to use when fitting
-        dagman = add_hyperparameter(dagman, 'subsample', np.arange(0.0, 1.1, 0.1), 'float',
-                        validation_ex, merge_ex, **vars(args))
+    # if args.pipeline == 'GBDT':
+    #     #Minimum samples in a leaf
+    #     dagman = add_hyperparameter(dagman, 'min_samples_leaf', range(1, 500, 50), 'int',
+    #                     validation_ex, merge_ex, **vars(args))
+    #
+    #     # Minimum samples to split
+    #     dagman = add_hyperparameter(dagman, 'min_samples_split', range(1, 500, 50), 'int',
+    #                     validation_ex, merge_ex, **vars(args))
+    #
+    #     # Subsample size to use when fitting
+    #     dagman = add_hyperparameter(dagman, 'subsample', np.arange(0.0, 1.1, 0.1), 'float',
+    #                     validation_ex, merge_ex, **vars(args))
 
 
 

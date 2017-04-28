@@ -14,8 +14,8 @@ from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
 
-import composition as comp
-import composition.i3modules as i3modules
+import comptools
+import comptools.i3modules as i3modules
 
 
 if __name__ == "__main__":
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     # Starting parameters
-    IT_pulses, inice_pulses = comp.datafunctions.reco_pulses()
+    IT_pulses, inice_pulses = comptools.datafunctions.reco_pulses()
 
     # Keys to write to frame
     keys = []
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     keys += ['tank_dists']
     keys += ['tank_charges']
     keys += ['IceTop_charge_175m']
-    keys += ['refit_beta']
+    keys += ['refit_beta', 'refit_log_s125']
 
     t0 = time.time()
 

@@ -1,22 +1,23 @@
+# Cosmic-ray composition analysis
+
 This repository is used to investigate the cosmic-ray composition spectrum using data collected by the IceCube South Pole Neutrino Observatory.
 
 ### Repository layout
 
-`analysis/` : Jupyter notebooks used for analysis.
+- `analysis/` : Jupyter notebooks used for analysis
 
-`composition/` : Python package for code used by multiple scripts.
+- `comptools/` : Python package for code used by multiple scripts
 
-`processing/` : Scripts related to processing and saving simulation and data.
+- `processing/` : Scripts related to processing and saving simulation and data
 
 ### Installation
 
-Clone the repository
-```
+Clone this repository
+```bash
 git clone https://github.com/jrbourbeau/cr-composition.git
 ```
 
-Change to the repository and install all dependencies
+To install the `comptools` Python package, use the following command
 ```bash
-cd cr-composition
-pip install -r requirements.txt
+pip install --user -e /path/to/cr-composition
 ```
