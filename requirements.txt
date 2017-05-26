@@ -7,5 +7,6 @@ PyPrind
 scikit-learn
 mlxtend
 xgboost
-pycondor
 tables
+urwid
+healpy

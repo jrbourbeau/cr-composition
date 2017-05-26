@@ -1,17 +1,16 @@
-#!/usr/bin/env python
 
 #############################################################################
 # Functions associated with finding and analyzing the effective area
 #############################################################################
 
 from __future__ import division
-import argparse
+import collections
 import numpy as np
 from scipy import optimize
 
 from icecube.weighting.weighting import from_simprod
 
-from ..simfunctions import get_level3_sim_files
+from ..simfunctions import get_level3_sim_files, sim_to_comp
 from . import export
 
 @export
@@ -76,10 +75,15 @@ def get_effective_area(df_sim, energy_bins, energy='MC', verbose=True):
 
     if verbose: print('Calculating effective area...')
     simlist = np.unique(df_sim['sim'])
+    print('simlist = {}'.format(simlist))
+    # Get the number of times each composition is present
+    comp_counter = collections.Counter([sim_to_comp(sim) for sim in simlist])
+    print('comp_counter = {}'.format(comp_counter))
     for i, sim in enumerate(simlist):
         gcd_file, sim_files = get_level3_sim_files(sim)
         num_files = len(sim_files)
         if verbose: print('Simulation set {}: {} files'.format(sim, num_files))
+        composition = sim_to_comp(sim)
         if i == 0:
             generator = num_files*from_simprod(int(sim))
         else:
@@ -88,8 +92,10 @@ def get_effective_area(df_sim, energy_bins, energy='MC', verbose=True):
     energy = df_sim[energy_key].values
     ptype = df_sim['MC_type'].values
     num_ptypes = np.unique(ptype).size
+    print('num_ptypes = {}'.format(num_ptypes))
     cos_theta = np.cos(df_sim['MC_zenith']).values
     areas = 1.0/generator(energy, ptype, cos_theta)
+    # binwidth = 2*np.pi*(1-np.cos(40*(np.pi/180)))*np.diff(energy_bins)
     binwidth = 2*np.pi*(1-np.cos(40*(np.pi/180)))*np.diff(energy_bins)*num_ptypes
     eff_area = np.histogram(energy, weights=areas, bins=energy_bins)[0]/binwidth
     eff_area_error = np.sqrt(np.histogram(energy,

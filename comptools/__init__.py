@@ -20,10 +20,11 @@ __version__ = '0.0.1'
 
 from .base import get_paths
 from .checkdir import checkdir
-from .dataframe_functions import apply_quality_cuts, load_dataframe
+from .dataframe_functions import apply_quality_cuts, load_dataframe, dataframe_to_X_y, comp_to_label, label_to_comp
 from . import simfunctions
 from . import datafunctions
 from .analysis import *
-from .serialize import serialize_SFS, deserialize_SFS
+from .livetime import get_livetime_file, get_detector_livetime
+# from .serialize import serialize_SFS, deserialize_SFS
 # from .PyUnfold import *
-from .RootReader import get1d
+# from .RootReader import get1d

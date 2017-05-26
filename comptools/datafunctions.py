@@ -1,24 +1,94 @@
 #!/usr/bin/env python
 
+import os
 import glob
-from sklearn.utils import shuffle
+import pandas as pd
+import numpy as np
 
 
-def get_level3_data_files(month=None, year=None, config=None):
-
+def _get_data_path_prefix(config=None):
     if config is None:
-        raise('Detector configuration not specified...')
-    prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
-
-    if (month is None) and (year is None):
-        files = glob.glob(prefix + '??_????/Level3_*.i3.gz')
+        raise ValueError('Detector configuration not specified...')
+    elif config == 'IC79':
+        prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
     else:
-        files = glob.glob(prefix + '{}_{}/Level3_*.i3.gz'.format(month, year))
+        prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
 
-    # Don't forget to sort files
-    files = sorted(files)
+    return prefix
 
-    return files
+
+def get_run_generator(config=None):
+
+    prefix = _get_data_path_prefix(config=config)
+    file_pattern = os.path.join(prefix, '????/????/Run*')
+    run_gen = (os.path.basename(f).replace('Run', '') for f in glob.iglob(file_pattern))
+
+    return run_gen
+
+
+def get_run_list(config=None):
+    return list(get_run_generator(config))
+
+
+def get_level3_run_i3_files(config=None, run=None):
+
+    prefix = _get_data_path_prefix(config=config)
+    data_file_pattern = os.path.join(prefix,
+            '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
+    run_files = glob.glob(data_file_pattern)
+
+    # Extract (and validate) the GCD file for this run
+    GCD_file_pattern = os.path.join(prefix, '????/????/Run{}/*GCD*'.format(run, config, run))
+    GCD_files = glob.glob(GCD_file_pattern)
+    if len(GCD_files) != 1:
+        raise ValueError('Should have found only a single GCD files for run '
+                         '{} in {}, but found {}'.format(run, config, len(GCD_files)))
+    else:
+        GCD_file = GCD_files[0]
+
+    return GCD_file, run_files
+
+
+def get_level3_livetime_hist(config=None, month=None):
+
+    if not isinstance(month, int):
+        raise ValueError('Month must be an integer, got {}'.format(month))
+
+    prefix = _get_data_path_prefix(config=config)
+    file_pattern = os.path.join(prefix, '????/{:02d}??/Run*/*livetime.pickle'.format(month))
+    file_gen = glob.iglob(file_pattern)
+
+    bin_values = []
+    for livetime_pickle in file_gen:
+        df = pd.read_pickle(livetime_pickle)
+        prod_hist = df['Livetime']
+        bin_values.append(prod_hist.bin_values)
+
+    bin_values = np.asarray(bin_values, dtype=int)
+    summed_counts = np.sum(bin_values, axis=0)
+
+    return summed_counts
+
+
+# def get_level3_GCD_file(config=None, run=None):
+#
+#     if config is None:
+#         raise('Detector configuration not specified...')
+#     elif config == 'IC79':
+#         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
+#     else:
+#         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
+#
+#     file_pattern = os.path.join(prefix, 'GCD/Level3_{}_data_Run{}_????_GCD.i3.gz'.format(config, run))
+#     file_list = glob.glob(file_pattern)
+#     if len(file_list) == 0:
+#         raise ValueError('Didn\'t find any GCD files for config {} and run {}'.format(config, run))
+#     elif len(file_list) > 1:
+#         raise ValueError('Found multiple GCD files for config {} and run {}'.format(config, run))
+#     else:
+#         GCD_file = file_list[0]
+#
+#     return GCD_file
 
 
 def reco_pulses():

@@ -36,16 +36,27 @@ if __name__ == "__main__":
         os.remove(output)
 
     # Get input hdf5 files to merge
-    files = glob.glob(
-        '{}/{}_{}/dataframe_files/dataframe_*.hdf5'.format(paths.comp_data_dir, args.config, args.type))
-    dataframes = []
-    for f in files:
-        print('Merging {}'.format(f))
-        with pd.HDFStore(f) as store:
-            dataframes.append(store['dataframe'])
+    file_pattern = '{}/{}_{}/dataframe_files/dataframe_*.hdf5'.format(
+                                        paths.comp_data_dir,
+                                        args.config, args.type)
+    files = glob.glob(file_pattern)
+    files = sorted(files)
+    comptools.checkdir(output)
+    with pd.HDFStore(output, 'w') as output_store:
+        for f in files:
+            with pd.HDFStore(f) as input_store:
+                input_df = input_store['dataframe']
 
-    print('Merging {} DataFrames...'.format(len(dataframes)))
-    merged_dataframe = pd.concat(dataframes, ignore_index=True, copy=False)
+                # print('Appending {}...'.format(f))
+                if args.type == 'sim':
+                    output_store.append('dataframe', input_df, format='table',
+                                        data_columns=True, min_itemsize={'MC_comp':15})
+                else:
+                    output_store.append('dataframe', input_df, format='table',
+                                        data_columns=True)
 
-    with pd.HDFStore(output) as output_store:
-        output_store['dataframe'] = merged_dataframe
+    # merged_dataframe = pd.concat(dataframes, ignore_index=True, copy=False)
+    #
+    #     # output_store['dataframe'] = merged_dataframe
+    #     output_store.put('dataframe', merged_dataframe,
+    #                      format='table', data_columns=True)

@@ -2,7 +2,7 @@
 from __future__ import division
 import numpy as np
 
-import composition as comp
+import comptools as comp
 
 def get_random_subsample(dataset, size=1000, frac=0.5, composition=None):
 

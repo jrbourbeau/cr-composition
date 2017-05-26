@@ -8,7 +8,8 @@ def get_training_features(feature_list=None):
 
     # Features used in the 3-year analysis
     if feature_list is None:
-        feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius_1_60']
+        feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius_1_60']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
@@ -60,6 +61,7 @@ def get_training_features(feature_list=None):
                   'eloss_1500_strong': 'dE/dX (strong)',
                   'num_millipede_particles': '$N_{\mathrm{mil}}$',
                   'avg_inice_radius': '$\mathrm{R_{\mu \ bundle}}$',
+                  'invqweighted_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
                   'Laputop_InIce_FractionContainment': '$C_{\mathrm{IC}}$',
@@ -74,6 +76,7 @@ def get_training_features(feature_list=None):
                   'IT_charge_ratio': 'IT charge ratio',
                   'refit_beta': '$\mathrm{\\beta_{refit}}$'
                   }
+
     feature_labels = np.array([label_dict[feature]
                                for feature in feature_list])
 

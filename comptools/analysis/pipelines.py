@@ -46,7 +46,7 @@ def get_pipeline(classifier_name):
         classifier = NuSVC()
     elif classifier_name == 'GBDT':
         classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
-            n_estimators=200, random_state=2)
+            n_estimators=300, random_state=2)
             # n_estimators=100, random_state=2)
     elif classifier_name == 'stacked':
         clf1 = GradientBoostingClassifier(loss='exponential', max_depth=5,

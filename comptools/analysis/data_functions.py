@@ -18,9 +18,7 @@ def product_error(term1, term1_err, term2, term2_err):
     return product, product_err
 
 @export
-def averaging_error(**data):
-    values = data['values']
-    errors = data['errors']
+def averaging_error(values, errors):
     if not isinstance(values, np.ndarray):
         values = np.array(values)
     if not isinstance(errors, np.ndarray):

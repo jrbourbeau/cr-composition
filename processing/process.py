@@ -7,6 +7,7 @@ import argparse
 import time
 import getpass
 import numpy as np
+import pyprind
 
 import comptools
 import pycondor
@@ -33,21 +34,19 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         save_df_job = pycondor.Job(save_df_name, save_df_ex,
                                    error=error, output=output,
                                    log=log, submit=submit,
+                                   request_memory='3GB',
                                    verbose=1)
         # Ensure that merge_hdf5_job completes before save_df_job
         save_df_job.add_parent(merge_hdf5_job)
 
         # Get config and simulation files
-        config = comptools.simfunctions.sim2cfg(sim)
+        config = comptools.simfunctions.sim_to_config(sim)
         gcd, files = comptools.simfunctions.get_level3_sim_files(sim)
 
         # Set up output directory (also, make sure directory exists)
         paths = comptools.get_paths()
         comp_data_dir = paths.comp_data_dir
-        outdir = '{}/{}_sim/hdf5_files'.format(comp_data_dir, config)
-        comptools.checkdir(outdir + '/')
-        # if args['test']:
-        #     args['n'] = 2
+        outdir = os.path.join(comp_data_dir, config+'_sim/hdf5_files')
 
         # Split file list into smaller batches for submission
         batches = [files[i:i + args['n']]
@@ -57,7 +56,6 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
         merger_input = ''
         for files in batches:
-
             # Name output hdf5 file
             start_index = files[0].find('Run') + 3
             end_index = files[0].find('.i3.gz')
@@ -69,7 +67,8 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
             files.insert(0, gcd)
             files_str = ' '.join(files)
 
-            arg = '--files {} -s {} -o {}'.format(files_str, sim, out)
+            arg = '--type sim --files {} -o {}'.format(files_str, out)
+            # arg = '--files {} -s {} -o {}'.format(files_str, sim, out)
             save_hdf5_job.add_arg(arg)
 
             # Append out to merger_input
@@ -90,11 +89,11 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         dagman.add_job(merge_hdf5_job)
 
         df_outfile = '{}/{}_sim/dataframe_files/dataframe_{}.hdf5'.format(comp_data_dir, config, sim)
-        comptools.checkdir(df_outfile)
         df_arg = '--input {} --output {} --type sim'.format(merger_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
         save_df_job.add_arg(df_arg)
+        # save_df_job.add_arg(df_arg, name='{}'.format(sim), retry=15)
         # Add save save_df to dagmanager
         dagman.add_job(save_df_job)
 
@@ -103,26 +102,11 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
 def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
-
     config = args['config']
-    if args['date'] is not None:
-        month = args['date'][:2]
-        year = args['date'][2:]
-        data_files = comptools.datafunctions.get_level3_data_files(month=month,
-                                                year=year, config=config)
-    else:
-        data_files = comptools.datafunctions.get_level3_data_files(config=config)
 
     # Set up output directory (also, make sure directory exists)
     comp_data_dir = '/data/user/jbourbeau/composition'
     outdir = '{}/{}_data/hdf5_files'.format(comp_data_dir, config)
-    comptools.checkdir(outdir + '/')
-
-    # Look at each run in files seperately
-    run_numbers = np.unique(
-        [re.findall(r"\D(\d{8})\D", f) for f in data_files])
-    if args['test']:
-        run_numbers = run_numbers[:2]
 
     # Create a save and merge CondorJobs
     save_hdf5_name = 'save_hdf5_data_{}'.format(config)
@@ -145,18 +129,16 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
                                verbose=1)
     # Ensure that merge_hdf5_job completes before save_df_job
     save_df_job.add_parent(merge_hdf5_job)
-    for run in run_numbers:
+    run_list = comptools.datafunctions.get_run_list(config)
+    if args['test']: run_list = run_list[:2]
+    bar = pyprind.ProgBar(len(run_list),
+        title='Adding {} data jobs'.format(config))
+    for run in run_list:
 
-        # Get GCD file for this run
-        gcd = glob.glob(
-            '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/GCD/Level3_{}_data_Run{}_????_GCD.i3.gz'.format(config, config, run))
-        if len(gcd) != 1:
-            raise('Found a number of GCD files for run {} not equal to one!'.format(run))
-        gcd = gcd[0]
-        # Split files for this run into smaller batches for submission
-        run_files = [f for f in data_files if run in f]
-        batches = [run_files[i:i + args['n']]
-                   for i in range(0, len(run_files), args['n'])]
+        # Get files associated with this run
+        gcd, run_files = comptools.datafunctions.get_level3_run_i3_files(config=config, run=run)
+
+        batches = (run_files[i:i + args['n']] for i in range(0, len(run_files), args['n']))
         merged_output = '{}/data_{}.hdf5'.format(outdir, run)
         merged_input = ''
         for idx, files in enumerate(batches):
@@ -168,7 +150,7 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
             files.insert(0, gcd)
             files_str = ' '.join(files)
 
-            save_arg = '--files {} -o {}'.format(files_str, out)
+            save_arg = '--type data --files {} -o {}'.format(files_str, out)
             save_hdf5_job.add_arg(save_arg)
 
         merge_arg = '--files {} -o {}'.format(merged_input, merged_output)
@@ -176,16 +158,17 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
             merge_arg += ' --remove'
         if args['overwrite']:
             merge_arg += ' --overwrite'
-        # merge_argdict[run] = merge_arg
         merge_hdf5_job.add_arg(merge_arg)
 
         # Add save save_df to dagmanager
         df_outfile = '{}/{}_data/dataframe_files/dataframe_run_{}.hdf5'.format(comp_data_dir, config, run)
-        comptools.checkdir(df_outfile)
         df_arg = '--input {} --output {} --type data'.format(merged_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
-        save_df_job.add_arg(df_arg)
+        save_df_job.add_arg(df_arg, retry=15)
+
+        bar.update()
+    print(bar)
 
     # Add save job to the dagmanager
     dagman.add_job(save_hdf5_job)
@@ -201,16 +184,9 @@ if __name__ == "__main__":
 
     # Setup global path names
     mypaths = comptools.get_paths()
-    comptools.checkdir(mypaths.comp_data_dir)
-
-    simoutput = comptools.simfunctions.getSimOutput()
-    default_sim_list = ['7006', '7579', '7241', '7263', '7791',
-                        '7242', '7262', '7851', '7007', '7784']
 
     p = argparse.ArgumentParser(
-        description='Runs save_sim.py on cluster en masse',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=simoutput)
+        description='Extracts and saves desired information from simulation/data .i3 files')
     p.add_argument('--type', dest='type',
                    choices=['data', 'sim'],
                    default='sim',
@@ -219,10 +195,9 @@ if __name__ == "__main__":
                    help='Date to run over (mmyyyy)')
     p.add_argument('-c', '--config', dest='config',
                    default='IC79',
+                   choices=['IC79', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
                    help='Detector configuration')
-    p.add_argument('-s', '--sim', dest='sim', nargs='*',
-                   choices=default_sim_list,
-                   default=default_sim_list,
+    p.add_argument('-s', '--sim', dest='sim', nargs='*', type=int,
                    help='Simulation to run over')
     p.add_argument('-n', '--n', dest='n', type=int,
                    #    default=200,
@@ -247,6 +222,9 @@ if __name__ == "__main__":
         else:
             args.n = 50
 
+    if not args.sim:
+        args.sim = comptools.simfunctions.config_to_sim(args.config)
+
     # Define output directories
     error = mypaths.condor_data_dir + '/error'
     output = mypaths.condor_data_dir + '/output'
@@ -254,9 +232,8 @@ if __name__ == "__main__":
     submit = mypaths.condor_scratch_dir + '/submit'
 
     # Create Dagman instance
-    name = 'processing_{}'.format(args.type)
-    dagman = pycondor.Dagman('processing_{}'.format(args.type),
-                             submit=submit, verbose=1)
+    name = 'processing_{}_{}'.format(args.type, args.config)
+    dagman = pycondor.Dagman(name, submit=submit, verbose=1)
 
     # Define path to executables
     save_hdf5_ex = '{}/save_hdf5.py'.format(os.getcwd())
@@ -273,15 +250,22 @@ if __name__ == "__main__":
     # Add dataframe merger job
     merge_df_ex = '{}/merge_dataframe.py'.format(os.getcwd())
     merge_df_name = 'merge_df_{}'.format(args.type)
+    if args.test:
+        merge_request_memory = '1GB'
+    elif args.type == 'sim':
+        merge_request_memory = '5GB'
+    else:
+        merge_request_memory = '5GB'
     merge_df_job = pycondor.Job(merge_df_name, merge_df_ex,
                                 error=error, output=output,
                                 log=log, submit=submit,
-                                request_memory='3GB' if args.type == 'sim' else '5GB',
+                                request_memory=merge_request_memory,
                                 verbose=1)
     merge_df_arg = '--type {} --config {}'.format(args.type, args.config)
     if args.overwrite:
         merge_df_arg += ' --overwrite'
     merge_df_job.add_arg(merge_df_arg)
+    # merge_df_job.add_arg(merge_df_arg, retry=15)
     # Add merge_df_job to dagman
     dagman.add_job(merge_df_job)
 
@@ -292,5 +276,4 @@ if __name__ == "__main__":
         else:
             continue
 
-
-    dagman.build_submit(maxjobs=args.maxjobs)
+    dagman.build_submit(maxjobs=args.maxjobs, fancyname=True)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import numpy as np
 from scipy import optimize
@@ -15,6 +14,49 @@ def add_MC_Laputop_angle(frame):
                                                          frame['Laputop'])
     frame.Put('angle_MC_Laputop', dataclasses.I3Double(angle_MC_Laputop))
 
+
+class AddIceTopTankXYCharge(icetray.I3Module):
+
+    def __init__(self, context):
+        icetray.I3Module.__init__(self, context)
+        self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        self.AddOutBox('OutBox')
+
+    def Configure(self):
+        self.pulses = self.GetParameter('pulses')
+        pass
+
+    def Geometry(self, frame):
+        self.geometry = frame['I3Geometry']
+        self.geomap = self.geometry.omgeo
+        self.PushFrame(frame)
+
+    def Physics(self, frame):
+        try:
+            frame['I3RecoPulseSeriesMap_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
+            pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'I3RecoPulseSeriesMap_union')
+        except:
+            # icetray.logging.log_info('Frame doesn\'t contain MCPrimary')
+            self.PushFrame(frame)
+            return
+
+        tanks_x, tanks_y, tanks_charge = [], [], []
+        for omkey, pulses in pulse_map:
+            x, y, z = self.geomap[omkey].position
+            tanks_x.append(x)
+            tanks_y.append(y)
+            charge = sum([pulse.charge for pulse in pulses])
+            tanks_charge.append(charge)
+
+        if tanks_x and tanks_y and tanks_charge:
+            frame.Put('tanks_x', dataclasses.I3VectorDouble(tanks_x))
+            frame.Put('tanks_y', dataclasses.I3VectorDouble(tanks_y))
+            frame.Put('tanks_charge', dataclasses.I3VectorDouble(tanks_charge))
+
+        self.PushFrame(frame)
+
+    def Finish(self):
+        return
 
 class AddIceTopChargeDistance(icetray.I3Module):
 
@@ -95,9 +137,7 @@ class AddIceTopChargeDistance(icetray.I3Module):
             dist = self.get_dist(track, self.geomap[omkey].position)
             dists.append(dist)
             # Get charge recorded in DOM
-            charge = 0.0
-            for pulse in pulses:
-                charge += pulse.charge
+            charge = sum([pulse.charge for pulse in pulses])
             charges.append(charge)
 
         # # Create charge vs distance histogram
@@ -111,7 +151,7 @@ class AddIceTopChargeDistance(icetray.I3Module):
         if dists and charges:
             frame.Put('tank_charges', dataclasses.I3VectorDouble(charges))
             frame.Put('tank_dists', dataclasses.I3VectorDouble(dists))
-            frame.Put('IceTop_charge', dataclasses.I3Double( np.sum(charges) ))
+            # frame.Put('IceTop_charge', dataclasses.I3Double( np.sum(charges) ))
 
             # Convert to ndarrays for easy array manipulation
             dists = np.asarray(dists)
@@ -212,22 +252,6 @@ def add_num_mil_particles(frame):
         for i3particle in frame['Millipede_dEdX']:
             n_particles += 1
     frame.Put('num_millipede_particles', icetray.I3Int(n_particles))
-
-def addMCprimarykeys(frame):
-
-    if 'MCPrimary' in frame:
-        i3primary = frame['MCPrimary']
-        frame.Put('MC_x', dataclasses.I3Double(i3primary.pos.x))
-        frame.Put('MC_y', dataclasses.I3Double(i3primary.pos.y))
-        frame.Put('MC_azimuth', dataclasses.I3Double(i3primary.dir.azimuth))
-        frame.Put('MC_zenith', dataclasses.I3Double(i3primary.dir.zenith))
-        frame.Put('MC_energy', dataclasses.I3Double(i3primary.energy))
-        ts = i3primary.type_string
-        print('type_string = {}'.format(ts))
-        print('type(type_string) = {}'.format(type(ts)))
-        frame.Put('MC_type', dataclasses.I3String(ts))
-
-    return
 
 
 """ Output number of stations triggered in IceTop """
@@ -393,6 +417,15 @@ class AddInIceCharge(icetray.I3Module):
         self.PushFrame(frame)
 
     def Finish(self):
+        return
+
+def add_icetop_charge(frame, pulses):
+    try:
+        frame['icetop_charge_pulses_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, pulses)
+        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'icetop_charge_pulses_union')
+        charge_total = np.sum([pulse.charge for pulse in pulses for omkey, pulses in pulse_map])
+        frame.Put('IceTop_charge', dataclasses.I3Double(charge_total))
+    except:
         return
 
 class AddIceTopCharge(icetray.I3Module):

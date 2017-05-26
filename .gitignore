@@ -3,6 +3,9 @@
 *.root
 *.pkl
 *.json
+*.fits
+*.hdf
+*.hdf5
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

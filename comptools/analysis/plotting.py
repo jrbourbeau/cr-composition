@@ -2,6 +2,7 @@
 
 from __future__ import division
 import collections
+from itertools import cycle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,9 +15,11 @@ from .data_functions import ratio_error
 from .base import cast_to_ndarray
 
 
-def plot_decision_region(xkey, ykey, training_features, data, clf,
-        filler_values_dict=None, xres=0.1, yres=0.1, xlim=None, ylim=None,
-        colors=('C1', 'C0'), ax=None):
+# def plot_decision_region_slice(xkey, ykey, training_features, data, clf,
+#         filler_feature_dict=None, xres=0.1, yres=0.1, xlim=None, ylim=None,
+#         colors=('C0', 'C1'), ax=None):
+def plot_decision_slice(xkey, ykey, data, clf, filler_feature_dict=None,
+        xres=0.1, yres=0.1, xlim=None, ylim=None, colors=('C0','C1','C2','C3','C4'), ax=None):
     '''Function to plot 2D decision region of a scikit-learn classifier
 
     Parameters
@@ -25,13 +28,11 @@ def plot_decision_region(xkey, ykey, training_features, data, clf,
         Key for feature on x-axis.
     ykey : str
         Key for feature on y-axis.
-    training_features : list
-        List of training features names. The order of these features must match the order used when fitting the classifier.
     data : pandas.DataFrame
-        DataFrame containing the xkey and ykey columns. Will use data to determine minimum and maximum values for the xkey and ykey features.
+        DataFrame containing the training dataset. Will use data to determine minimum and maximum values for the xkey and ykey features. The order of the columns in data must be the same as the order of features used in training the classifier clf.
     clf : fitted scikit-learn classifier or pipeline
         The fitted scikit-learn classifier for which you would like to vizulaize the decision regions
-    filler_values_dict : dict, optional
+    filler_feature_dict : dict, optional
         Dictionary containing key-value pairs for the training features other than those given by xkey and ykey. Required if number of training features is larger than two.
     xres : float, optional
         The grid spacing used along the x-axis when evaluating the decision region (default is 0.1).
@@ -41,8 +42,8 @@ def plot_decision_region(xkey, ykey, training_features, data, clf,
         If specified, will be used to set the x-axis limit.
     ylim : tuple, int, optional
         If specified, will be used to set the y-axis limit.
-    colors: array-like, optional
-        Colors to be used for decision regions (default is ['C0', 'C1'])
+    colors: str, optional
+        Comma separated list of colors. (default is 'C0,C1,C2,C3,C4')
     ax : matplotlib.axes
         If specified, will plot decision region on ax. Otherwise will create an ax instance.
 
@@ -52,13 +53,26 @@ def plot_decision_region(xkey, ykey, training_features, data, clf,
         Matplotlib axes with the classifier decision region added.
 
     '''
+    # Validate input types
+    if not isinstance(data, pd.DataFrame):
+        raise ValueError('data must be a pandas DataFrame')
+    if not all([key in data.columns for key in [xkey, ykey]]):
+        raise ValueError('Both xkey and ykey must be in data.columns')
+    if not isinstance(filler_feature_dict, dict):
+        raise ValueError('filler_feature_dict must be a dictionary')
+
+    n_features = len(data.columns)
+    training_features = data.columns
     # Check to see that all the specified featues are consistant
     compare = lambda x, y: collections.Counter(x) == collections.Counter(y)
-    if len(training_features) > 2:
-        assert filler_values_dict
-        assert compare(training_features, filler_values_dict.keys() + [xkey, ykey])
+    if n_features > 2:
+        if not filler_feature_dict:
+            raise ValueError('filler_feature_dict must be provided if using more than 2 training features')
+        if not compare(training_features, list(filler_feature_dict.keys()) + [xkey, ykey]):
+            raise ValueError('The xkey, ykey, and filler feature keys are not the same as data.columns')
     else:
-        assert compare(training_features, [xkey, ykey])
+        if not compare(training_features, [xkey, ykey]):
+            raise ValueError('Both xkey and ykey must be in data.columns')
 
     # Extract the minimum and maximum values of the x-y decision region features
     x_min = data[xkey].min()
@@ -75,9 +89,9 @@ def plot_decision_region(xkey, ykey, training_features, data, clf,
     # Construct a DataFrame from X
     df_temp = pd.DataFrame({xkey: X[:, 0], ykey: X[:, 1]}, columns=[xkey, ykey])
     # If using more than two training features, add a new column for each other the other non-plotted training features
-    if len(training_features) > 2:
-        for key, value in filler_values_dict.iteritems():
-            df_temp[key] = value
+    if n_features > 2:
+        for key in filler_feature_dict:
+            df_temp[key] = filler_feature_dict[key]
     # Reorder the columns of df_temp to match those used in training clf
     df_temp = df_temp[training_features]
     X_predict = df_temp.values
@@ -132,14 +146,16 @@ def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.
     plt.legend()
 
 @export
-def histogram_2D(x, y, bins, log_counts=False, make_prob=False, colorbar=True,
-        logx=False, logy=False, ax=None, **opts):
+def histogram_2D(x, y, bins, weights=None, log_counts=False, make_prob=False,
+                 colorbar=True, logx=False, logy=False, vmin=None, vmax=None,
+                 cmap='viridis', ax=None, **opts):
     # Validate inputs
     x = cast_to_ndarray(x)
     y = cast_to_ndarray(y)
     bins = cast_to_ndarray(bins)
+    if weights is not None: weights = cast_to_ndarray(weights)
 
-    h, xedges, yedges = np.histogram2d(x, y, bins=bins, normed=False)
+    h, xedges, yedges = np.histogram2d(x, y, bins=bins, weights=weights, normed=False)
     h = np.rot90(h)
     h = np.flipud(h)
     h = np.ma.masked_where(h == 0, h)
@@ -151,13 +167,13 @@ def histogram_2D(x, y, bins, log_counts=False, make_prob=False, colorbar=True,
         h = np.log10(h)
     # extent = [yedges[0], yedges[-1], xedges[0], xedges[-1]]
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-    colormap = 'viridis'
 
     if ax is None:
         ax = plt.gca()
 
     im = ax.imshow(h, extent=extent, origin='lower',
-               interpolation='none', cmap=colormap, aspect='auto')
+               interpolation='none', cmap=cmap, aspect='auto',
+               vmin=vmin, vmax=vmax)
     if logx:
         ax.set_xscale('log', nonposy='clip')
     if logy:
@@ -204,7 +220,8 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
 
 
 @export
-def plot_steps(edges, y, yerr=None, color='C0', lw=1, fillalpha=0.15, label=None, ax=None):
+def plot_steps(edges, y, yerr=None, color='C0', lw=1, alpha=1.0,
+               fillalpha=0.3, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects
     edges = cast_to_ndarray(edges)
@@ -217,10 +234,10 @@ def plot_steps(edges, y, yerr=None, color='C0', lw=1, fillalpha=0.15, label=None
 
     ax.step(edges[:-1], y, where='post',
             marker='None', color=color, linewidth=lw,
-            linestyle='-', label=label, alpha=0.8)
+            linestyle='-', label=label, alpha=alpha)
     ax.plot(edges[-2:], 2*[y[-1]], marker='None',
             color=color, linewidth=lw,
-            linestyle='-', alpha=0.8)
+            linestyle='-', alpha=alpha)
 
     if yerr is not None:
         err_lower = y - yerr if yerr.ndim == 1 else y - yerr[0]
