@@ -1,0 +1,229 @@
+#include "stdlib.h"
+#include "milCorsikaInterface.hh"
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include "TH1D.h"
+#include "TH2D.h"
+#include "TFile.h"
+#include "TProfile.h"
+#include "TTree.h"
+
+using namespace std;
+
+#define MAX 1000000000
+
+///////////////////////////////////////////////////////////////////////////////
+
+/*! @function USAtm
+ *  @brief    Get atmospheric overburden for a given height from
+ *            US standard atmospheric model. Overburden = density x height.
+ */
+double USAtm(double height) {
+
+  double heightincm = height*100.;
+  double heightinkm = height/1000.;
+
+  double overburden=0;
+
+  double a[5] = {-186.5562,-94.919,0.61289,0.0,0.01128292};  // in g/cm^2
+  double b[5] = {1222.6562,1144.9069,1305.5948,540.1778,1.}; // in g/cm^2
+  double c[5] = {994186.38,878153.55,636143.04,772170.16,1.e9}; // in cm
+  double h[6] = {0.,4.,10.,40.,100.,112.8}; // in km
+
+  for (int i=0;i<4;i++) {
+    if (heightinkm>h[i] && heightinkm<=h[i+1]) {   // within slice
+      overburden = a[i]+b[i]*exp(-heightincm/c[i]);
+    }
+  }
+  if (heightinkm>h[4] && heightinkm<=h[5])
+    overburden = a[4]-b[4]*heightincm/c[4];
+  if (heightinkm>h[5])
+    overburden = 0.;
+
+  return overburden;
+
+} // END USAtm()
+
+///////////////////////////////////////////////////////////////////////////////
+
+int main() {
+
+  long int showers=0;
+  std::vector<int> ids;
+
+  const int NR = 100; // number of radial bins
+  double rwidth = 5;  // 5 meter bin width
+
+  // profile histograms
+  TProfile *hem   = new TProfile("hem","",NR,0.,rwidth*NR,1e-6,5e3);   // EM energy in GeV/m^2 vs R
+  TProfile *hetot = new TProfile("hetot","",NR,0.,rwidth*NR,1e-6,5e3); // total energy (EM + muon) in GeV/m^2 vs R
+  TTree *ldftree   = new TTree("ldftree","ldftree");   // EM energy in GeV/m^2 vs R
+  double r;
+  double e_em;
+  double e_tot;
+  double e_mu;
+  double n_mu;
+  // double *em;
+  ldftree->Branch("r",&r);
+  ldftree->Branch("e_em",&e_em);
+  ldftree->Branch("e_tot",&e_tot);
+  ldftree->Branch("e_mu",&e_mu);
+  ldftree->Branch("n_mu",&n_mu);
+
+  TProfile *hemu  = new TProfile("hemu","",NR,0.,rwidth*NR,1e-6,5e3);  // muon energy in GeV/m^2 vs R
+  TProfile *hnmu  = new TProfile("hnmu","",NR,0.,rwidth*NR,0,5e3);     // muon number vs R
+  TH1D *fidepth   = new TH1D("fidepth","",50,0.,5.);                   // first interaction depth in radiation lengths
+
+  char cmd[1024] = { "ls /data/sim/IceTop/2009/generated/CORSIKA-ice-top/10410/6.0/DAT000011.bz2" }; // 1 PeV proton files
+  // char cmd[1024] = { "ls /data/sim/IceTop/2009/generated/CORSIKA-ice-top/10410/6.0/DAT0000*.bz2" }; // 1 PeV proton files
+  FILE *ls = popen(cmd, "r");
+
+  char file[1024];
+  while (fscanf(ls, "%s\n", file) == 1) {
+
+    printf(" Processing %s\n", file);
+
+    double* fEventHeader; ///<This holds information received from CorsikaInterface
+    double* fRunHeader;    ///<This holds information received from CorsikaInterface
+
+    // decompress to tmp
+    system(("bzip2 -dk "+string(file)+" -c > tmp").c_str());
+
+    // open tmp
+    milCorsikaInterface &CorsikaFile (milCorsikaInterface::GetCorsikaFile() );
+    CorsikaFile.OpenInputFile("tmp");
+
+    // get run header
+    fRunHeader = CorsikaFile.GetRunHeader();
+
+    // number of observation levels and what are they
+    int nlev = fRunHeader[4];
+    printf("  %d Levels Found: \n    ",nlev);
+    for (int i=0;i<nlev;i++) printf("%8.0fm ",fRunHeader[5+i]/100.);
+    printf("\n");
+
+    int    nmu[NR];
+    double eem[NR];
+    double emu[NR];
+    double etot[NR];
+
+    int ri = 0;
+    double ptotx=0.,ptoty=0.,ptotz=0.,ptot=0.,ppart;
+    double x0=0.,y0=0.,r0=0.;
+    double fiheight,figms,firl=0;
+    double primaryx=0.,primaryy=0.,primaryz=0.,pprimary=0.;
+    double zenith=0., azimuth=0.;
+
+    while (!CorsikaFile.NextEvent()) {
+
+      showers++;
+      fEventHeader = CorsikaFile.GetEventHeader();
+      milCorsikaInterface::CParticleList plist = CorsikaFile.GetCPlist(); //Get list of particles from Corsika
+
+      for (int i=0;i<NR;i++) { emu[i]=0; eem[i]=0; etot[i]=0; nmu[i]=0; }   // zero out annuli arrays
+
+      if (plist.size()>0) {
+
+        ptotx=0.,ptoty=0.,ptotz=0.;
+        primaryx=0.,primaryy=0.,primaryz=0.;
+        zenith=0., azimuth=0.;
+        fiheight = fEventHeader[6];
+        figms    = USAtm(fiheight/100.);
+        firl     = figms/37.1;
+        printf("First Interaction Height %.2f (%.2f radiation lengths)\n", figms, firl);
+
+        primaryx = fEventHeader[7];
+        primaryy = fEventHeader[8];
+        primaryz = fEventHeader[9];
+
+        zenith  = fEventHeader[10];
+        azimuth = fEventHeader[11];
+        printf("Zenith %.2f, Azimuth %.2f\n", zenith, azimuth);
+
+        pprimary = sqrt(primaryx*primaryx+primaryy*primaryy+primaryz*primaryz);
+        // loop over particles in shower
+        for (unsigned int particle=0;particle<plist.size();particle++) {
+          int pid = plist[particle].id/1000;
+          int lev = plist[particle].id%10;
+          ptotx = plist[particle].px;
+          ptoty = plist[particle].py;
+          ptotz = plist[particle].pz;
+          x0    = plist[particle].x0;
+          y0    = plist[particle].y0;
+          r0    = sqrt(x0*x0 + y0*y0)/100.; // in meters
+          ri = r0/rwidth;
+          ptot=sqrt(ptotx*ptotx+ptoty*ptoty+ptotz*ptotz);
+          ppart = sqrt(ptotx*ptotx+ptoty*ptoty+ptotz*ptotz);
+
+          // corsika particle ids:
+          //   1 - photon
+          //   2 - e+
+          //   3 - e-
+          //   5 - mu+
+          //   6 - mu-
+          //   75 - mu+ add. info.
+          //   76 - mu- add. info.
+
+          // total electromagnetic energy in photons,e+,e-
+          if (pid>=1 && pid<=3 && ri<NR && lev == 1) eem[ri]+= ppart;
+
+          // total muon energy in GeV
+          if ((pid==5 || pid==6) && ri<NR && lev == 1) emu[ri]+= ppart;
+
+          // total particle info not counting duplicate pids
+          // with additional muon info
+          if (pid != 75 && pid != 76 &&
+              pid != 85 && pid != 86 &&
+              pid != 95 && pid != 96 && ri<NR && lev == 1)
+            etot[ri]+= ppart;
+
+          if (std::find(ids.begin(), ids.end(), pid) == ids.end())
+            ids.push_back(pid);
+
+          // muons with E > 0.2 GeV
+          if ((pid==5 || pid==6) && ppart>0.2 && ri<NR && lev == 1) nmu[ri]++;
+
+        } // END for (particle)
+      } // END if (plist.size()
+
+      // loop through annuli
+      for (ri=0;ri<NR;ri++) {
+
+        // central radius for this annulus
+        r0 = (ri+0.5)*rwidth;
+        r = (ri+0.5)*rwidth;
+
+        double dA = 3.14159*rwidth*rwidth*(2*ri+1);
+        hem->Fill(r0,eem[ri]/dA);
+        e_em = eem[ri]/dA;
+        hetot->Fill(r0,etot[ri]/dA);
+        e_tot = etot[ri]/dA;
+        hemu->Fill(r0,emu[ri]/dA);
+        e_mu = emu[ri]/dA;
+        hnmu->Fill(r0,nmu[ri]);
+        n_mu = nmu[ri];
+        // printf("%.2f, %.2f, %.2f, %.2f, %.2d\n", r0, eem[ri]/dA, etot[ri]/dA, emu[ri]/dA, nmu[ri]);
+        ldftree->Fill();
+//        printf(" [%d] R %.2f, dA %.2f, %.2e\n", ri, r0, dA, eem[ri]/dA);
+
+      } // END for (ri)
+      fidepth->Fill(firl);
+    } // END while (next event)
+
+  } // END while (fscanf)
+  fclose(ls);
+
+  TFile *f = new TFile("ldf_proton_1PeV.root","recreate");
+  hem->Write();
+  hetot->Write();
+  hemu->Write();
+  hnmu->Write();
+  fidepth->Write();
+  ldftree->Write();
+  f->Close();
+
+  return 0;
+
+} // END main()

@@ -16,5 +16,5 @@ setup(
     packages=['comptools'],
     install_requires=['numpy', 'scipy', 'pandas', 'matplotlib', 'seaborn',
         'scikit-learn', 'mlxtend', 'xgboost', 'pycondor', 'tables', 'PyMySQL',
-        'healpy', 'watermark', 'pyprind']
+        'healpy', 'watermark', 'pyprind', 'pytest']
 )

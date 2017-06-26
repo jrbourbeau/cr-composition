@@ -1,13 +1,19 @@
 #!/usr/bin/env python
 
-import sys
 import os
 
-def checkdir(outfile):
+def check_output_dir(outfile, makedirs=True):
 
     outdir, basename = os.path.split(outfile)
-    if not os.path.exists(outdir):
-        print('\nThe path {} doesn\'t exist. Creating it...\n'.format(outfile))
-        os.makedirs(outdir)
+
+    if outdir == '':
+        return
+    elif not os.path.exists(outdir):
+        if makedirs:
+            print('The directory {} doesn\'t exist. '
+                  'Creating it...'.format(outdir))
+            os.makedirs(outdir)
+        else:
+            raise IOError('The directory {} doesn\'t exist'.format(outdir))
 
     return

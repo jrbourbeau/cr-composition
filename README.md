@@ -4,11 +4,16 @@ This repository is used to investigate the cosmic-ray composition spectrum using
 
 ### Repository layout
 
-- `analysis/` : Jupyter notebooks used for analysis
-
 - `comptools/` : Python package for code used by multiple scripts
 
+- `notebooks/` : Jupyter notebooks used for exploratory analysis
+
 - `processing/` : Scripts related to processing and saving simulation and data
+
+- `data/` : Directory containing processed data/simulation
+
+- `models/` : Contains trained models for easy access
+
 
 ### Installation
 
@@ -17,7 +22,7 @@ Clone this repository
 git clone https://github.com/jrbourbeau/cr-composition.git
 ```
 
-To install the `comptools` Python package, use the following command
+The `comptools` Python package, can be installed via `pip` with the following command:
 ```bash
-pip install --user -e /path/to/cr-composition
+pip install -e /path/to/cr-composition
 ```

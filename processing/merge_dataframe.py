@@ -28,8 +28,12 @@ if __name__ == "__main__":
                         help='Overwrite existing merged files')
     args = parser.parse_args()
 
-    paths = comptools.get_paths()
-    output = args.output if args.output else '{}/{}_{}/{}_dataframe.hdf5'.format(paths.comp_data_dir, args.config, args.type, args.type)
+    if args.output:
+        output = args.output
+    else:
+        output = '{}/{}_{}/{}_dataframe.hdf5'.format(
+                comptools.paths.comp_data_dir, args.config,
+                args.type, args.type)
     # If output file already exists and you want to overwrite,
     # delete existing output file
     if args.overwrite and os.path.exists(output):
@@ -37,11 +41,11 @@ if __name__ == "__main__":
 
     # Get input hdf5 files to merge
     file_pattern = '{}/{}_{}/dataframe_files/dataframe_*.hdf5'.format(
-                                        paths.comp_data_dir,
-                                        args.config, args.type)
+                            comptools.paths.comp_data_dir,
+                            args.config, args.type)
     files = glob.glob(file_pattern)
     files = sorted(files)
-    comptools.checkdir(output)
+    comptools.check_output_dir(output)
     with pd.HDFStore(output, 'w') as output_store:
         for f in files:
             with pd.HDFStore(f) as input_store:

@@ -13,7 +13,7 @@ from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
 
 import comptools
-import icetray_software
+import comptools.icetray_software as icetray_software
 
 def get_good_file_list(files):
     good_file_list = []
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     #====================================================================
     # Finish
 
-    comptools.checkdir(args.outfile)
+    comptools.check_output_dir(args.outfile)
     hdf = I3HDFTableService(args.outfile)
     keys = {key: tableio.default for key in keys}
     if args.type == 'data':

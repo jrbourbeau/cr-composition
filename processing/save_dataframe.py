@@ -143,7 +143,7 @@ if __name__ == "__main__":
         series_dict['mil_qtot_predicted'] = input_store['MillipedeFitParams']['predicted_qtotal']
 
     # Open HDFStore for output hdf5 file
-    comptools.checkdir(args.output)
+    comptools.check_output_dir(args.output)
 
     with pd.HDFStore(args.output, mode='w') as output_store:
         dataframe = pd.DataFrame(series_dict)

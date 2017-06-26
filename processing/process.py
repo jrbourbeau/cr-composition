@@ -44,9 +44,8 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         gcd, files = comptools.simfunctions.get_level3_sim_files(sim)
 
         # Set up output directory (also, make sure directory exists)
-        paths = comptools.get_paths()
-        comp_data_dir = paths.comp_data_dir
-        outdir = os.path.join(comp_data_dir, config+'_sim/hdf5_files')
+        outdir = os.path.join(comptools.paths.comp_data_dir,
+                              config+'_sim/hdf5_files')
 
         # Split file list into smaller batches for submission
         batches = [files[i:i + args['n']]
@@ -88,7 +87,8 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         # Add merge job for this sim to the dagmanager
         dagman.add_job(merge_hdf5_job)
 
-        df_outfile = '{}/{}_sim/dataframe_files/dataframe_{}.hdf5'.format(comp_data_dir, config, sim)
+        df_outfile = '{}/{}_sim/dataframe_files/dataframe_{}.hdf5'.format(
+            comptools.paths.comp_data_dir, config, sim)
         df_arg = '--input {} --output {} --type sim'.format(merger_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
@@ -105,8 +105,8 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
     config = args['config']
 
     # Set up output directory (also, make sure directory exists)
-    comp_data_dir = '/data/user/jbourbeau/composition'
-    outdir = '{}/{}_data/hdf5_files'.format(comp_data_dir, config)
+    outdir = os.path.join(comptools.paths.comp_data_dir,
+                          '{}_data/hdf5_files'.format(config))
 
     # Create a save and merge CondorJobs
     save_hdf5_name = 'save_hdf5_data_{}'.format(config)
@@ -182,9 +182,6 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
 if __name__ == "__main__":
 
-    # Setup global path names
-    mypaths = comptools.get_paths()
-
     p = argparse.ArgumentParser(
         description='Extracts and saves desired information from simulation/data .i3 files')
     p.add_argument('--type', dest='type',
@@ -226,19 +223,22 @@ if __name__ == "__main__":
         args.sim = comptools.simfunctions.config_to_sim(args.config)
 
     # Define output directories
-    error = mypaths.condor_data_dir + '/error'
-    output = mypaths.condor_data_dir + '/output'
-    log = mypaths.condor_scratch_dir + '/log'
-    submit = mypaths.condor_scratch_dir + '/submit'
+    error = comptools.paths.condor_data_dir + '/error'
+    output = comptools.paths.condor_data_dir + '/output'
+    log = comptools.paths.condor_scratch_dir + '/log'
+    submit = comptools.paths.condor_scratch_dir + '/submit'
 
     # Create Dagman instance
     name = 'processing_{}_{}'.format(args.type, args.config)
     dagman = pycondor.Dagman(name, submit=submit, verbose=1)
 
     # Define path to executables
-    save_hdf5_ex = '{}/save_hdf5.py'.format(os.getcwd())
-    merge_hdf5_ex = '{}/merge_hdf5.py'.format(os.getcwd())
-    save_df_ex = '{}/save_dataframe.py'.format(os.getcwd())
+    save_hdf5_ex = os.path.join(comptools.paths.project_home, 'processing',
+                                'save_hdf5.py')
+    merge_hdf5_ex = os.path.join(comptools.paths.project_home, 'processing',
+                                 'merge_hdf5.py')
+    save_df_ex = os.path.join(comptools.paths.project_home, 'processing',
+                              'save_dataframe.py')
 
     if args.type == 'sim':
         dagman = add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex,
@@ -248,7 +248,8 @@ if __name__ == "__main__":
                                     save_df_ex, **vars(args))
 
     # Add dataframe merger job
-    merge_df_ex = '{}/merge_dataframe.py'.format(os.getcwd())
+    merge_df_ex = os.path.join(comptools.paths.project_home, 'processing',
+                               'merge_dataframe.py')
     merge_df_name = 'merge_df_{}'.format(args.type)
     if args.test:
         merge_request_memory = '1GB'

@@ -10,13 +10,6 @@ from .base import get_paths
 from .simfunctions import sim_to_thinned
 
 
-# def validate_dataframe(f):
-#     @wraps(f)
-#     def wrapper(*args, **kwds):
-#         print 'Calling decorated function'
-#         return f(*args, **kwds)
-#     return wrapper
-
 def validate_dataframe(df):
     if not isinstance(df, pd.DataFrame):
         raise TypeError('Expecting a DataFrame, but got {}'.format(type(df)))
@@ -159,6 +152,8 @@ def add_convenience_variables(df):
 
 
 
+# @validate(df_file=(None, str), datatype=str, config=str, split=bool,
+#           test_size=bool, comp_key=str, verbose=bool)
 def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
                    test_size=0.3, comp_key='MC_comp_class', verbose=True):
     '''Loads pandas DataFrame object with appropreiate information
@@ -216,12 +211,12 @@ def dataframe_to_array(df, columns, drop_null=True):
 
     return array
 
-def dataframe_to_X_y(df, feature_list):
+def dataframe_to_X_y(df, feature_list, drop_null=True):
 
     validate_dataframe(df)
 
-    X = dataframe_to_array(df, feature_list)
-    y = dataframe_to_array(df, 'target')
+    X = dataframe_to_array(df, feature_list, drop_null=drop_null)
+    y = dataframe_to_array(df, 'target', drop_null=drop_null)
 
     return X, y
 
