@@ -2,6 +2,9 @@
 requirements:
 	pip freeze > requirements.txt
 
+test:
+	py.test -v tests
+
 YEARS = 2012 2013 2014 2015
 
 simulation:

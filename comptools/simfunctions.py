@@ -23,6 +23,10 @@ def comp2mass(composition):
         raise('Got a KeyError:\n\t{}'.format(error))
 
 
+def get_sim_configs():
+    return ['IC79', 'IC86.2012']
+
+
 def get_sim_dict():
 
     sim_dict = {}
@@ -42,15 +46,21 @@ def get_sim_dict():
 
 def sim_to_config(sim):
 
+    if not isinstance(sim, int):
+        raise TypeError('sim must be an integer (the simulation set ID)')
+
     sim_dict = get_sim_dict()
 
     try:
         return sim_dict[sim]
     except KeyError:
-        raise KeyError('Invalid simulation set, {}, entered'.format(sim))
+        raise ValueError('Invalid simulation set, {}, entered'.format(sim))
 
 
 def config_to_sim(config):
+
+    if not config in get_sim_configs():
+        raise ValueError('Invalid config entered')
 
     sim_dict = get_sim_dict()
     sim_list = []
@@ -85,7 +95,7 @@ def sim_to_thinned(sim):
 
 
 
-def get_level3_sim_files(sim, just_gcd=False, testing=False, training=False):
+def get_level3_sim_files(sim, just_gcd=False):
 
     # Get GCD file
     config = sim_to_config(sim)
