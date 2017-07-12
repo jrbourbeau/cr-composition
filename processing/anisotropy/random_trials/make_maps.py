@@ -51,7 +51,7 @@ if __name__ == "__main__":
         description='Extracts and saves desired information from simulation/data .i3 files')
     p.add_argument('-c', '--config', dest='config',
                    default='IC86.2012',
-                   choices=['IC79', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
+                   choices=['IC79', 'IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
                    help='Detector configuration')
     p.add_argument('--low_energy', dest='low_energy',
                    default=False, action='store_true',

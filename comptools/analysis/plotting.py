@@ -221,7 +221,7 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
 
 @export
 def plot_steps(edges, y, yerr=None, color='C0', lw=1, alpha=1.0,
-               fillalpha=0.3, label=None, ax=None):
+               fillalpha=0.2, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects
     edges = cast_to_ndarray(edges)

@@ -68,11 +68,11 @@ def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
 
 def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
                         log_energy_bins=get_energybins().log_energy_bins,
-                        cv=10):
+                        n_splits=10):
 
     pipeline = get_pipeline(pipeline_str)
 
-    skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=2)
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
     frac_correct_folds = defaultdict(list)
 
     if not pipeline_str in ['GBDT', 'stacked']:

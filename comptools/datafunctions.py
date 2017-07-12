@@ -6,6 +6,10 @@ import pandas as pd
 import numpy as np
 
 
+def get_data_configs():
+    return ['IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015']
+
+
 def _get_data_path_prefix(config=None):
     if config is None:
         raise ValueError('Detector configuration not specified...')

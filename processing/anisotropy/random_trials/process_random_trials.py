@@ -15,7 +15,7 @@ if __name__ == "__main__":
         description='Extracts and saves desired information from simulation/data .i3 files')
     p.add_argument('-c', '--config', dest='config',
                    default='IC86.2012',
-                   choices=['IC79', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
+                   choices=['IC79', 'IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
                    help='Detector configuration')
     p.add_argument('--low_energy', dest='low_energy',
                    default=False, action='store_true',
@@ -27,7 +27,7 @@ if __name__ == "__main__":
                    default=1000,
                    help='Number of lines used when reading in DataFrame')
     p.add_argument('--n_batches', dest='n_batches', type=int,
-                   default=25,
+                   default=15,
                    help='Number batches running in parallel for each ks-test trial')
     p.add_argument('--n_trials', dest='n_trials', type=int,
                    default=1000,

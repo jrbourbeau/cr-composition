@@ -7,6 +7,9 @@ test:
 
 YEARS = 2012 2013 2014 2015
 
+
+# Processing commands
+
 simulation:
 	python processing/process.py --type sim --overwrite --remove --config IC79
 	python processing/process.py --type sim --overwrite --remove --config IC86.2012
@@ -37,6 +40,21 @@ anisotropy-kstest-low-energy:
 	for year in $(YEARS); do \
 		python processing/anisotropy/ks_test/process_kstest.py --config IC86.$$year --low_energy; \
     done
+
+livetimes:
+	python processing/calculate_detector_livetimes.py --config IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
+
+# Saving models
+
+save-models:
+	python models/save_model.py --config IC86.2012
+
+
+# Plotting commands
+
+plot-data-MC:
+	python plotting/plot_data_MC_comparisons.py --config IC86.2012 IC86.2013 IC86.2014 IC86.2015
 
 environment:
 	/data/user/jbourbeau/metaprojects/icerec/V05-01-00/build/env-shell.sh

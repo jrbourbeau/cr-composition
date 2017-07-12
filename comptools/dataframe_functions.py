@@ -1,6 +1,7 @@
 
 from __future__ import print_function, division
 from functools import wraps
+from functools32 import lru_cache
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
@@ -91,10 +92,9 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
         if dataprocessing:
             standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
                 'reco_energy_range', 'num_hits_1_60', 'max_qfrac_1_60']
-            # standard_cut_keys = ['num_hits_1_60']
         else:
             standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
-                'passed_InIceQualityCuts', 'num_hits_1_60']
+                'passed_InIceQualityCuts', 'num_hits_1_60', 'reco_energy_range']
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]
         # Print cut event flow
@@ -131,8 +131,6 @@ def add_convenience_variables(df):
     for dist in ['50', '80', '125', '180', '250', '500']:
         df['log_s'+dist] = np.log10(df['lap_s'+dist])
     df['log_dEdX'] = np.log10(df['eloss_1500_standard'])
-    # df['log_dEdX_standard'] = np.log10(df['eloss_1500_standard'])
-    # df['log_dEdX_strong'] = np.log10(df['eloss_1500_strong'])
     # df['log_IceTop_charge'] = np.log10(df['IceTop_charge'])
     # df['log_IceTop_charge_175m'] = np.log10(df['IceTop_charge_175m'])
     # df['IT_charge_ratio'] = df['IceTop_charge_175m']/df['IceTop_charge']
@@ -151,9 +149,6 @@ def add_convenience_variables(df):
     return df
 
 
-
-# @validate(df_file=(None, str), datatype=str, config=str, split=bool,
-#           test_size=bool, comp_key=str, verbose=bool)
 def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
                    test_size=0.3, comp_key='MC_comp_class', verbose=True):
     '''Loads pandas DataFrame object with appropreiate information

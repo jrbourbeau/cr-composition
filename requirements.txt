@@ -4,7 +4,7 @@ backports-abc==0.5
 backports.shutil-get-terminal-size==1.0.0
 bleach==2.0.0
 certifi==2017.4.17
--e git+https://jrbourbeau@github.com/jrbourbeau/cr-composition.git@d67c1984765faeabfe90003f42ac99aa6bf400d2#egg=comptools
+-e git+https://jrbourbeau@github.com/jrbourbeau/cr-composition.git@db3c09a4cbf088dd2179b4170c53c69e98edf24f#egg=comptools
 configparser==3.5.0
 cycler==0.10.0
 decorator==4.0.11
@@ -41,14 +41,17 @@ pathlib2==2.2.1
 pbr==3.0.0
 pexpect==4.2.1
 pickleshare==0.7.4
+pprofile==1.10.1
 prompt-toolkit==1.0.14
 psutil==5.2.2
 ptyprocess==0.5.1
--e git+https://github.com/jrbourbeau/pycondor.git@f89420cc7886d25e80f5f95f1d83293e55b16c7b#egg=PyCondor
+py==1.4.34
+-e git+https://github.com/jrbourbeau/pycondor.git@8960da00850b250ea074d016368064dd357cd0f1#egg=PyCondor
 Pygments==2.2.0
 PyMySQL==0.7.11
 pyparsing==2.2.0
 PyPrind==2.11.1
+pytest==3.1.2
 python-dateutil==2.6.0
 pytz==2017.2
 pyzmq==16.0.2
@@ -60,6 +63,7 @@ seaborn==0.7.1
 simplegeneric==0.8.1
 singledispatch==3.4.0.3
 six==1.10.0
+snakeviz==0.4.1
 stevedore==1.21.0
 subprocess32==3.2.7
 tables==3.4.2

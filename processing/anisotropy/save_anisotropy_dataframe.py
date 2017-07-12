@@ -48,7 +48,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description='Saves a stripped-down DataFrame '
                                             'for making the anisotropy maps')
     p.add_argument('-c', '--config', dest='config', nargs='*',
-                   default=['IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
+                   default=['IC86.2011' ,'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
                    help='Detector configuration(s)')
     p.add_argument('--outfile', dest='outfile',
                    help='Output reference map file')

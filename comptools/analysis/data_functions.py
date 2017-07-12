@@ -57,12 +57,15 @@ def get_medians(x, y, bins):
     return bin_centers, bin_medians, error
 
 
-def get_avg_std(x, y, bins):
+def get_median_std(x, y, bins):
+    '''Function that returns the median and standard deviation stats.binned_statistic
+    '''
     lower_error = lambda x: np.percentile(x, 16)
     upper_error = lambda x: np.percentile(x, 84)
 
     averages, bin_edges, bin_edges = stats.binned_statistic(x, y,
-        statistic='mean', bins=bins)
+        statistic='median', bins=bins)
+        # statistic='mean', bins=bins)
     standard_devs, bin_edges, bin_edges = stats.binned_statistic(x, y,
         statistic=np.std, bins=bins)
     err_up, err_up_edges, err_up_binnum = stats.binned_statistic(

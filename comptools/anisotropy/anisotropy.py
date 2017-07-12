@@ -455,15 +455,28 @@ def plot_skymap(skymap, smooth=None, decmax=None, scale=None, color_bins=40,
 
 def get_test_stats(config='IC86.2012', low_energy=False):
 
+    if not isinstance(config, (str, list, tuple, np.ndarray)):
+        raise TypeError('config must be either a string or array-like')
+    if isinstance(config, str):
+        config = [config]
+
     paths = get_paths()
-    df_dir = os.path.join(paths.comp_data_dir, config + '_data',
-                          'anisotropy/random_trials')
+    # if len(config) == 1:
+    #     df_dir = os.path.join(paths.comp_data_dir, config[0] + '_data',
+    #                           'anisotropy/random_trials')
+    # else:
+    df_dir = os.path.join(paths.comp_data_dir, 'anisotropy_random_trials')
+
+    df_basename = 'teststat'
+    for c in config:
+        year = c.split('.')[-1]
+        df_basename += '_{}'.format(year)
     if low_energy:
-        df_basename = 'teststat_dataframe_lowenergy.hdf'
-    else:
-        df_basename = 'teststat_dataframe.hdf'
+        df_basename += '_lowenergy'
+    df_basename += '.hdf'
 
     df_file = os.path.join(df_dir, df_basename)
+    print('Loading {}...'.format(df_file))
 
     with pd.HDFStore(df_file, mode='r') as store:
         df = store.select('dataframe')

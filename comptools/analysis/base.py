@@ -82,7 +82,8 @@ def get_energybins():
     # Define energy range for this analysis
     log_energy_min = 6.4
     log_energy_break = 8.0
-    log_energy_max = 9.0
+    log_energy_max = 8.0
+    # log_energy_max = 9.0
     energy_min = 10**log_energy_min
     energy_max = 10**log_energy_max
     # Define energy binning for this analysis

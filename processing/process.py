@@ -161,7 +161,8 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
         merge_hdf5_job.add_arg(merge_arg)
 
         # Add save save_df to dagmanager
-        df_outfile = '{}/{}_data/dataframe_files/dataframe_run_{}.hdf5'.format(comp_data_dir, config, run)
+        df_outfile = '{}/{}_data/dataframe_files/dataframe_run_{}.hdf5'.format(
+                            comptools.paths.comp_data_dir, config, run)
         df_arg = '--input {} --output {} --type data'.format(merged_output, df_outfile)
         if args['overwrite']:
             df_arg += ' --overwrite'
@@ -191,8 +192,8 @@ if __name__ == "__main__":
     p.add_argument('-d', '--date', dest='date',
                    help='Date to run over (mmyyyy)')
     p.add_argument('-c', '--config', dest='config',
-                   default='IC79',
-                   choices=['IC79', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
+                   default='IC86.2012',
+                   choices=comptools.datafunctions.get_data_configs(),
                    help='Detector configuration')
     p.add_argument('-s', '--sim', dest='sim', nargs='*', type=int,
                    help='Simulation to run over')
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         else:
             args.n = 50
 
-    if not args.sim:
+    if args.type == 'sim' and not args.sim:
         args.sim = comptools.simfunctions.config_to_sim(args.config)
 
     # Define output directories
