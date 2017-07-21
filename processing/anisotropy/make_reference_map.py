@@ -12,7 +12,7 @@ import comptools.anisotropy.anisotropy as anisotropy
 
 
 def get_random_times(df_file, n_events, n_resamples=20):
-    with pd.HDFStore(df_file) as store:
+    with pd.HDFStore(df_file, mode='r') as store:
         nrows = store.get_storer('dataframe').nrows
         random_indices = np.random.choice(np.arange(nrows, dtype=int),
                                           size=n_events*n_resamples,
@@ -28,7 +28,7 @@ def get_random_times(df_file, n_events, n_resamples=20):
 
 
 def get_dataframe_batch(df_file, n_splits, split_idx):
-    with pd.HDFStore(df_file) as store:
+    with pd.HDFStore(df_file, mode='r') as store:
         nrows = store.get_storer('dataframe').nrows
         # Split dataframe into parts
         splits = np.array_split(np.arange(nrows, dtype=int), n_splits)
@@ -93,9 +93,11 @@ if __name__ == "__main__":
     elif args.composition in ['light', 'heavy']:
         mask[data_df['pred_comp'] != args.composition] = False
 
+    # Ensure that effective area has plateaued
+    mask[data_df['lap_log_energy'] < 6.4] = False
     # If specified, remove high-energy events
     if args.low_energy:
-        mask[data_df['lap_log_energy'] >= 6.75] = False
+        mask[data_df['lap_log_energy'] > 6.75] = False
 
     data_df = data_df.loc[mask, :].reset_index(drop=True)
     times = times[mask]

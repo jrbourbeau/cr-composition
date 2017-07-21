@@ -1,6 +1,7 @@
 
 from __future__ import print_function, division
-from functools import wraps
+import os
+from functools import wraps, partial
 from functools32 import lru_cache
 import numpy as np
 import pandas as pd
@@ -24,8 +25,6 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
                        dataprocessing=False, verbose=True):
     validate_dataframe(df)
     validate_datatype(datatype)
-
-    print('Starting out with {} {} events'.format(len(df), datatype))
 
     # Quality Cuts #
     # Adapted from PHYSICAL REVIEW D 88, 042004 (2013)
@@ -100,6 +99,7 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
         # Print cut event flow
         if verbose:
             n_total = len(df)
+            print('Starting out with {} {} events'.format(n_total, datatype))
             cut_eff = {}
             cumulative_cut_mask = np.array([True] * n_total)
             print('{} quality cut event flow:'.format(datatype))
@@ -161,11 +161,12 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
 
     # Load simulation dataframe
     paths = get_paths()
-    # If df_file is not specified, replace with default value
+    # If df_file is not specified, use default path
     if df_file is None:
-        df_file = '{}/{}_{}/{}_dataframe.hdf5'.format(paths.comp_data_dir,
-                                                      config, datatype, datatype)
-    with pd.HDFStore(df_file) as store:
+        df_file = os.path.join(paths.comp_data_dir,
+            '{}_{}/{}_dataframe.hdf5'.format(config, datatype, datatype))
+
+    with pd.HDFStore(df_file, mode='r') as store:
         df = store['dataframe']
 
     df = apply_quality_cuts(df, datatype, verbose=verbose)
@@ -191,6 +192,14 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
     return output
 
 
+# Define convenience functions for loading simulation and data DataFrames
+load_sim = partial(load_dataframe, datatype='sim')
+load_sim.__doc__ = 'Loads simulation DataFrame with appropreiate settings'
+
+load_data = partial(load_dataframe, datatype='data')
+load_data.__doc__ = 'Loads data DataFrame with appropreiate settings'
+
+
 def dataframe_to_array(df, columns, drop_null=True):
 
     validate_dataframe(df)
@@ -205,6 +214,7 @@ def dataframe_to_array(df, columns, drop_null=True):
     array = df.values
 
     return array
+
 
 def dataframe_to_X_y(df, feature_list, drop_null=True):
 

@@ -9,7 +9,7 @@ def get_paths():
     # Create path namedtuple object
     PathObject = namedtuple('PathType', ['metaproject', 'comp_data_dir',
         'condor_data_dir', 'condor_scratch_dir', 'figures_dir',
-        'project_home'])
+        'project_home', 'project_root'])
 
     metaproject = '/data/user/jbourbeau/metaprojects/icerec/V05-01-00'
     comp_data_dir = '/data/user/jbourbeau/composition'
@@ -17,6 +17,7 @@ def get_paths():
     condor_scratch_dir = '/scratch/jbourbeau/composition/condor'
     figures_dir = '/home/jbourbeau/public_html/figures/composition'
     project_home = '/home/jbourbeau/cr-composition'
+    project_root = '/home/jbourbeau/cr-composition'
 
     # Create instance of PathObject with appropriate path information
     paths = PathObject(metaproject=metaproject,
@@ -24,7 +25,8 @@ def get_paths():
                        condor_data_dir=condor_data_dir,
                        condor_scratch_dir=condor_scratch_dir,
                        figures_dir=figures_dir,
-                       project_home=project_home)
+                       project_home=project_home,
+                       project_root=project_root)
 
     return paths
 

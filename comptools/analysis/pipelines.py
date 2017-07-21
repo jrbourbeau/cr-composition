@@ -1,30 +1,25 @@
 #!/usr/bin/env python
 
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+import os
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier, ExtraTreesClassifier, VotingClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC, NuSVC
-from sklearn.decomposition import PCA
-from mlxtend.feature_extraction import LinearDiscriminantAnalysis
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn.pipeline import make_pipeline, make_union
-from sklearn.preprocessing import FunctionTransformer
-from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.pipeline import make_pipeline
 from sklearn.ensemble import RandomForestRegressor
-from mlxtend.classifier import StackingClassifier
+from sklearn.externals import joblib
 
 from xgboost import XGBClassifier
 
 from . import export
+from ..simfunctions import get_sim_configs
+from ..base import get_paths
 
 # Use get_pipeline to ensure that same hyperparameters are used each time a
 # classifier is needed, and that the proper scaling is always done before
 # fitting
 @export
-def get_pipeline(classifier_name):
-    ''' Returns classifier pipeline '''
+def get_pipeline(classifier_name='BDT'):
+    ''' Function to get classifier pipeline.
+    '''
 
     if classifier_name == 'RF':
         classifier = RandomForestClassifier(
@@ -36,43 +31,12 @@ def get_pipeline(classifier_name):
     elif classifier_name == 'Ada':
         classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5), n_estimators=100, learning_rate=0.1, random_state=2)
         # classifier = AdaBoostClassifier(n_estimators=50, learning_rate=0.1, random_state=2)
-    elif classifier_name == 'KN':
-        classifier = KNeighborsClassifier(n_neighbors=100, n_jobs=10)
-    elif classifier_name == 'SGD':
-        classifier = SGDClassifier(random_state=2, n_jobs=10)
-        params = {'loss': 'log', 'penalty': 'none'}
-        classifier.set_params(**params)
-    elif classifier_name == 'NuSVC':
-        classifier = NuSVC()
-    elif classifier_name == 'GBDT':
+    elif classifier_name in ['GBDT', 'BDT']:
         classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
             n_estimators=300, random_state=2)
             # n_estimators=100, random_state=2)
-    elif classifier_name == 'stacked':
-        clf1 = GradientBoostingClassifier(loss='exponential', max_depth=5,
-            n_estimators=125, random_state=2)
-        clf2 = LogisticRegression()
-        # meta_clf = LogisticRegression()
-        meta_clf = RandomForestClassifier(random_state=2)
-        classifier = StackingClassifier(classifiers=[clf1, clf2], use_probas=True,
-                                  meta_classifier=meta_clf, verbose=1)
-    elif classifier_name == 'tpot':
-        #2
-        # exported_pipeline = make_pipeline(
-        #     PCA(iterated_power=10, svd_solver="randomized"),
-        #     make_union(VotingClassifier([("est", LogisticRegression(C=0.45, dual=False, penalty="l1"))]), FunctionTransformer(lambda X: X)),
-        #     ExtraTreesClassifier(criterion="entropy", max_features=1.0, n_estimators=500)
-        # )
-        #3
-        exported_pipeline = make_pipeline(
-            make_union(VotingClassifier([("est", GaussianNB())]), FunctionTransformer(lambda X: X)),
-            PCA(iterated_power=10, svd_solver="randomized"),
-            RandomForestClassifier(n_estimators=500)
-        )
-
-        return exported_pipeline
     else:
-        raise('{} is not a valid classifier name...'.format(classifier_name))
+        raise ValueError('{} is not a valid classifier name...'.format(classifier_name))
 
     pipeline = Pipeline([
         # ('scaler', StandardScaler()),
@@ -81,6 +45,29 @@ def get_pipeline(classifier_name):
         ('classifier', classifier)])
 
     return pipeline
+
+
+@export
+def load_trained_model(config='IC86.2012', pipeline='BDT'):
+    '''Function to load pre-trained model to avoid re-training
+    '''
+
+    if not config in get_sim_configs():
+        raise ValueError('Do not have simulation for detector '
+                         'configuration {}'.format(config))
+
+    paths = get_paths()
+
+    model_file = os.path.join(paths.project_root,
+                     'models/{}_{}.pkl'.format(pipeline, config))
+    try:
+        model_dict = joblib.load(model_file)
+    except IOError:
+        raise IOError('There is no {} model saved for {} '
+              '({} doesn\'t exist)'.format(pipeline, config, model_file))
+
+    return model_dict
+
 
 @export
 def fit_pipeline(pipeline, train_df):

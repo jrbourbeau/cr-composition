@@ -123,11 +123,14 @@ if __name__ == "__main__":
                                          n_events=df.shape[0],
                                          n_resamples=20)
 
+                # Ensure that effective area has plateaued
+                energy_mask = df['lap_log_energy'] > 6.4
                 # If specified, remove high-energy events
                 if args.low_energy:
-                    low_energy_mask = df['lap_log_energy'] <= 6.75
-                    df = df.loc[low_energy_mask, :].reset_index(drop=True)
-                    times = times[low_energy_mask]
+                    low_energy_mask = df['lap_log_energy'] < 6.75
+                    energy_mask = energy_mask & (df['lap_log_energy'] < 6.75)
+                df = df.loc[energy_mask, :].reset_index(drop=True)
+                times = times[energy_mask]
 
                 data, ref, local = anisotropy.make_skymaps(df, times,
                                                            n_side=args.n_side)

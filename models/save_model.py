@@ -22,18 +22,20 @@ if __name__ == '__main__':
     comp_key = 'MC_comp_class' if comp_class else 'MC_comp'
     comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
 
-    pipeline_str = 'GBDT'
+    pipeline_str = 'BDT'
     pipeline = comp.get_pipeline(pipeline_str)
 
-    sim_train, sim_test = comp.load_dataframe(datatype='sim',
+    df_sim_train, df_sim_test = comp.load_dataframe(datatype='sim',
                                     config=args.config, comp_key=comp_key)
 
     feature_list, feature_labels = comp.analysis.get_training_features()
-    pipeline.fit(sim_train[feature_list], sim_train.target)
+    pipeline.fit(df_sim_train[feature_list], df_sim_train.target)
 
     # Construct dictionary containing fitted pipeline along with metadata
+    # For information on why this metadata is needed see:
+    # http://scikit-learn.org/stable/modules/model_persistence.html#security-maintainability-limitations
     model_dict = {'pipeline': pipeline,
-                  'training_features': tuple(feature_list),
+                  'training_features': tuple(feature_list), # Needs to be pickle-able
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
     # Save model (w/metadata) to disk

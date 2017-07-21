@@ -11,6 +11,7 @@ import seaborn.apionly as sns
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import ListedColormap
 from scipy import optimize
+# from functools32 import lru_cache
 
 from icecube import astro, dataclasses
 
@@ -162,7 +163,7 @@ def cos_fit_func(x, *p):
     return np.sum(harmonic_terms, axis=0) + p[0]
     # return sum([p[2*i+1] * np.cos((i+1) * (x-p[2*i+2])) for i in range(int(len(p)/2))]) + p[0]
 
-
+# @lru_cache(maxsize=2**7)
 def get_proj_fit_params(x, y, l=10, sigmay=None):
 
     # Guess at best fit parameters
@@ -190,7 +191,8 @@ def get_proj_fit_params(x, y, l=10, sigmay=None):
     return popt, perr, chi2
 
 
-def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-40, ramin=0,
+# @lru_cache(maxsize=2**7)
+def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-55, ramin=0,
                     ramax=360, n_bins=24, units='deg'):
 
     if units not in ['deg', 'rad']:
@@ -212,12 +214,13 @@ def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-40, ramin=0,
     ri = np.zeros(n_bins)
     ri_err = np.zeros(n_bins)
     unseen_mask = relint == hp.UNSEEN
+    INF_mask = (relint_err != np.inf) if relint_err is not None else np.ones(n_pix, dtype=bool)
     for idx in range(n_bins):
         phi_bin_mask = (phi_bin_num == idx)
-        combined_mask = phi_bin_mask & dec_mask & ~unseen_mask
+        combined_mask = phi_bin_mask & dec_mask & ~unseen_mask & INF_mask
         ri[idx] = np.mean(relint[combined_mask])
         if relint_err is not None:
-            ri_err[idx] = np.sqrt(np.sum(relint_err[combined_mask]**2))/combined_mask.sum()
+            ri_err[idx] = np.sqrt(np.nansum(relint_err[combined_mask]**2))/combined_mask.sum()
 
     ra = (rabins[1:] + rabins[:-1]) / 2
     ra_err = (rabins[1:] - rabins[:-1]) / 2
@@ -453,7 +456,8 @@ def plot_skymap(skymap, smooth=None, decmax=None, scale=None, color_bins=40,
 
     return fig, ax
 
-def get_test_stats(config='IC86.2012', low_energy=False):
+
+def get_test_stats(config='IC86.2012', low_energy=False, smooth=20, n_bins=72):
 
     if not isinstance(config, (str, list, tuple, np.ndarray)):
         raise TypeError('config must be either a string or array-like')
@@ -470,7 +474,9 @@ def get_test_stats(config='IC86.2012', low_energy=False):
     df_basename = 'teststat'
     for c in config:
         year = c.split('.')[-1]
-        df_basename += '_{}'.format(year)
+        df_basename += '-{}'.format(year)
+    df_basename += '_smooth-{}'.format(smooth)
+    df_basename += '_RAbins-{}'.format(n_bins)
     if low_energy:
         df_basename += '_lowenergy'
     df_basename += '.hdf'
