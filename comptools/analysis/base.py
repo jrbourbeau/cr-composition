@@ -80,8 +80,8 @@ def get_energybins():
     # energy_bin_widths_full = energy_bins[1:] - energy_bins[:-1]
 
     # Define energy range for this analysis
-    log_energy_min = 5.5
-    # log_energy_min = 6.4
+    # log_energy_min = 5.5
+    log_energy_min = 6.4
     log_energy_break = 8.0
     log_energy_max = 8.0
     # log_energy_max = 9.0

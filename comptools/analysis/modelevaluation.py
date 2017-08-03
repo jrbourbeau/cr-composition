@@ -1,12 +1,12 @@
 
 from __future__ import division
 from collections import defaultdict
-import multiprocessing as mp
+from dask import delayed, multiprocessing, compute
+from dask.diagnostics import ProgressBar
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 import pyprind
-# from .base import DataSet
 from ..dataframe_functions import label_to_comp
 from .base import get_energybins
 from .data_functions import ratio_error
@@ -14,8 +14,7 @@ from .pipelines import get_pipeline
 
 
 def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
-                    log_energy_bins=get_energybins().log_energy_bins,
-                    frac_queue=None, frac_err_queue=None):
+                    log_energy_bins=get_energybins().log_energy_bins):
     '''Calculates the fraction of correctly identified samples in each energy bin
     for each composition in comp_list. In addition, the statisitcal error for the
     fraction correctly identified is calculated.'''
@@ -23,11 +22,6 @@ def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
     # Validate input
     assert isinstance(df_train, pd.DataFrame), 'df_train dataset must be a pandas DataFrame'
     assert isinstance(df_test, pd.DataFrame), 'df_test dataset must be a pandas DataFrame'
-    # assert train.y is not None, 'train must have true y values'
-    # assert test.y is not None, 'test must have true y values'
-    # assert test.log_energy is not None, 'teset must have log_energ values'
-    # assert all([composition in train.labels for composition in comp_list]), 'comp_list and train.labels don\'t match'
-    # assert all([composition in test.labels for composition in comp_list]), 'comp_list and test.labels don\'t match'
 
     # Fit pipeline and get mask for correctly identified events
     pipeline.fit(df_train[feature_columns], df_train.target)
@@ -57,13 +51,7 @@ def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
             num_reco_energy, num_reco_energy_err,
             num_MC_energy, num_MC_energy_err)
 
-    if (frac_queue is None) and (frac_err_queue is None): # Not multiprocessing
-        return frac_correct, frac_correct_err
-    elif (frac_queue is not None) and (frac_err_queue is not None): # Multiprocessing
-        frac_queue.put(frac_correct)
-        frac_err_queue.put(frac_correct_err)
-    else:
-        raise('Only one of frac_queue or frac_err_queue were specified!')
+    return frac_correct, frac_correct_err
 
 
 def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
@@ -75,7 +63,7 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
     frac_correct_folds = defaultdict(list)
 
-    if not pipeline_str in ['GBDT', 'stacked']:
+    if not pipeline_str in ['BDT', 'stacked']:
         bar = pyprind.ProgBar(10, monitor=True, title='10-fold CV', stream=1)
         for train_index, test_index in skf.split(df_train, df_train.target):
             df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
@@ -90,38 +78,26 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
 
         print(bar)
     else:
-        print('Using scikit-learn {}...'.format(pipeline.named_steps['classifier'].__class__.__name__))
-        # Define output queues
-        frac_correct_queue = mp.Queue()
-        frac_correct_err_queue = mp.Queue()
-        # Setup a list of processes that we want to run
-        processes = []
+        # Set up get_frac_correct to run on each CV fold
+        folds = []
         for train_index, test_index in skf.split(df_train, df_train.target):
             df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
             df_test_fold = df_train.iloc[test_index].reset_index(drop=True)
-            process = mp.Process(target=get_frac_correct,
-                                 args=(df_train_fold, df_test_fold, train_columns,
-                                       pipeline, comp_list, log_energy_bins,
-                                       frac_correct_queue, frac_correct_err_queue))
-            processes.append(process)
+            frac_correct = delayed(get_frac_correct)(df_train_fold, df_test_fold,
+                        train_columns, pipeline, comp_list, log_energy_bins)
+            folds.append(frac_correct)
 
-        # Run processes
-        print('Running {} folds in parallel...'.format(len(processes)))
-        for fold_idx, p in enumerate(processes):
-            p.start()
-
-        # Exit the completed processes
-        for fold_idx, p in enumerate(processes):
-            p.join()
-            print('Completed fold {}'.format(fold_idx))
+        # Run get_frac_correct on each fold in parallel
+        print('Running {}-fold CV model evaluation...'.format(n_splits))
+        with ProgressBar():
+            folds = compute(folds, get=multiprocessing.get,
+                            num_works=min(n_splits, 20))[0]
 
         # Get process results from the output queue
-        for fold_idx, p in enumerate(processes):
-            frac_correct = frac_correct_queue.get()
-            frac_correct_err = frac_correct_err_queue.get()
+        for fold in folds:
+            frac_correct, frac_correct_err = fold
             for composition in comp_list+['total']:
                 frac_correct_folds[composition].append(frac_correct[composition])
-            # frac_correct = [frac_correct_queue.get() for p in processes]
-            # frac_correct_err = [frac_correct_err_queue.get() for p in processes]
+
 
     return frac_correct_folds

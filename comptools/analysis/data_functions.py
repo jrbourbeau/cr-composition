@@ -6,6 +6,22 @@ from scipy import stats
 from . import export
 
 @export
+def get_summation_error(errors):
+    sum_error = np.sqrt(np.sum([err**2 for err in errors]))
+    return sum_error
+
+@export
+def get_difference_error(errors):
+    diff_error = np.sqrt(np.sum([err**2 for err in errors]))
+    return diff_error
+
+@export
+def get_ratio_error(num, num_err, den, den_err):
+    ratio = num/den
+    ratio_err = ratio * np.sqrt((num_err / num)**2 + (den_err / den)**2)
+    return ratio_err
+
+@export
 def ratio_error(num, num_err, den, den_err):
     ratio = num/den
     ratio_err = ratio * np.sqrt((num_err / num)**2 + (den_err / den)**2)

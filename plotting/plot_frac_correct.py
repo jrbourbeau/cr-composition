@@ -28,16 +28,16 @@ if __name__ == '__main__':
     comp_key = 'MC_comp_class' if comp_class else 'MC_comp'
     comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
 
-    pipeline_str = 'GBDT'
+    pipeline_str = 'BDT'
     pipeline = comp.get_pipeline(pipeline_str)
 
     energybins = comp.analysis.get_energybins()
     feature_list, feature_labels = comp.analysis.get_training_features()
 
-    sim_train, sim_test = comp.load_dataframe(datatype='sim',
+    df_sim_train, df_sim_test = comp.load_dataframe(datatype='sim',
                                     config=args.config, comp_key=comp_key)
 
-    frac_correct_folds = comp.analysis.get_CV_frac_correct(sim_train,
+    frac_correct_folds = comp.analysis.get_CV_frac_correct(df_sim_train,
         feature_list, pipeline_str, comp_list, n_splits=args.n_splits)
     frac_correct_gen_err = {key: np.std(frac_correct_folds[key], axis=0) for key in frac_correct_folds}
 
@@ -50,8 +50,7 @@ if __name__ == '__main__':
         plotting.plot_steps(energybins.log_energy_bins, performance_mean, yerr=performance_std,
                             ax=ax, color=color_dict[composition], label=composition)
     ax.set_xlabel('$\mathrm{\log_{10}(E_{reco}/GeV)}$')
-    ax.set_ylabel('Classification accuracy')
-    # ax.set_ylabel('Classification accuracy \n (statistical + 10-fold CV error)')
+    ax.set_ylabel('Classification accuracy [{:d}-fold CV]'.format(args.n_splits))
     ax.set_ylim([0.0, 1.0])
     ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
     ax.grid()

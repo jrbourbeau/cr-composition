@@ -11,11 +11,21 @@ import seaborn.apionly as sns
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import ListedColormap
 from scipy import optimize
-# from functools32 import lru_cache
 
 from icecube import astro, dataclasses
 
 from ..base import get_paths
+from ..analysis.data_functions import get_summation_error, get_difference_error, get_ratio_error
+
+
+def dec_to_healpy_theta(dec):
+    hp_theta = np.pi/2 - dec
+    return hp_theta
+
+
+def ra_to_healpy_phi(dec):
+    hp_phi = ra
+    return hp_phi
 
 
 def equatorial_to_healpy(ra, dec):
@@ -103,7 +113,6 @@ def make_skymaps_old(df, times, n_resamples=20, n_side=64, verbose=False):
     return data_skymap, ref_skymap, local_skymap
 
 
-# @profile
 def dir_to_equa(zenith,azimuth,mjd_list):
     ra = []
     dec = []
@@ -163,7 +172,6 @@ def cos_fit_func(x, *p):
     return np.sum(harmonic_terms, axis=0) + p[0]
     # return sum([p[2*i+1] * np.cos((i+1) * (x-p[2*i+2])) for i in range(int(len(p)/2))]) + p[0]
 
-# @lru_cache(maxsize=2**7)
 def get_proj_fit_params(x, y, l=10, sigmay=None):
 
     # Guess at best fit parameters
@@ -191,7 +199,6 @@ def get_proj_fit_params(x, y, l=10, sigmay=None):
     return popt, perr, chi2
 
 
-# @lru_cache(maxsize=2**7)
 def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-55, ramin=0,
                     ramax=360, n_bins=24, units='deg'):
 
@@ -232,6 +239,55 @@ def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-55, ramin=0,
         return ri, ra, ra_err
     else:
         return ri, ri_err, ra, ra_err
+
+
+def get_binned_relint(data, ref, decmin=-90, decmax=-55, ramin=0,
+                      ramax=360, n_bins=24, units='deg'):
+
+    if units not in ['deg', 'rad']:
+        raise ValueError('units must be either "deg" or "rad"')
+
+    n_pix = data.shape[0]
+    n_side = hp.npix2nside(n_pix)
+    # Cut to desired dec range (equiv to healpy theta range)
+    theta, phi = hp.pix2ang(n_side, range(n_pix))
+    thetamax =  np.deg2rad(90 - decmin)
+    thetamin = np.deg2rad(90 - decmax)
+    dec_mask = (theta <= thetamax) & (theta >= thetamin)
+    # Bin in right ascension
+    ramin = np.deg2rad(ramin)
+    ramax = np.deg2rad(ramax)
+    rabins= np.linspace(ramin, ramax, n_bins+1, dtype=float)
+    phi_bin_num = np.digitize(phi, rabins) - 1
+
+    ri = np.zeros(n_bins)
+    ri_err = np.zeros(n_bins)
+    unseen_mask = data == hp.UNSEEN
+    # INF_mask = (relint_err != np.inf) if relint_err is not None else np.ones(n_pix, dtype=bool)
+    for idx in range(n_bins):
+        phi_bin_mask = (phi_bin_num == idx)
+        combined_mask = phi_bin_mask & dec_mask & ~unseen_mask
+
+        sum_data = data[combined_mask].sum()
+        # sum_data_err = np.sqrt(sum_data)
+        sum_data_err = get_summation_error( np.sqrt(data[combined_mask]) )
+
+        sum_ref = ref[combined_mask].sum()
+        # sum_ref_err = np.sqrt(sum_ref)/np.sqrt(20)
+        sum_ref_err = get_summation_error( np.sqrt(ref[combined_mask])/np.sqrt(20) )
+
+        ri[idx] = (sum_data - sum_ref) / sum_ref
+        diff = sum_data - sum_ref
+        diff_err = get_difference_error([sum_data_err, sum_ref_err])
+        ri_err[idx] = get_ratio_error(diff, diff_err, sum_ref, sum_ref_err)
+
+    ra = (rabins[1:] + rabins[:-1]) / 2
+    ra_err = (rabins[1:] - rabins[:-1]) / 2
+    if units == 'deg':
+        ra = np.rad2deg(ra)
+        ra_err = np.rad2deg(ra_err)
+
+    return ri, ri_err, ra, ra_err
 
 
 def smooth_map(skymap, smooth_rad_deg=5.0):
@@ -305,23 +361,30 @@ def get_relint_err_map(data_map, ref_map, n_resamples=20):
     return relint_err
 
 
-def get_skymap_file(config, n_side, composition='all', low_energy=False):
+def get_skymap_files(config, n_side, composition='all', low_energy=False):
 
     # Setup global path names
     mypaths = get_paths()
 
-    file_dir = os.path.join(mypaths.comp_data_dir, config + '_data',
-                            'anisotropy')
-    file_name = '{}_maps_nside_{}_{}'.format(config, n_side, composition)
-    if low_energy:
-        file_name += '_lowenergy'
-    file_name += '.fits'
+    if isinstance(config, str):
+        config = [config]
 
-    return os.path.join(file_dir, file_name)
+    files = []
+    for c in config:
+        file_dir = os.path.join(mypaths.comp_data_dir, c + '_data',
+                                'anisotropy')
+        file_name = '{}_maps_nside_{}_{}'.format(c, n_side, composition)
+        if low_energy:
+            file_name += '_lowenergy'
+        file_name += '.fits'
+
+        files.append(os.path.join(file_dir, file_name))
+
+    return files
 
 
 def get_map(files=None, name='relint', config='IC86.2012', composition='all',
-            low_energy=False, n_side=64, smooth=20.0, decmin=None,
+            low_energy=False, n_side=64, smooth=0.0, decmin=None,
             decmax=None, scale=None):
 
     if not isinstance(config, (str, tuple, list, np.array)):
@@ -330,7 +393,7 @@ def get_map(files=None, name='relint', config='IC86.2012', composition='all',
         config = [config]
 
     if files is None:
-        files = [get_skymap_file(c, n_side, composition, low_energy) for c in config]
+        files = get_skymap_files(config, n_side, composition, low_energy)
     elif isinstance(files, str):
         files = [files]
 
@@ -455,36 +518,3 @@ def plot_skymap(skymap, smooth=None, decmax=None, scale=None, color_bins=40,
         ax.annotate(llabel, xy=(-1.85,-0.24), size=20, color='white')
 
     return fig, ax
-
-
-def get_test_stats(config='IC86.2012', low_energy=False, smooth=20, n_bins=72):
-
-    if not isinstance(config, (str, list, tuple, np.ndarray)):
-        raise TypeError('config must be either a string or array-like')
-    if isinstance(config, str):
-        config = [config]
-
-    paths = get_paths()
-    # if len(config) == 1:
-    #     df_dir = os.path.join(paths.comp_data_dir, config[0] + '_data',
-    #                           'anisotropy/random_trials')
-    # else:
-    df_dir = os.path.join(paths.comp_data_dir, 'anisotropy_random_trials')
-
-    df_basename = 'teststat'
-    for c in config:
-        year = c.split('.')[-1]
-        df_basename += '-{}'.format(year)
-    df_basename += '_smooth-{}'.format(smooth)
-    df_basename += '_RAbins-{}'.format(n_bins)
-    if low_energy:
-        df_basename += '_lowenergy'
-    df_basename += '.hdf'
-
-    df_file = os.path.join(df_dir, df_basename)
-    print('Loading {}...'.format(df_file))
-
-    with pd.HDFStore(df_file, mode='r') as store:
-        df = store.select('dataframe')
-
-    return df

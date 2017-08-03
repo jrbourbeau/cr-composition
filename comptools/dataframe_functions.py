@@ -9,7 +9,7 @@ from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from sklearn.preprocessing import LabelEncoder
 
 from .base import get_paths
-from .simfunctions import sim_to_thinned
+from .simfunctions import sim_to_thinned, get_sim_configs
 
 
 def validate_dataframe(df):
@@ -48,6 +48,7 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
     cut_dict['NStations'] = df['NStations'] >= 5
     cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
+    # cut_dict['min_energy_lap'] = df['lap_energy'] > 10**5.0
     cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
     cut_dict['max_energy_lap'] = df['lap_energy'] < 10**9.2
     # cut_dict['IceTop_charge_175m'] = np.logical_not(df['IceTop_charge_175m'].isnull())
@@ -149,15 +150,47 @@ def add_convenience_variables(df):
     return df
 
 
-def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
-                   test_size=0.3, comp_key='MC_comp_class', verbose=True):
+def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
+                   comp_key='MC_comp_class', verbose=True):
     '''Loads pandas DataFrame object with appropreiate information
+
+    Parameters
+    ----------
+    df_file : path, optional
+        If specified, the given path to a pandas.DataFrame will be loaded
+        (default is None, so the file path will be determined from the
+        datatype and config).
+    datatype : {'sim', 'data'}
+        Specifies whether to load a simulation or experimental data
+        DataFrame.
+    config : str, optional
+        Detector configuration (default is 'IC79').
+    test_size : float, optional
+        Fraction of DataFrame to split of into a seperate testing set
+        (default is 0.3). Note: if datatype is 'data', then test_size will
+        be set to 0.0.
+    comp_key : {'MC_comp_class', 'MC_comp'}
+        Option to use the true composition, or composition classes
+        (light and heavy) as the target variable (default is
+        'MC_comp_class').
+    verbose : bool, optional
+        Option for verbose output (default is True).
+
+    Returns
+    -------
+    pandas.DataFrame, tuple
+        Return a single DataFrame if test_size is 0, otherwise return
+        a 2-tuple of training and testing DataFrame.
+
     '''
+    # Validate user input
     validate_datatype(datatype)
     if datatype == 'data':
-        split = False
+        test_size = 0.0
     if datatype == 'sim' and not comp_key:
         raise ValueError('Must specify a comp_key variable for simulation data')
+    if not config in get_sim_configs():
+        raise ValueError('config must be in {}'.format(get_sim_configs()))
 
     # Load simulation dataframe
     paths = get_paths()
@@ -177,15 +210,17 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
         df['is_thinned'] = df['sim'].apply(sim_to_thinned)
 
     # If specified, split into training and testing DataFrames
-    if split:
+    if test_size:
         # If target variable is specified, perform a stratified split, otherwise a shuffle split
         splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=2)
         train_mask, test_mask = next(splitter.split(df, df['target']))
 
-        train_df = df.iloc[train_mask].reset_index(drop=True)
-        test_df = df.iloc[test_mask].reset_index(drop=True)
+        train_df = (df.iloc[train_mask]
+                      .reset_index(drop=True))
+        test_df = (df.iloc[test_mask]
+                     .reset_index(drop=True))
 
-        output = (train_df, test_df)
+        output = train_df, test_df
     else:
         output = df
 
@@ -193,11 +228,14 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', split=True,
 
 
 # Define convenience functions for loading simulation and data DataFrames
+# By default __module__ is undefined, and __doc__ isn't meaningful for partials
 load_sim = partial(load_dataframe, datatype='sim')
-load_sim.__doc__ = 'Loads simulation DataFrame with appropreiate settings'
+load_sim.__doc__ = load_dataframe.__doc__
+load_sim.__module__ = load_dataframe.__module__
 
 load_data = partial(load_dataframe, datatype='data')
-load_data.__doc__ = 'Loads data DataFrame with appropreiate settings'
+load_data.__doc__ = load_dataframe.__doc__
+load_data.__module__ = load_dataframe.__module__
 
 
 def dataframe_to_array(df, columns, drop_null=True):

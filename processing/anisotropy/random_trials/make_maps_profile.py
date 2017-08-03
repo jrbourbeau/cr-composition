@@ -33,7 +33,6 @@ def get_random_times(store, split_indices, n_events, n_resamples=20):
 
 
 # @profile
-# @jit
 def get_batch_start_stop_rows(n_rows, n_batches, batch_idx):
 
     batch_rows = np.array_split(np.arange(n_rows, dtype=int), n_batches)[batch_idx]
@@ -86,9 +85,9 @@ if __name__ == "__main__":
 
     args = p.parse_args()
 
-    profile = LineProfiler(anisotropy.make_skymaps, get_random_times,
-                           get_batch_start_stop_rows)
-    profile.enable_by_count()
+    # profile = LineProfiler(anisotropy.make_skymaps, get_random_times,
+    #                        get_batch_start_stop_rows)
+    # profile.enable_by_count()
 
     if args.outfile_sample_0 is None or args.outfile_sample_1 is None:
         raise ValueError('Expecting two output files to be specified')
@@ -154,4 +153,4 @@ if __name__ == "__main__":
             hp.write_map(outfile, maps, coord='C')
 
 
-    profile.print_stats()
+    # profile.print_stats()

@@ -5,7 +5,7 @@ requirements:
 test:
 	py.test -v tests
 
-YEARS = 2012 2013 2014 2015
+YEARS = 2011 2012 2013 2014 2015
 
 
 # Processing commands
@@ -55,6 +55,10 @@ save-models:
 
 plot-data-MC:
 	python plotting/plot_data_MC_comparisons.py --config IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
+plot-validation-curves:
+	python plotting/validation-curves/validation-curves.py --param_name max_depth --param_values 1 2 3 4 5 6 7 8 9 10 --param_type int --cv 10 --pipeline BDT --param_label 'Maximum depth'
+	python plotting/validation-curves/validation-curves.py --param_name learning_rate --param_values 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 --param_type float --cv 10 --pipeline BDT --param_label 'Learning rate'
 
 environment:
 	/data/user/jbourbeau/metaprojects/icerec/V05-01-00/build/env-shell.sh

@@ -76,9 +76,9 @@ def get_effective_area(df_sim, energy_bins, energy='MC', verbose=True):
     if verbose: print('Calculating effective area...')
     simlist = np.unique(df_sim['sim'])
     print('simlist = {}'.format(simlist))
-    # Get the number of times each composition is present
-    comp_counter = collections.Counter([sim_to_comp(sim) for sim in simlist])
-    print('comp_counter = {}'.format(comp_counter))
+    # # Get the number of times each composition is present
+    # comp_counter = collections.Counter([sim_to_comp(sim) for sim in simlist])
+    # print('comp_counter = {}'.format(comp_counter))
     for i, sim in enumerate(simlist):
         gcd_file, sim_files = get_level3_sim_files(sim)
         num_files = len(sim_files)

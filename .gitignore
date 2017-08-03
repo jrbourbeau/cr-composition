@@ -6,10 +6,13 @@
 *.fits
 *.hdf
 *.hdf5
+*.dat
 data
 # image files
 *.png
 figures
+# backup files
+*_backup
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
