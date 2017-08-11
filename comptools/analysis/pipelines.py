@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import os
 from sklearn.pipeline import Pipeline
@@ -18,8 +17,8 @@ from ..base import get_paths
 # fitting
 @export
 def get_pipeline(classifier_name='BDT'):
-    ''' Function to get classifier pipeline.
-    '''
+    """ Function to get classifier pipeline.
+    """
 
     if classifier_name == 'RF':
         classifier = RandomForestClassifier(
@@ -32,9 +31,10 @@ def get_pipeline(classifier_name='BDT'):
         classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5), n_estimators=100, learning_rate=0.1, random_state=2)
         # classifier = AdaBoostClassifier(n_estimators=50, learning_rate=0.1, random_state=2)
     elif classifier_name in ['GBDT', 'BDT']:
-        classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
-            n_estimators=300, random_state=2)
-            # n_estimators=100, random_state=2)
+        classifier = GradientBoostingClassifier(loss='exponential', max_depth=3,
+            n_estimators=100, random_state=2)
+        # classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
+        #     n_estimators=300, random_state=2)
     else:
         raise ValueError('{} is not a valid classifier name...'.format(classifier_name))
 
@@ -49,8 +49,21 @@ def get_pipeline(classifier_name='BDT'):
 
 @export
 def load_trained_model(config='IC86.2012', pipeline='BDT'):
-    '''Function to load pre-trained model to avoid re-training
-    '''
+    """Function to load pre-trained model to avoid re-training
+
+    Parameters
+    ----------
+    config : str
+        Detector configuration.
+    pipeline : str, optional
+        Name of model to load (default is 'BDT').
+
+    Returns
+    -------
+    model_dict : dict
+        Dictionary containing trained model as well as relevant metadata.
+
+    """
 
     if not config in get_sim_configs():
         raise ValueError('Do not have simulation for detector '

@@ -26,7 +26,7 @@ The directory structure of this analysis is given by:
 └── plotting           <- Scripts related to making plots for analysis.
 ```
 
-While not generated with, this layout was inspired by the [Cookiecutter Data Science project](https://github.com/drivendata/cookiecutter-data-science).
+While not generated with, this layout for this project was inspired by the [Cookiecutter Data Science project](https://github.com/drivendata/cookiecutter-data-science).
 
 
 ### Installation
@@ -34,13 +34,13 @@ While not generated with, this layout was inspired by the [Cookiecutter Data Sci
 The installation steps for this project are designed to be relatively hassle-free. If possible, install this project in its own virtual Python environment.
 
 1. Clone this repository to your local machine with
-```bash
-git clone https://github.com/jrbourbeau/cr-composition.git
-```
-This command will create a local copy of `cr-composition`.
+   ```bash
+   git clone https://github.com/jrbourbeau/cr-composition.git
+   ```
+   This command will create a local copy of `cr-composition`.
 
 2. Install the `comptools` Python package via `pip` with the following command:
-```bash
-pip install -e /path/to/cr-composition
-```
-This will install `comptools` along with all of the required dependencies (`pandas`, `numpy`, `scikit-learn`, etc.).
+   ```bash
+   pip install -e /path/to/cr-composition
+   ```
+   This will install `comptools` along with all of the required dependencies (`pandas`, `numpy`, `scikit-learn`, etc.).

@@ -11,9 +11,28 @@ import comptools as comp
 import comptools.anisotropy.anisotropy as anisotropy
 
 
-def get_random_times(df_file, n_events, n_resamples=20):
+def get_nrows(df_file):
+    ''' Returns the number of rows in the DataFrame located at df_file
+
+    Parameters
+    ----------
+    df_file : str
+        Path to file containing DataFrame
+
+    Returns
+    -------
+    int
+        Number of rows in the DataFrame
+
+    '''
     with pd.HDFStore(df_file, mode='r') as store:
         nrows = store.get_storer('dataframe').nrows
+    return nrows
+
+def get_random_times(df_file, n_events, n_resamples=20, nrows=None):
+    with pd.HDFStore(df_file, mode='r') as store:
+        if nrows is None:
+            nrows = store.get_storer('dataframe').nrows
         random_indices = np.random.choice(np.arange(nrows, dtype=int),
                                           size=n_events*n_resamples,
                                           replace=False)
@@ -27,9 +46,16 @@ def get_random_times(df_file, n_events, n_resamples=20):
     return times
 
 
-def get_dataframe_batch(df_file, n_splits, split_idx):
+def get_dataframe_batch(df_file, n_splits, split_idx, nrows=None):
+    '''Returns specified section of DataFrame
+
+    Splits a DataFrame in to n_splits batches and returns the batch with
+    index corresponding to split_idx
+
+    '''
     with pd.HDFStore(df_file, mode='r') as store:
-        nrows = store.get_storer('dataframe').nrows
+        if nrows is None:
+            nrows = store.get_storer('dataframe').nrows
         # Split dataframe into parts
         splits = np.array_split(np.arange(nrows, dtype=int), n_splits)
         split_indices = splits[split_idx]
@@ -47,15 +73,14 @@ if __name__ == "__main__":
         description='Extracts and saves desired information from simulation/data .i3 files')
     p.add_argument('-c', '--config', dest='config',
                    default='IC86.2012',
-                   choices=['IC79', 'IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015'],
+                   choices=comp.datafunctions.get_data_configs(),
                    help='Detector configuration')
     p.add_argument('--composition', dest='composition',
-                   default='all',
-                   choices=['light', 'heavy', 'all', 'random_0', 'random_1', 'random'],
+                   default='all', choices=['light', 'heavy', 'all'],
                    help='Whether to make individual skymaps for each composition')
     p.add_argument('--low_energy', dest='low_energy',
                    default=False, action='store_true',
-                   help='Only use events with energy < 10**6.75 GeV')
+                   help='Only use events with energy < 10**7.0 GeV')
     p.add_argument('--n_side', dest='n_side', type=int,
                    default=64,
                    help='Number of times to split the DataFrame')
@@ -82,27 +107,27 @@ if __name__ == "__main__":
     # Load DataFrame for config
     df_file = os.path.join(comp.paths.comp_data_dir, args.config + '_data',
                            'anisotropy_dataframe.hdf')
-    data_df = get_dataframe_batch(df_file, args.n_splits, args.split_idx)
-    times = get_random_times(df_file, data_df.shape[0], n_resamples=20)
+    nrows = get_nrows(df_file)
+    data_df = get_dataframe_batch(df_file, args.n_splits, args.split_idx,
+                                  nrows=nrows)
+    times = get_random_times(df_file, data_df.shape[0], n_resamples=20,
+                             nrows=nrows)
 
     mask = np.ones(data_df.shape[0], dtype=bool)
-    if args.composition == 'random_0':
-        mask[0::2] = False
-    elif args.composition == 'random_1':
-        mask[1::2] = False
-    elif args.composition in ['light', 'heavy']:
+    if args.composition in ['light', 'heavy']:
         mask[data_df['pred_comp'] != args.composition] = False
 
-    # Ensure that effective area has plateaued
-    mask[data_df['lap_log_energy'] < 6.4] = False
+    # # Ensure that effective area has plateaued
+    # mask[data_df['lap_log_energy'] < 6.4] = False
+    mask[data_df['lap_log_energy'] < 6.0] = False
+
     # If specified, remove high-energy events
     if args.low_energy:
-        mask[data_df['lap_log_energy'] > 6.75] = False
+        mask[data_df['lap_log_energy'] > 7.0] = False
+        # mask[data_df['lap_log_energy'] > 6.75] = False
 
     data_df = data_df.loc[mask, :].reset_index(drop=True)
     times = times[mask]
 
-    maps = anisotropy.make_skymaps(data_df, times,
-                                   n_side=args.n_side,
-                                   verbose=True)
+    maps = anisotropy.make_skymaps(data_df, times, n_side=args.n_side)
     hp.write_map(args.outfile, maps, coord='C')

@@ -11,10 +11,12 @@ import comptools as comp
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(
-        description='Extracts and saves desired information from simulation/data .i3 files')
+    parser = argparse.ArgumentParser(description='Saves trained model for later use')
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.simfunctions.get_sim_configs(),
+                   help='Detector configuration')
+    parser.add_argument('--pipeline', dest='pipeline',
+                   default='BDT', choices=['BDT', 'GBDT'],
                    help='Detector configuration')
     args = parser.parse_args()
 
@@ -22,12 +24,11 @@ if __name__ == '__main__':
     comp_key = 'MC_comp_class' if comp_class else 'MC_comp'
     comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
 
-    pipeline_str = 'BDT'
+    # Load untrained model
+    pipeline_str = args.pipeline
     pipeline = comp.get_pipeline(pipeline_str)
-
-    df_sim_train, df_sim_test = comp.load_dataframe(datatype='sim',
-                                    config=args.config, comp_key=comp_key)
-
+    # Load training data and fit model
+    df_sim_train, df_sim_test = comp.load_sim(config=args.config)
     feature_list, feature_labels = comp.analysis.get_training_features()
     pipeline.fit(df_sim_train[feature_list], df_sim_train.target)
 
@@ -38,7 +39,7 @@ if __name__ == '__main__':
                   'training_features': tuple(feature_list), # Needs to be pickle-able
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
-    # Save model (w/metadata) to disk
+    # Save trained model w/metadata to disk
     outfile_dir = os.path.join(comp.paths.project_home, 'models')
     outfile_basename = '{}_{}.pkl'.format(pipeline_str, args.config)
     joblib.dump(model_dict, os.path.join(outfile_dir, outfile_basename))

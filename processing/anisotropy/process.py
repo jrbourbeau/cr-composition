@@ -19,7 +19,7 @@ if __name__ == "__main__":
                    help='Detector configuration')
     p.add_argument('--composition', dest='composition',
                    default='all',
-                   choices=['light', 'heavy', 'all', 'random_0', 'random_1'],
+                   choices=['light', 'heavy', 'all'],
                    help='Whether to make individual skymaps for each composition')
     p.add_argument('--low_energy', dest='low_energy',
                    default=False, action='store_true',
@@ -48,10 +48,10 @@ if __name__ == "__main__":
     submit = comp.paths.condor_scratch_dir + '/submit'
 
     # Define path to executables
-    make_maps_ex = os.path.join(comp.paths.project_home,
+    make_maps_ex = os.path.join(comp.paths.project_root,
                                 'processing/anisotropy',
                                 'make_reference_map.py')
-    merge_maps_ex = os.path.join(comp.paths.project_home,
+    merge_maps_ex = os.path.join(comp.paths.project_root,
                                  'processing/anisotropy',
                                  'merge_maps.py')
 

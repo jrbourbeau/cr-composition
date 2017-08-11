@@ -18,12 +18,16 @@ from ..base import get_paths
 from ..analysis.data_functions import get_summation_error, get_difference_error, get_ratio_error
 
 
-def dec_to_healpy_theta(dec):
+def dec_to_healpy_theta(dec, input_units='rad'):
+    if input_units == 'deg':
+        dec = np.deg2rad(dec)
     hp_theta = np.pi/2 - dec
     return hp_theta
 
 
-def ra_to_healpy_phi(dec):
+def ra_to_healpy_phi(ra, input_units='rad'):
+    if input_units == 'deg':
+        ra = np.deg2rad(ra)
     hp_phi = ra
     return hp_phi
 
@@ -158,7 +162,7 @@ def make_skymaps(df, times, n_side=64, verbose=False):
 
         # Reference skymap
         rand_times = times[idx]
-        n_resamples = rand_times.shape[0]
+        n_resamples = len(rand_times)
         ra, dec = astro.dir_to_equa(local_zenith, local_azimuth, rand_times)
         hp_theta, hp_phi = equatorial_to_healpy(ra, dec)
         ref_skymap = add_to_skymap(hp_theta, hp_phi, ref_skymap,
@@ -227,7 +231,7 @@ def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-55, ramin=0,
         combined_mask = phi_bin_mask & dec_mask & ~unseen_mask & INF_mask
         ri[idx] = np.mean(relint[combined_mask])
         if relint_err is not None:
-            ri_err[idx] = np.sqrt(np.nansum(relint_err[combined_mask]**2))/combined_mask.sum()
+            ri_err[idx] = np.sqrt(np.sum(relint_err[combined_mask]**2))/combined_mask.sum()
 
     ra = (rabins[1:] + rabins[:-1]) / 2
     ra_err = (rabins[1:] - rabins[:-1]) / 2
@@ -239,6 +243,46 @@ def get_proj_relint(relint, relint_err=None, decmin=-90, decmax=-55, ramin=0,
         return ri, ra, ra_err
     else:
         return ri, ri_err, ra, ra_err
+
+
+def get_RA_proj_map(skymap, decmin=-90, decmax=-55, ramin=0, ramax=360,
+                    n_bins=24, units='deg'):
+
+    if units not in ['deg', 'rad']:
+        raise ValueError('units must be either "deg" or "rad"')
+
+    n_pix = skymap.shape[0]
+    n_side = hp.npix2nside(n_pix)
+    # Cut to desired dec range (equiv to healpy theta range)
+    theta, phi = hp.pix2ang(n_side, range(n_pix))
+    thetamax =  np.deg2rad(90 - decmin)
+    thetamin = np.deg2rad(90 - decmax)
+    dec_mask = (theta <= thetamax) & (theta >= thetamin)
+    # Bin in right ascension
+    ramin = np.deg2rad(ramin)
+    ramax = np.deg2rad(ramax)
+    rabins= np.linspace(ramin, ramax, n_bins+1, dtype=float)
+    phi_bin_num = np.digitize(phi, rabins) - 1
+
+    proj = np.zeros(n_bins)
+    proj_err = np.zeros(n_bins)
+    unseen_mask = skymap == hp.UNSEEN
+    # INF_mask = (relint_err != np.inf) if relint_err is not None else np.ones(n_pix, dtype=bool)
+    for idx in range(n_bins):
+
+        phi_bin_mask = (phi_bin_num == idx)
+        combined_mask = phi_bin_mask & dec_mask & ~unseen_mask
+
+        proj[idx] = skymap[combined_mask].sum()
+        proj_err[idx] = get_summation_error( np.sqrt(skymap[combined_mask]) )
+
+    ra = (rabins[1:] + rabins[:-1]) / 2
+    ra_err = (rabins[1:] - rabins[:-1]) / 2
+    if units == 'deg':
+        ra = np.rad2deg(ra)
+        ra_err = np.rad2deg(ra_err)
+
+    return proj, proj_err, ra, ra_err
 
 
 def get_binned_relint(data, ref, decmin=-90, decmax=-55, ramin=0,
@@ -268,13 +312,15 @@ def get_binned_relint(data, ref, decmin=-90, decmax=-55, ramin=0,
         phi_bin_mask = (phi_bin_num == idx)
         combined_mask = phi_bin_mask & dec_mask & ~unseen_mask
 
-        sum_data = data[combined_mask].sum()
+        data_in_bin = data[combined_mask]
+        sum_data = data_in_bin.sum()
         # sum_data_err = np.sqrt(sum_data)
-        sum_data_err = get_summation_error( np.sqrt(data[combined_mask]) )
+        sum_data_err = get_summation_error( np.sqrt(data_in_bin) )
 
-        sum_ref = ref[combined_mask].sum()
+        ref_in_bin = ref[combined_mask]
+        sum_ref = ref_in_bin.sum()
         # sum_ref_err = np.sqrt(sum_ref)/np.sqrt(20)
-        sum_ref_err = get_summation_error( np.sqrt(ref[combined_mask])/np.sqrt(20) )
+        sum_ref_err = get_summation_error( np.sqrt(ref_in_bin)/np.sqrt(20) )
 
         ri[idx] = (sum_data - sum_ref) / sum_ref
         diff = sum_data - sum_ref
@@ -353,10 +399,20 @@ def get_relint_map(data_map, ref_map):
     return relint
 
 
-def get_relint_err_map(data_map, ref_map, n_resamples=20):
+def get_relint_err_map(data, ref, n_resamples=20):
+
+    # data_err = np.sqrt(data)
+    # ref_err = np.sqrt(ref)/np.sqrt(n_resamples)
+    #
+    # diff = data - ref
+    # diff_err =
+
 
     with np.errstate(invalid='ignore', divide='ignore'):
-        relint_err = (data_map/ref_map) * np.sqrt(1/data_map + n_resamples/ref_map)
+
+        # relint_err = (data/ref) * np.sqrt(1/data + n_resamples/ref)
+        alpha = 1/n_resamples
+        relint_err = (data/ref) * np.sqrt(1/data + alpha/ref)
 
     return relint_err
 
@@ -463,10 +519,10 @@ def get_relint_diff(config='IC86.2012', n_side=64, smooth=5.0, decmin=None,
     return rel_int_diff
 
 
-def plot_skymap(skymap, smooth=None, decmax=None, scale=None, color_bins=40,
+def plot_skymap(skymap, color_bins=40,
                 color_palette='viridis', symmetric=False, cbar_min=None,
                 cbar_max=None, cbar_title='Skymap', llabel=None, polar=False,
-                fig=None, sub=None):
+                cartesian=False, fig=None, sub=None):
 
     cpalette = sns.color_palette(color_palette, color_bins)
     cmap = ListedColormap(cpalette.as_hex())
@@ -489,27 +545,34 @@ def plot_skymap(skymap, smooth=None, decmax=None, scale=None, color_bins=40,
 
     if polar:
         shrink = 0.6
+        orientation = 'horizontal'
         rot = [0,-90,180]
         hp.orthview(skymap, half_sky=True, rot=rot, coord='C', title='',
                     min=cbar_min, max=cbar_max, cbar=False, cmap=cmap,
-                    fig=fig, sub=sub)
+                    fig=fig, sub=sub, hold=True)
+    elif cartesian:
+        shrink = 0.65
+        orientation = 'vertical'
+        hp.cartview(skymap, rot=180, coord='C', title='', min=cbar_min,
+                    max=cbar_max, cbar=False, cmap=cmap, fig=fig, sub=sub, hold=True)
     else:
         shrink = 1.0
+        orientation = 'horizontal'
         hp.mollview(skymap, rot=180, coord='C', title='', min=cbar_min,
-                    max=cbar_max, cbar=False, cmap=cmap, fig=fig, sub=sub)
+                    max=cbar_max, cbar=False, cmap=cmap, fig=fig, sub=sub, hold=True)
     hp.graticule(verbose=False)
 
     fig = plt.gcf()
     ax = plt.gca()
     image = ax.get_images()[0]
-    cbar = fig.colorbar(image, orientation='horizontal', aspect=50,
+    cbar = fig.colorbar(image, orientation=orientation, aspect=50,
                         pad=0.01, fraction=0.1, ax=ax,
                         format=FormatStrFormatter('%g'),
                         shrink=shrink)
     if cbar_title:
         cbar.set_label(cbar_title, size=14)
 
-    if not polar:
+    if not any([polar, cartesian]):
         ax.set_ylim(-1, 0.005)
         ax.annotate('0$^\circ$', xy=(1.8, -0.75), size=14)
         ax.annotate('360$^\circ$', xy=(-1.99, -0.75), size=14)

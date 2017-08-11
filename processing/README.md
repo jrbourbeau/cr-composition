@@ -1,6 +1,4 @@
-## Data processing
-
-*There is a single script, `process.py`, that will submit the entire processing chain to the HTCondor cluster.*
+## Data/simulation processing
 
 Steps in the processing chain:
 
@@ -10,3 +8,26 @@ Steps in the processing chain:
 4. hdf5 files are then appropriately (e.g. `run123_p01.hdf5` and `run123_p02.hdf5` will be merged to `run123.hdf5`) with `merge_hdf5.py`.
 5. Next, `save_dataframe.py` is used to convert hdf5 files containing a lot of information to hdf5 containing a simple pandas DataFrame object. **NOTE**: This step is handled differently for data data and simulation.  
 6. merge dataframes.
+
+
+Processing IceCube data/simulation for this analysis consists of 
+
+```
+├── LICENSE
+├── Makefile           <- Makefile with commands like `make data` or `make plots`
+├── README.md          <- The top-level README for developers using this project.
+├── data               <- Directory containing processed data/simulation
+│
+├── models             <- Trained and serialized models, model predictions, or model summaries
+│
+├── notebooks          <- Jupyter notebooks used for exploratory analysis
+│
+├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
+│                         generated with `pip freeze > requirements.txt`
+│
+├── comptools          <- Python package for code used by multiple scripts.
+│
+├── processing         <- Scripts related to processing and saving simulation and data
+│
+└── plotting           <- Scripts related to making plots for analysis.
+```

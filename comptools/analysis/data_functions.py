@@ -18,7 +18,7 @@ def get_difference_error(errors):
 @export
 def get_ratio_error(num, num_err, den, den_err):
     ratio = num/den
-    ratio_err = ratio * np.sqrt((num_err / num)**2 + (den_err / den)**2)
+    ratio_err = np.absolute(ratio) * np.sqrt((num_err / num)**2 + (den_err / den)**2)
     return ratio_err
 
 @export

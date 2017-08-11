@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     for config in args.config:
 
-        df_sim = comp.load_dataframe(datatype='sim', config=config, split=False)
+        df_sim = comp.load_sim(config=config, test_size=0)
 
         comp_list = ['light', 'heavy']
         MC_comp_mask = {}
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         ax1.set_ylim(-0.1, 0.1)
         ax1.tick_params(labelbottom='off')
         ax1.grid()
-        ax1.legend(title='True composition')
+        ax1.legend()
 
         plotting.plot_steps(energybins.log_energy_bins, stds_light, lw=1,
                             color=color_dict['light'], label='light', ax=ax2)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         ax.set_xlabel('$\mathrm{\log_{10}(E_{true}/GeV)}$')
         ax.set_ylabel('Core resolution [m]')
         ax.grid()
-        ax.legend(title='True composition')
+        ax.legend()
         core_res_outfile = os.path.join(comp.paths.figures_dir,
                                         'laputop_performance',
                                         'core_res_CR_group_{}.png'.format(config))
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         ax.set_xlabel('$\mathrm{\log_{10}(E_{reco}/GeV)}$')
         ax.set_ylabel('Angular resolution [$^{\circ}$]')
         ax.grid()
-        ax.legend(title='True composition')
+        ax.legend()
         angular_res_outfile = os.path.join(comp.paths.figures_dir,
                                         'laputop_performance',
                                         'angular_res_CR_group_{}.png'.format(config))

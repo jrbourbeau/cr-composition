@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from .base import get_paths
 from .simfunctions import sim_to_thinned, get_sim_configs
+from .datafunctions import get_data_configs
 
 
 def validate_dataframe(df):
@@ -189,8 +190,12 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
         test_size = 0.0
     if datatype == 'sim' and not comp_key:
         raise ValueError('Must specify a comp_key variable for simulation data')
-    if not config in get_sim_configs():
+    # if not config in get_sim_configs():
+    #     raise ValueError('config must be in {}'.format(get_sim_configs()))
+    if datatype == 'sim' and not config in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
+    if datatype == 'data' and not config in get_data_configs():
+        raise ValueError('config must be in {}'.format(get_data_configs()))
 
     # Load simulation dataframe
     paths = get_paths()

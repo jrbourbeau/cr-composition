@@ -199,7 +199,6 @@ if __name__ == "__main__":
 
     # Params need to be converted to the appropreiate dtype
     params = np.asarray(args.param_values).astype(args.param_type)
-    print('params = {}'.format(params))
     data_dicts = []
     for param_value in params:
         skf = StratifiedKFold(n_splits=args.cv, shuffle=True, random_state=2)
@@ -213,5 +212,6 @@ if __name__ == "__main__":
     comp.check_output_dir(outfile)
     plot = plot_validation_curve_comp(df, outfile, args.param_label,
                                       ylabel='Classification accuracy')
+    print('Making validation curve for {}'.format(args.param_name))
     with ProgressBar():
         compute(plot, get=multiprocessing.get, num_works=min(len(params), 20))
