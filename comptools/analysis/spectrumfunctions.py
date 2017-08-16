@@ -33,7 +33,9 @@ def get_num_particles(train, test, pipeline, comp_list, log_energy_bins=get_ener
     return num_particles, num_particles_err
 
 
-def get_flux(counts, counts_err, energybins=get_energybins().energy_bins, eff_area=156390.673059, livetime=27114012.0, solid_angle=1., scalingindex=2.7):
+def get_flux(counts, counts_err, energybins=get_energybins().energy_bins,
+             eff_area=156390.673059, livetime=27114012.0, livetime_err=1,
+             solid_angle=1., scalingindex=2.7):
     # Calculate energ bin widths and midpoints
     energy_bin_widths = energybins[1:] - energybins[:-1]
     energy_midpoints = (energybins[1:] + energybins[:-1]) / 2
@@ -48,11 +50,7 @@ def get_flux(counts, counts_err, energybins=get_energybins().energy_bins, eff_ar
     y = y / solid_angle
     y_err = y_err / solid_angle
     # Add time duration
-#     y = y / livetime
-#     y_err = y / livetime
-#     livetime = np.array([livetime]*len(y))
-#     livetime = nlivetime
-    flux, flux_err = ratio_error(y, y_err, livetime, 0.005*livetime)
+    flux, flux_err = ratio_error(y, y_err, livetime, livetime_err)
     # Add energy scaling
     scaled_flux = energy_midpoints**scalingindex * flux
     scaled_flux_err = energy_midpoints**scalingindex * flux_err

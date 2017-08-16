@@ -19,6 +19,9 @@ data:
 		python processing/process.py --type data --overwrite --remove --config IC86.$$year; \
     done
 
+save-livetimes:
+	python processing/save_detector_livetimes.py --config IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
 anisotropy-data:
 	python processing/anisotropy/save_anisotropy_dataframe.py
 
@@ -41,9 +44,6 @@ anisotropy-kstest-low-energy:
 		python processing/anisotropy/ks_test/process_kstest.py --config IC86.$$year --low_energy; \
     done
 
-livetimes:
-	python processing/calculate_detector_livetimes.py --config IC86.2012 IC86.2013 IC86.2014 IC86.2015
-
 
 # Saving models
 
@@ -55,6 +55,15 @@ save-models:
 
 plot-data-MC:
 	python plotting/plot_data_MC_comparisons.py --config IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
+plot-frac-correct:
+	python plotting/plot_frac_correct.py --config IC86.2012
+
+plot-feature-importance:
+	python plotting/plot_feature_importance.py --config IC86.2012
+
+plot-feature-covariance:
+	python plotting/plot_feature_covariance.py --config IC86.2012
 
 plot-learning-curve:
 	python plotting/plot_learning_curve.py --config IC86.2012

@@ -15,7 +15,7 @@ color_dict = comp.analysis.get_color_dict()
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        description='Extracts and saves desired information from simulation/data .i3 files')
+        description='Makes and saves classification accuracy vs. energy plot')
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.simfunctions.get_sim_configs(),
                    help='Detector configuration')
@@ -39,7 +39,8 @@ if __name__ == '__main__':
 
     frac_correct_folds = comp.analysis.get_CV_frac_correct(df_sim_train,
         feature_list, pipeline_str, comp_list, n_splits=args.n_splits)
-    frac_correct_gen_err = {key: np.std(frac_correct_folds[key], axis=0) for key in frac_correct_folds}
+    frac_correct_gen_err = {key: np.std(frac_correct_folds[key], axis=0)
+                            for key in frac_correct_folds}
 
     fig, ax = plt.subplots()
     for composition in comp_list:
@@ -55,9 +56,8 @@ if __name__ == '__main__':
     ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
     ax.grid()
     leg = plt.legend(loc='upper center', frameon=False,
-              bbox_to_anchor=(0.5,  # horizontal
-                              1.1),# vertical
-              ncol=len(comp_list)+1, fancybox=False)
+                     bbox_to_anchor=(0.5, 1.1), ncol=len(comp_list)+1,
+                     fancybox=False)
     # set the linewidth of each legend object
     for legobj in leg.legendHandles:
         legobj.set_linewidth(3.0)

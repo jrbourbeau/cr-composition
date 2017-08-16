@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 
+# Detector livetime calculation
+#
+# For a reference see the IT-73 spectrum livetime reference at
+# https://wiki.icecube.wisc.edu/index.php/IceTop-73_Spectrum_Analysis#Live-time_calculation
+
+import os
 import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import datetime
-import multiprocessing as mp
-import os
-import pyprind
+import dask
+from dask import delayed, multiprocessing
+from dask.diagnostics import ProgressBar
 
 import comptools as comp
 import comptools.analysis.plotting as plotting
@@ -18,6 +24,7 @@ def livetime_fit_func(t, I0, T):
     return I0 * np.exp(-t/T)
 
 
+@delayed
 def get_livetime_counts_and_fit(config, month, time_bins):
 
     # Get time difference histogram counts from level3 pickle files
@@ -39,12 +46,11 @@ def get_livetime_counts_and_fit(config, month, time_bins):
                  'T_fit': T_fit, 'T_fit_err': T_fit_err}
 
     month_str = datetime.date(2000, month, 1).strftime('%B')
-    # print('Completed month {}'.format(month_str))
 
     return data_dict
 
 
-def save_livetime_plot(df, time_bins):
+def save_livetime_plot(df, config, time_bins):
     fig, axarr = plt.subplots(3, 4, figsize=(10,8), sharex=True, sharey=True)
     for month, ax in zip(df.index, axarr.flatten()):
         row = df.loc[month]
@@ -69,35 +75,39 @@ def save_livetime_plot(df, time_bins):
 
     fig.text(0.5, 0, 'Time between events [s]', ha='center', fontsize=16)
     fig.text(0, 0.5, 'Counts', va='center', rotation='vertical', fontsize=16)
-    # fig.text(0.5, 1.01, config, ha='center', fontsize=20)
     plt.tight_layout()
-    plt.savefig(os.path.join(comp.paths.figures_dir, 'livetime/livetime-array-{}.png'.format(config)))
+    outfile = os.path.join(comp.paths.figures_dir, 'livetime',
+                           'livetime-array-{}.png'.format(config))
+    comp.check_output_dir(outfile)
+    plt.savefig(outfile)
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Extracts and saves desired information from simulation/data .i3 files')
+        description='Calculates and saves detector livetime plot')
     parser.add_argument('-c', '--config', dest='config', nargs='*',
+                   choices=comp.datafunctions.get_data_configs(),
                    help='Detector configuration')
     args = parser.parse_args()
 
-    bar = pyprind.ProgBar(len(args.config), width=30,
-                          title='Calculating detector livetimes')
+    time_bins = np.linspace(0, 2, 101)
+
     for config in args.config:
 
-        time_bins = np.linspace(0, 2, 101)
+        results = [get_livetime_counts_and_fit(config, month, time_bins)
+                   for month in range(1, 13)]
+        df = delayed(pd.DataFrame)(results)
+        with ProgressBar():
+            print('Computing the monthly livetimes for {}'.format(config))
+            df = df.compute(get=multiprocessing.get, num_workers=len(results))
 
-        pool = mp.Pool(processes=12)
-        results = [pool.apply_async(get_livetime_counts_and_fit, args=(config, month, time_bins))
-                        for month in range(1, 13)]
-        output = [p.get() for p in results]
-
-        df = pd.DataFrame(output)
         df.set_index('month', inplace=True)
 
-        save_livetime_plot(df, time_bins)
+        # Save corresponding monthly livetime plot
+        save_livetime_plot(df, config, time_bins)
 
+        # Save livetime dataframe for later use
         full_livetime = df['livetime'].sum()
         full_livetime_err = np.sqrt(np.sum([err**2 for err in df['livetime_err']]))
 
@@ -114,6 +124,3 @@ if __name__ == "__main__":
         except IOError:
             livetime_df = pd.DataFrame(data_dict, index=[config])
         livetime_df.to_csv(livetime_file)
-
-        bar.update(force_flush=True)
-    print(bar)

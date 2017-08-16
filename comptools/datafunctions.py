@@ -7,16 +7,17 @@ import numpy as np
 
 
 def get_data_configs():
-    return ['IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014', 'IC86.2015']
+    return ['IC79.2010', 'IC86.2011', 'IC86.2012', 'IC86.2013', 'IC86.2014',
+            'IC86.2015']
 
 
 def _get_data_path_prefix(config=None):
     if config is None:
         raise ValueError('Detector configuration not specified...')
-    elif config == 'IC79':
-        prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
-    else:
-        prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
+    # elif config == 'IC79.2010':
+    #     prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
+    # else:
+    prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
 
     return prefix
 
@@ -35,6 +36,9 @@ def get_run_list(config=None):
 
 
 def get_level3_run_i3_files(config=None, run=None):
+
+    if not config in get_data_configs():
+        raise ValueError('Invalid configuration, {}'.format(config))
 
     prefix = _get_data_path_prefix(config=config)
     data_file_pattern = os.path.join(prefix,
@@ -78,7 +82,7 @@ def get_level3_livetime_hist(config=None, month=None):
 #
 #     if config is None:
 #         raise('Detector configuration not specified...')
-#     elif config == 'IC79':
+#     elif config == 'IC79.2010':
 #         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
 #     else:
 #         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)

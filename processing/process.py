@@ -192,7 +192,6 @@ if __name__ == "__main__":
     p.add_argument('-d', '--date', dest='date',
                    help='Date to run over (mmyyyy)')
     p.add_argument('-c', '--config', dest='config',
-                   default='IC86.2012',
                    choices=comptools.datafunctions.get_data_configs(),
                    help='Detector configuration')
     p.add_argument('-s', '--sim', dest='sim', nargs='*', type=int,

@@ -24,17 +24,17 @@ def comp2mass(composition):
 
 
 def get_sim_configs():
-    return ['IC79', 'IC86.2012']
+    return ['IC79.2010', 'IC86.2012']
 
 
 def get_sim_dict():
 
     sim_dict = {}
-    # Add IC79 simulation sets
+    # Add IC79.2010 simulation sets
     IC79_sims = [7006, 7579, 7241, 7263, 7791, 7242, 7262,
                  7851, 7007, 7784]
     for sim in IC79_sims:
-        sim_dict[sim] = 'IC79'
+        sim_dict[sim] = 'IC79.2010'
 
     # Add IC86.2012 simulation sets
     IC86_2012_sims = [12360, 12362, 12630, 12631]
@@ -82,7 +82,7 @@ def sim_to_comp(sim):
     return composition
 
 def sim_to_thinned(sim):
-    # IC79 simulation sets
+    # IC79.2010 simulation sets
     not_thinned = [7006, 7241, 7263, 7242, 7262, 7007]
     is_thinned = [7579, 7791, 7851, 7784]
     # IC82.2012 simulation sets

@@ -9,7 +9,8 @@ def get_training_features(feature_list=None):
     # Features used in the 3-year analysis
     if feature_list is None:
         feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
-        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius_1_60']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'FractionContainment_Laputop_InIce']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
@@ -64,7 +65,7 @@ def get_training_features(feature_list=None):
                   'invqweighted_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
-                  'Laputop_InIce_FractionContainment': '$C_{\mathrm{IC}}$',
+                  'FractionContainment_Laputop_InIce': '$C_{\mathrm{IC}}$',
                   'Laputop_IceTop_FractionContainment': '$C_{\mathrm{IT}}$',
                   'max_inice_radius': '$R_{\mathrm{max}}$',
                   'invcharge_inice_radius': '$R_{\mathrm{q,core}}$',

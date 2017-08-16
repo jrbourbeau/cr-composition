@@ -2,22 +2,52 @@
 
 from collections import namedtuple
 import os
+import getpass
 
 
-def get_paths():
+def get_paths(username=None):
+    '''Function to return paths used in this analysis
+
+    Specifically,
+
+    metaproject - Path to IceCube metaproject being used
+    comp_data_dir - Path to where data and simulation is stored
+    condor_data_dir - Path to where HTCondor error and output files are stored
+    condor_scratch_dir - Path to where HTCondor log and submit files are stored
+    figures_dir - Path to where figures are saved
+    project_home - Path to where cr-composition project is located
+    project_root - Path to where cr-composition project is located
+
+    Parameters
+    ----------
+    username : str, optional
+        Username on the machine that will be used for analysis. This is used
+        to construct the paths for this analysis (default is getpass.getuser()).
+
+    Returns
+    -------
+    paths : collections.namedtuple
+        Namedtuple containing relavent paths (e.g. figures_dir is where
+        figures will be saved, condor_data_dir is where data/simulation will
+        be saved to / loaded from, etc).
+
+    '''
+
+    if username is None:
+        username = getpass.getuser()
 
     # Create path namedtuple object
     PathObject = namedtuple('PathType', ['metaproject', 'comp_data_dir',
         'condor_data_dir', 'condor_scratch_dir', 'figures_dir',
         'project_home', 'project_root'])
 
-    metaproject = '/data/user/jbourbeau/metaprojects/icerec/V05-01-00'
-    comp_data_dir = '/data/user/jbourbeau/composition'
-    condor_data_dir = '/data/user/jbourbeau/composition/condor'
-    condor_scratch_dir = '/scratch/jbourbeau/composition/condor'
-    figures_dir = '/home/jbourbeau/public_html/figures/composition'
-    project_home = '/home/jbourbeau/cr-composition'
-    project_root = '/home/jbourbeau/cr-composition'
+    metaproject = '/data/user/{}/metaprojects/icerec/V05-01-00'.format(username)
+    comp_data_dir = '/data/user/{}/composition'.format(username)
+    condor_data_dir = '/data/user/{}/composition/condor'.format(username)
+    condor_scratch_dir = '/scratch/{}/composition/condor'.format(username)
+    figures_dir = '/home/{}/public_html/figures/composition'.format(username)
+    project_home = '/home/{}/cr-composition'.format(username)
+    project_root = '/home/{}/cr-composition'.format(username)
 
     # Create instance of PathObject with appropriate path information
     paths = PathObject(metaproject=metaproject,

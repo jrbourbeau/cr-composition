@@ -1,8 +1,3 @@
-
-#############################################################################
-# Functions associated with finding and analyzing the effective area
-#############################################################################
-
 from __future__ import division
 import collections
 import numpy as np
