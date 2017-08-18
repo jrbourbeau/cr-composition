@@ -33,7 +33,7 @@ def get_num_particles(train, test, pipeline, comp_list, log_energy_bins=get_ener
     return num_particles, num_particles_err
 
 
-def get_flux(counts, counts_err, energybins=get_energybins().energy_bins,
+def get_flux(counts, energybins=get_energybins().energy_bins,
              eff_area=156390.673059, livetime=27114012.0, livetime_err=1,
              solid_angle=1., scalingindex=2.7):
     # Calculate energ bin widths and midpoints
@@ -41,9 +41,13 @@ def get_flux(counts, counts_err, energybins=get_energybins().energy_bins,
     energy_midpoints = (energybins[1:] + energybins[:-1]) / 2
     # Calculate dN/dE
     y = counts/energy_bin_widths
+    counts_err = np.sqrt(counts)
     y_err = counts_err/energy_bin_widths
     # Add effective area
-    eff_area = np.array([eff_area]*len(y))
+    if isinstance(eff_area, (int, float)):
+        eff_area = np.array([eff_area]*len(y))
+    else:
+        eff_area = np.asarray(eff_area)
     eff_area_error = 0.01 * eff_area
     y, y_err = ratio_error(y, y_err, eff_area, eff_area_error)
     # Add solid angle

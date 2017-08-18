@@ -1,11 +1,12 @@
 from __future__ import division
 import collections
 import numpy as np
-from scipy import optimize
+from scipy.optimize import curve_fit
 
 from icecube.weighting.weighting import from_simprod
 
 from ..simfunctions import get_level3_sim_files, sim_to_comp
+from ..dataframe_functions import load_sim
 from . import export
 
 @export
@@ -64,30 +65,52 @@ def effective_area(df, log_energy_bins):
 
 
 @export
-def get_effective_area(df_sim, energy_bins, energy='MC', verbose=True):
+def calculate_effective_area_vs_energy(df_sim, energy_bins, verbose=True):
+    '''Calculated effective area vs. energy from simulation
 
-    assert energy in ['MC', 'reco'], 'energy must be MC or reco'
+    Parameters
+    ----------
+    df_sim : pandas.DataFrame
+        Simulation DataFrame returned from comptools.load_sim.
+    energy_bins : array-like
+        Energy bins (in GeV) that will be used for calculation.
+    verbose : bool, optional
+        Option for verbose output (default is True).
 
-    if verbose: print('Calculating effective area...')
+    Returns
+    -------
+    eff_area : numpy.ndarray
+        Effective area for each bin in energy_bins
+    eff_area_error : numpy.ndarray
+        Statistical ucertainty on the effective area for each bin in
+        energy_bins.
+    energy_midpoints : numpy.ndarray
+        Midpoints of energy_bins. Useful for plotting effective area versus
+        energy.
+
+    '''
+
+    if verbose:
+        print('Calculating effective area...')
+
     simlist = np.unique(df_sim['sim'])
-    print('simlist = {}'.format(simlist))
     # # Get the number of times each composition is present
     # comp_counter = collections.Counter([sim_to_comp(sim) for sim in simlist])
     # print('comp_counter = {}'.format(comp_counter))
     for i, sim in enumerate(simlist):
         gcd_file, sim_files = get_level3_sim_files(sim)
         num_files = len(sim_files)
-        if verbose: print('Simulation set {}: {} files'.format(sim, num_files))
+        if verbose:
+            print('Simulation set {}: {} files'.format(sim, num_files))
         composition = sim_to_comp(sim)
         if i == 0:
             generator = num_files*from_simprod(int(sim))
         else:
             generator += num_files*from_simprod(int(sim))
-    energy_key = 'MC_energy' if energy == 'MC' else 'lap_energy'
-    energy = df_sim[energy_key].values
+
+    energy = df_sim['MC_energy'].values
     ptype = df_sim['MC_type'].values
     num_ptypes = np.unique(ptype).size
-    print('num_ptypes = {}'.format(num_ptypes))
     cos_theta = np.cos(df_sim['MC_zenith']).values
     areas = 1.0/generator(energy, ptype, cos_theta)
     # binwidth = 2*np.pi*(1-np.cos(40*(np.pi/180)))*np.diff(energy_bins)
@@ -101,8 +124,71 @@ def get_effective_area(df_sim, energy_bins, energy='MC', verbose=True):
     return eff_area, eff_area_error, energy_midpoints
 
 
-def sigmoid(energy, p0, p1, p2):
+def sigmoid_flat(energy, p0, p1, p2):
     return p0 / (1 + np.exp(-p1*np.log10(energy) + p2))
+
+
+def sigmoid_slant(energy, p0, p1, p2, p3):
+    return (p0 + p3*np.log10(energy)) / (1 + np.exp(-p1*np.log10(energy) + p2))
+
+
+@export
+def get_effective_area_fit(config='IC86.2012', fit_func=sigmoid_slant, energy_points=None):
+    '''Calculated effective area from simulation
+
+    Parameters
+    ----------
+    config : str, optional
+        Detector configuration (default is IC86.2012).
+
+    Returns
+    -------
+    avg : float
+        Effective area
+    avg_err : float
+        Statistical error on effective area
+
+    '''
+
+    df_sim = load_sim(config=config, test_size=0, verbose=False)
+
+    log_energy_bins = np.arange(5.0, 9.51, 0.05)
+    energy_bins = 10**log_energy_bins
+    energy_midpoints = (energy_bins[1:] + energy_bins[:-1]) / 2
+
+    energy_min_fit, energy_max_fit = 5.8, 8.0
+    midpoints_fitmask = np.logical_and(energy_midpoints > 10**energy_min_fit,
+                                       energy_midpoints < 10**energy_max_fit)
+
+
+    # Calculate the effective areas
+    eff_area, eff_area_error, _ = calculate_effective_area_vs_energy(
+                                df_sim, energy_bins, verbose=False)
+    eff_area_light, eff_area_error_light, _ = calculate_effective_area_vs_energy(
+                                df_sim[df_sim.MC_comp_class == 'light'],
+                                energy_bins, verbose=False)
+    eff_area_heavy, eff_area_error_heavy, _ = calculate_effective_area_vs_energy(
+                                df_sim[df_sim.MC_comp_class == 'heavy'],
+                                energy_bins, verbose=False)
+
+    if fit_func.__name__ == 'sigmoid_flat':
+        p0 = [1.5e5, 8.0, 50.0]
+    elif fit_func.__name__ == 'sigmoid_slant':
+        p0 = [1.4e5, 8.5, 50.0, 800]
+    popt_light, pcov_light = curve_fit(fit_func,
+                                energy_midpoints[midpoints_fitmask],
+                                eff_area_light[midpoints_fitmask], p0=p0,
+                                sigma=eff_area_error_light[midpoints_fitmask])
+    perr_light = np.sqrt(np.diag(pcov_light))
+
+    popt_heavy, pcov_heavy = curve_fit(fit_func,
+                                energy_midpoints[midpoints_fitmask],
+                                eff_area_heavy[midpoints_fitmask], p0=p0,
+                                sigma=eff_area_error_heavy[midpoints_fitmask])
+    perr_heavy = np.sqrt(np.diag(pcov_heavy))
+    popt_avg = (popt_light + popt_heavy) / 2
+
+    return fit_func(energy_points, *popt_avg)
 
 
 def get_sigmoid_params(df_sim, energy_bins):

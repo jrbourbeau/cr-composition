@@ -152,7 +152,7 @@ def add_convenience_variables(df):
 
 
 def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
-                   comp_key='MC_comp_class', verbose=True):
+                   comp_key='MC_comp_class', columns=None, verbose=False):
     '''Loads pandas DataFrame object with appropreiate information
 
     Parameters
@@ -204,15 +204,26 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
         df_file = os.path.join(paths.comp_data_dir,
             '{}_{}/{}_dataframe.hdf5'.format(config, datatype, datatype))
 
+    df_list = []
     with pd.HDFStore(df_file, mode='r') as store:
-        df = store['dataframe']
+        for df_chunk in store.select('dataframe', chunksize=100000):
 
-    df = apply_quality_cuts(df, datatype, verbose=verbose)
-    df = add_convenience_variables(df)
+            df_chunk = apply_quality_cuts(df_chunk, datatype, verbose=verbose)
+            df_chunk = add_convenience_variables(df_chunk)
 
-    if datatype == 'sim':
-        df['target'] = df[comp_key].apply(comp_to_label)
-        df['is_thinned'] = df['sim'].apply(sim_to_thinned)
+            if datatype == 'sim':
+                df_chunk['target'] = df_chunk[comp_key].apply(comp_to_label)
+                df_chunk['is_thinned'] = df_chunk['sim'].apply(sim_to_thinned)
+
+            if columns is not None:
+                if datatype == 'sim':
+                    df_chunk = df_chunk[columns + ['target']]
+                else:
+                    df_chunk = df_chunk[columns]
+
+            df_list.append(df_chunk)
+
+    df = pd.concat(df_list, ignore_index=True)
 
     # If specified, split into training and testing DataFrames
     if test_size:

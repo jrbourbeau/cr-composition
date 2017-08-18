@@ -76,6 +76,9 @@ plot-validation-curves:
 plot-laputop-performance:
 	python plotting/plot_laputop_performance.py --config IC86.2012
 
+plot-flux:
+	python plotting/plot_flux.py --config IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
 environment:
 	/data/user/jbourbeau/metaprojects/icerec/V05-01-00/build/env-shell.sh
 	workon composition

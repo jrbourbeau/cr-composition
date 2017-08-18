@@ -70,9 +70,8 @@ def config_to_sim(config):
     return sim_list
 
 def sim_to_comp(sim):
-    print('type(sim) = {}'.format(type(sim)))
-    print('sim = {}'.format(sim))
-    # Will utilize the weighting project found here: http://software.icecube.wisc.edu/documentation/projects/weighting
+    # Will utilize the weighting project found here
+    # http://software.icecube.wisc.edu/documentation/projects/weighting
 
     # Query database to extract composition from simulation set
     generator = from_simprod(int(sim))
