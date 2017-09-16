@@ -24,6 +24,10 @@ def plot_rate(array, weights, bins, xlabel=None, color='C0',
     if ax is None:
         ax = plt.gca()
 
+    # Remove inf and nan values
+    array = check_array_finite(array)
+    weights = check_array_finite(weights, check_array=array)
+
     rate = np.histogram(array, bins=bins, weights=weights)[0]
     rate_err = np.sqrt(np.histogram(array, bins=bins, weights=weights**2)[0])
     plotting.plot_steps(bins, rate, yerr=rate_err, color=color,
@@ -39,12 +43,27 @@ def plot_rate(array, weights, bins, xlabel=None, color='C0',
     return ax
 
 
+def check_array_finite(array, check_array=None):
+    if check_array is None:
+        isfinite_mask = np.isfinite(array)
+    else:
+        isfinite_mask = np.isfinite(check_array)
+
+    return array[isfinite_mask]
+
+
 def plot_data_MC_ratio(sim_array, sim_weights, data_array, data_weights, bins,
                        xlabel=None, color='C0', alpha=0.8, label=None,
                        legend=False, ylim=None, ax=None):
 
     if ax is None:
         ax = plt.gca()
+
+    # Remove inf and nan values
+    sim_array = check_array_finite(sim_array)
+    sim_weights = check_array_finite(sim_weights, check_array=sim_array)
+    data_array = check_array_finite(data_array)
+    data_weights = check_array_finite(data_weights, check_array=data_array)
 
     sim_rate = np.histogram(sim_array, bins=bins, weights=sim_weights)[0]
     sim_rate_err = np.sqrt(np.histogram(sim_array, bins=bins, weights=sim_weights**2)[0])
@@ -116,9 +135,11 @@ def flux(E):
     IT73-IC79 data-MC comparison wiki page
     https://wiki.icecube.wisc.edu/index.php/IT73-IC79_Data-MC_Comparison
     '''
-    phi_0 = 3.5e-6
+    phi_0 = 3.6e-6
+    # phi_0 = 3.1e-6
     # phi_0 = 2.95e-6
     gamma_1 = -2.7
+    # gamma_2 = -3.0
     gamma_2 = -3.1
     eps = 100
     E = np.array(E) * 1e-6
@@ -129,6 +150,7 @@ def flux(E):
 def get_sim_weights(df_sim):
 
     simlist = np.unique(df_sim['sim'])
+    print('simlist = {}'.format(simlist))
     for i, sim in enumerate(simlist):
         gcd_file, sim_files = comp.simfunctions.get_level3_sim_files(sim)
         num_files = len(sim_files)
@@ -148,9 +170,15 @@ def get_sim_weights(df_sim):
 
 def save_data_MC_plots(config, june_july_only):
 
-    df_sim = comp.load_sim(config='IC86.2012', split=False, verbose=False)
+    df_sim = comp.load_sim(config='IC86.2012', test_size=0, verbose=False)
+    # energy_mask_sim = (df_sim['lap_log_energy'] > 6.0)
+    # energy_mask_sim = (df_sim['lap_log_energy'] > 6.4) & (df_sim['lap_log_energy'] < 8.0)
+    # df_sim = df_sim[energy_mask_sim]
+
     df_data = comp.load_data(config=config, verbose=False)
     df_data = df_data[np.isfinite(df_data['log_dEdX'])]
+    # energy_mask_data = (df_data['lap_log_energy'] > 6.4) & (df_data['lap_log_energy'] < 8.0)
+    # df_data = df_data[energy_mask_data]
 
     if june_july_only:
         print('Masking out all data events not in June or July')
@@ -173,31 +201,58 @@ def save_data_MC_plots(config, june_july_only):
     #     MC_comp_mask[composition] = df_sim['MC_comp_class'] == composition
 
     # S125 data-MC plot
-    log_s125_bins = np.linspace(-0.5, 3.5, 75)
+    log_s125_bins = np.linspace(-0.5, 3.5, 50)
     gs_s125 = plot_data_MC_comparison(df_sim, df_data, 'log_s125',
-                log_s125_bins, '$\log_{10}(\mathrm{S}_{125})$',
+                log_s125_bins, '$\mathrm{\log_{10}(S_{125})}$',
                 livetime, ylim_ratio=(0, 2))
     s125_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
                                 's125_{}.png'.format(config))
     plt.savefig(s125_outfile)
 
     # dE/dX data-MC plot
-    log_dEdX_bins = np.linspace(-2, 4, 75)
+    log_dEdX_bins = np.linspace(-2, 4, 50)
     gs_dEdX = plot_data_MC_comparison(df_sim, df_data, 'log_dEdX',
-                log_dEdX_bins, '$\cos(\\theta_{\mathrm{reco}})$',
+                log_dEdX_bins, '$\mathrm{\log_{10}(dE/dX)}$',
                 livetime, ylim_ratio=(0, 5.5))
     dEdX_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
                                 'dEdX_{}.png'.format(config))
     plt.savefig(dEdX_outfile)
 
     # cos(zenith) data-MC plot
-    cos_zenith_bins = np.linspace(0.8, 1.0, 75)
+    cos_zenith_bins = np.linspace(0.8, 1.0, 50)
     gs_zenith = plot_data_MC_comparison(df_sim, df_data, 'lap_cos_zenith',
-                cos_zenith_bins, '$\cos(\\theta_{\mathrm{reco}})$',
+                cos_zenith_bins, '$\mathrm{\cos(\\theta_{reco})}$',
                 livetime, ylim_ratio=(0, 3))
     zenith_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
                                 'zenith_{}.png'.format(config))
     plt.savefig(zenith_outfile)
+
+    # InIce median radius data-MC plot
+    inice_radius_bins = np.linspace(0, 200, 50)
+    gs_inice_radius = plot_data_MC_comparison(df_sim, df_data, 'median_inice_radius',
+                inice_radius_bins, '$\mathrm{\cos(\\theta_{reco})}$',
+                livetime, ylim_ratio=(0, 3))
+    inice_radius_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
+                                'median_inice_radius_{}.png'.format(config))
+    plt.savefig(inice_radius_outfile)
+
+    # log_d4r_peak_energy data-MC plot
+    log_d4r_peak_energy_bins = np.linspace(-0.5, 3.5, 50)
+    gs_d4R_peak_energy = plot_data_MC_comparison(df_sim, df_data, 'log_d4r_peak_energy',
+                log_d4r_peak_energy_bins, '$\mathrm{\log_{10}(E_{D4R}/GeV)}$',
+                livetime, ylim_ratio=(0, 5.5))
+    d4R_peak_energy_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
+                                'd4R_peak_energy_{}.png'.format(config))
+    plt.savefig(d4R_peak_energy_outfile)
+
+    # log_d4r_peak_sigma data-MC plot
+    log_d4r_peak_sigma_bins = np.linspace(-1, 3, 50)
+    gs_d4R_peak_sigma = plot_data_MC_comparison(df_sim, df_data, 'log_d4r_peak_sigma',
+                log_d4r_peak_sigma_bins, '$\mathrm{\log_{10}(E_{D4R}/GeV)}$',
+                livetime, ylim_ratio=(0, 5.5))
+    d4R_peak_sigma_outfile = os.path.join(comp.paths.figures_dir, 'data-MC-comparison',
+                                'd4R_peak_sigma_{}.png'.format(config))
+    plt.savefig(d4R_peak_sigma_outfile)
 
 
 
@@ -212,12 +267,6 @@ if __name__ == '__main__':
                    default=False, action='store_true',
                    help='Option to only use June and July data')
     args = parser.parse_args()
-
-    # pool = mp.Pool(processes=len(args.config))
-    # results = [pool.apply_async(save_data_MC_plots, args=(config, args.june_july_only))
-    #                 for config in args.config]
-    # output = [p.get() for p in results]
-
 
     config_bag = bag.from_sequence(args.config)
     save_plots = config_bag.map(save_data_MC_plots, args.june_july_only)

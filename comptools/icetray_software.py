@@ -184,6 +184,7 @@ class AddInIceMuonRadius(icetray.I3ConditionalModule):
             charges = np.asarray(charges)
 
             avg_dist = np.average(dists)
+            median_dist = np.median(dists)
             std_dists = np.std(dists)
             one_std_mask = (dists > avg_dist + std_dists) | (dists < avg_dist - std_dists)
             half_std_mask = (dists > avg_dist + 2*std_dists) | (dists < avg_dist - 2*std_dists)
@@ -193,6 +194,7 @@ class AddInIceMuonRadius(icetray.I3ConditionalModule):
 
             # Add variables to frame
             frame['avg_inice_radius'] = dataclasses.I3Double(avg_dist)
+            frame['median_inice_radius'] = dataclasses.I3Double(median_dist)
             frame['std_inice_radius'] = dataclasses.I3Double(std_dists)
             frame['frac_outside_one_std_inice_radius'] = dataclasses.I3Double(frac_outside_one_std)
             frame['frac_outside_two_std_inice_radius'] = dataclasses.I3Double(frac_outside_two_std)

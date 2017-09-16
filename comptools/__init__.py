@@ -11,8 +11,8 @@ from .dataframe_functions import load_data, load_sim, apply_quality_cuts, load_d
 from .analysis import *
 from . import anisotropy
 from .livetime import get_livetime_file, get_detector_livetime
-# from .PyUnfold import *
-# from .RootReader import get1d
 from . import icetray_software
+# from .PyUnfold import *
+from .RootReader import get1d
 
 paths = get_paths()

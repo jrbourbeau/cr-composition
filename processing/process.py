@@ -228,16 +228,16 @@ if __name__ == "__main__":
     log = comptools.paths.condor_scratch_dir + '/log'
     submit = comptools.paths.condor_scratch_dir + '/submit'
 
-    # Create Dagman instance
+    # Create Dagman to manage processing workflow
     name = 'processing_{}_{}'.format(args.type, args.config)
     dagman = pycondor.Dagman(name, submit=submit, verbose=1)
 
     # Define path to executables
-    save_hdf5_ex = os.path.join(comptools.paths.project_home, 'processing',
+    save_hdf5_ex = os.path.join(comptools.paths.project_root, 'processing',
                                 'save_hdf5.py')
-    merge_hdf5_ex = os.path.join(comptools.paths.project_home, 'processing',
+    merge_hdf5_ex = os.path.join(comptools.paths.project_root, 'processing',
                                  'merge_hdf5.py')
-    save_df_ex = os.path.join(comptools.paths.project_home, 'processing',
+    save_df_ex = os.path.join(comptools.paths.project_root, 'processing',
                               'save_dataframe.py')
 
     if args.type == 'sim':
@@ -248,7 +248,7 @@ if __name__ == "__main__":
                                     save_df_ex, **vars(args))
 
     # Add dataframe merger job
-    merge_df_ex = os.path.join(comptools.paths.project_home, 'processing',
+    merge_df_ex = os.path.join(comptools.paths.project_root, 'processing',
                                'merge_dataframe.py')
     merge_df_name = 'merge_df_{}'.format(args.type)
     if args.test:

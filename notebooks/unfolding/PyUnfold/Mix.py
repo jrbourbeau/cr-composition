@@ -21,9 +21,10 @@ except ImportError as e:
 
 
 class Mixer:
-    'DAgostini Bayesian Mixer Class'
-    def __init__(self, name, ErrorType="", MCTables=[], EffectsDist=[], **kwargs):
-        
+    '''DAgostini Bayesian Mixer Class'''
+    def __init__(self, name, ErrorType="", MCTables=[], effects=None,
+                 effects_err=None, **kwargs):
+
         '''From Initialization Inputs'''
         self.name = name
         # Normalized P(E|C)
@@ -31,7 +32,8 @@ class Mixer:
         # Cause Efficiencies
         self.cEff = MCTables.GetEff()
         # Observed Effects Distribution
-        self.NEobs = EffectsDist.getData()
+        self.NEobs = effects
+        # self.NEobs = EffectsDist.getData()
         # Total Number of Effects
         self.nobs = np.sum(self.NEobs)
         # Error Calculation Type
@@ -50,9 +52,9 @@ class Mixer:
         self.Mij = np.zeros(dims)
 
         '''Covariance Matrix'''
-        self.Cov = CovMatrix(ErrorType, MCTables, EffectsDist)
-    
-    
+        self.Cov = CovMatrix(ErrorType, MCTables, effects, effects_err)
+
+
     ''' Test for Equal Length Arrays '''
     def CheckDims(self, p_c):
         if ( len(self.NEobs) != self.ebins ):
@@ -77,7 +79,7 @@ class Mixer:
             sys.exit(0)
         else:
             self.DimFlag = True
-        
+
 
     '''Useful Variables for Calculations'''
 
@@ -85,33 +87,33 @@ class Mixer:
     def getCov(self):
         cvm = self.Cov.getCov()
         return cvm
-    
+
     # Get Statistical Errors
     def getStatErr(self):
         cvm = self.Cov.getVc0()
         err = np.sqrt(cvm.diagonal())
         return err
 
-    # Get MC (Systematic) Errors 
+    # Get MC (Systematic) Errors
     def getMCErr(self):
         cvm = self.Cov.getVc1()
         err = np.sqrt(cvm.diagonal())
         return err
-    
+
     '''Smear Calculation - the Bayesian Mixer!'''
     # Only needs input prior, n_c, to unfold
     def Smear(self, n_c):
         # Test Input Array Sizes
         if (self.DimFlag == False):
             self.CheckDims(n_c)
-        
+
         ebins = self.ebins
         cbins = self.cbins
 
         # Bayesian Normalization Term (denominator)
         f_norm = np.dot(self.pec,n_c)
         f_inv = safe_inverse(f_norm)
-    
+
         # Unfolding (Mij) Matrix at current step
         Mij = np.zeros(self.Mij.shape)
 
@@ -119,12 +121,12 @@ class Mixer:
         for ti in xrange(0,cbins):
             for ej in xrange(0,ebins):
                 Mij[ej,ti] = self.pec[ej,ti]*n_c_eff[ti]*f_inv[ej]
-    
+
         # Estimate cause distribution via Mij
         n_c_update = np.dot(self.NEobs,Mij)
 
         # The status quo
         self.Mij = Mij.copy()
         self.Cov.setCurrent_State(self.Mij,f_norm,n_c_update,n_c)
-       
+
         return n_c_update

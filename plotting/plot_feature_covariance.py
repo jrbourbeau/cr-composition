@@ -29,7 +29,8 @@ if __name__ == '__main__':
     # Generate a mask for the upper triangle
     mask = np.zeros_like(corr, dtype=np.bool)
     mask[np.triu_indices_from(mask)] = True
-    mask[np.diag_indices_from(mask)] = False
+    if len(feature_list) <= 3:
+        mask[np.diag_indices_from(mask)] = False
 
     fig, ax = plt.subplots(figsize=(8, 8))
     sns.heatmap(corr, mask=mask, cmap='RdBu_r', center=0, square=True,

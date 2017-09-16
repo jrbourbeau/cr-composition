@@ -5,12 +5,35 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, Gradien
 from sklearn.pipeline import make_pipeline
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.externals import joblib
-
+from sklearn.decomposition import PCA
+from sklearn.base import TransformerMixin
+from mlxtend.preprocessing import standardize
 from xgboost import XGBClassifier
 
 from . import export
 from ..simfunctions import get_sim_configs
 from ..base import get_paths
+
+
+class ColumnSelector(TransformerMixin):
+    '''Select columns from X
+
+    Parameters
+    ----------
+    columns : array-like
+        Names of columns to select from X.
+
+
+    '''
+    def __init__(self, columns):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        return X[self.columns]
+
 
 # Use get_pipeline to ensure that same hyperparameters are used each time a
 # classifier is needed, and that the proper scaling is always done before
@@ -33,8 +56,8 @@ def get_pipeline(classifier_name='BDT'):
     elif classifier_name in ['GBDT', 'BDT']:
         classifier = GradientBoostingClassifier(loss='exponential', max_depth=3,
             n_estimators=100, random_state=2)
-        # classifier = GradientBoostingClassifier(loss='exponential', max_depth=5,
-        #     n_estimators=300, random_state=2)
+        # classifier = GradientBoostingClassifier(loss='deviance', max_depth=3,
+        #     n_estimators=500, random_state=2)
     else:
         raise ValueError('{} is not a valid classifier name...'.format(classifier_name))
 

@@ -9,14 +9,12 @@ def get_training_features(feature_list=None):
     # Features used in the 3-year analysis
     if feature_list is None:
         feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'log_d4r_peak_energy', 'log_d4r_peak_sigma']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'median_inice_radius', 'd4r_peak_energy']
         # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'FractionContainment_Laputop_InIce']
         # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
-    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard']
-    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard', 'num_millipede_particles']
-    # feature_list = ['lap_cos_zenith', 'log_s125', 'eloss_1500_standard',
-    #                 'n_he_stoch_standard', 'n_he_stoch_standard']
 
     label_dict = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
                   'lap_log_energy': '$\log_{10}(E_{\mathrm{Lap}}/\mathrm{GeV})$',
@@ -58,7 +56,7 @@ def get_training_features(feature_list=None):
                   'n_he_stoch_standard': 'Num HE stochastics (standard)',
                   'n_he_stoch_strong': 'Num HE stochastics (strong)',
                   'eloss_1500_standard': 'dE/dX (standard)',
-                  'log_dEdX': '$\log_{10}$(dE/dX)',
+                  'log_dEdX': '$\mathrm{\log_{10}(dE/dX)}$',
                   'eloss_1500_strong': 'dE/dX (strong)',
                   'num_millipede_particles': '$N_{\mathrm{mil}}$',
                   'avg_inice_radius': '$\mathrm{R_{\mu \ bundle}}$',
@@ -75,7 +73,11 @@ def get_training_features(feature_list=None):
                   'IceTop_charge_175m': 'Signal greater 175m',
                   'log_IceTop_charge_175m': '$\log_{10}(Q_{IT, 175})$',
                   'IT_charge_ratio': 'IT charge ratio',
-                  'refit_beta': '$\mathrm{\\beta_{refit}}$'
+                  'refit_beta': '$\mathrm{\\beta_{refit}}$',
+                  'log_d4r_peak_energy': '$\mathrm{\log_{10}(E_{D4R})}$',
+                  'log_d4r_peak_sigma': '$\mathrm{\log_{10}(\sigma E_{D4R})}$',
+                  'd4r_N': 'D4R N',
+                  'median_inice_radius': 'Median InIce'
                   }
 
     feature_labels = np.array([label_dict[feature]

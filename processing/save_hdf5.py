@@ -5,7 +5,8 @@ import argparse
 import os
 import socket
 
-from icecube import dataio, tableio, astro, toprec, dataclasses, icetray, phys_services, stochastics, millipede
+from icecube import (dataio, tableio, astro, toprec, dataclasses, icetray,
+                     phys_services, stochastics, millipede, ddddr)
 from icecube.frame_object_diff.segments import uncompress
 from I3Tray import *
 from icecube.tableio import I3TableWriter
@@ -14,6 +15,7 @@ from icecube.icetop_Level3_scripts.functions import count_stations
 
 import comptools
 import comptools.icetray_software as icetray_software
+
 
 def get_good_file_list(files):
     good_file_list = []
@@ -34,7 +36,23 @@ def get_good_file_list(files):
         del test_tray
     return good_file_list
 
+
 def check_keys(frame, *keys):
+    '''Function to check if all keys are in frame
+
+    Parameters
+    ----------
+    frame : I3Frame
+        I3Frame
+    keys:
+        Series of keys to look for in frame
+
+    Returns
+    -------
+    boolean
+        Whether or not all the keys in keys are in frame
+
+    '''
     return all([key in frame for key in keys])
 
 
@@ -71,10 +89,11 @@ if __name__ == "__main__":
              'StationDensity']
     keys += ['Laputop', 'LaputopParams']
     keys += ['Stoch_Reco', 'Stoch_Reco2', 'MillipedeFitParams']
+    keys += ['I3MuonEnergyLaputopParams']
 
     # Keys that are added to the frame
     keys += ['NStations']
-    keys += ['avg_inice_radius', 'std_inice_radius',
+    keys += ['avg_inice_radius', 'std_inice_radius', 'median_inice_radius',
              'frac_outside_one_std_inice_radius',
              'frac_outside_two_std_inice_radius']
     # for i in ['1_60']:
@@ -91,7 +110,8 @@ if __name__ == "__main__":
     keys += ['angle_MCPrimary_Laputop']
     # keys += ['tank_charge_dist_Laputop']
     # keys += ['IceTop_charge_175m']
-    keys += ['refit_beta', 'refit_log_s125']
+
+    # keys += ['refit_beta', 'refit_log_s125']
 
     t0 = time.time()
 
@@ -101,6 +121,7 @@ if __name__ == "__main__":
     good_file_list = get_good_file_list(args.files)
 
     tray = I3Tray()
+    # If not running on cobalt (i.e. running a cluster job), add a file stager
     if 'cobalt' not in socket.gethostname():
         tray.context['I3FileStager'] = dataio.get_stagers(
             staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
@@ -112,6 +133,11 @@ if __name__ == "__main__":
     tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
     # Filter out non-coincident P frames
     tray.Add(lambda frame: inice_pulses in frame)
+
+    # # If processing data, cut out event with log10(energy) < 6.0 GeV
+    # if args.type == 'data':
+    #     tray.Add(lambda frame: frame['LaputopParams'].energy() >= 10**6.0,
+    #              If=lambda frame: 'LaputopParams' in frame)
 
     tray.Add(icetray_software.add_IceTop_quality_cuts,
              If=lambda frame: 'IT73AnalysisIceTopQualityCuts' in frame)
@@ -154,8 +180,8 @@ if __name__ == "__main__":
     # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
     tray.Add(icetray_software.add_IceTop_tankXYcharge, pulses=pulses,
              If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-    tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
-             If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
+    # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
+    #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
     #====================================================================
     # Finish

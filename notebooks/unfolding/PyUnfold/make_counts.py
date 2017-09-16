@@ -7,30 +7,19 @@ from ROOT import TH1F, TH2F, TNamed
 from ROOT import gROOT, gSystem
 
 import itertools
-import argparse
 import os
 import re
 
 
 if __name__ == "__main__":
 
-    # p = argparse.ArgumentParser(description='Runs findblobs.py on cluster en masse')
-    # p.add_argument('--fluxmodel', dest='fluxmodel',
-    #                default='h4a',
-    #                choices=['h4a', 'h3a', 'Hoerandel5'],
-    #                help='Flux model to use for prior distribution')
-    #
-    # args = p.parse_args()
-    # for fluxmodel in ['h4a', 'h3a', 'Hoerandel5']:
-        # with open('/home/jbourbeau/cr-composition/analysis/pyunfold_dict.json') as data_file:
-        #     data = json.load(data_file)
-        #
-
-    formatted_df = pd.read_csv('../formatted-dataframe.csv')
-    counts = formatted_df['counts'].values
+    formatted_df_outfile = os.path.join('/data/user/jbourbeau/composition/unfolding',
+                                        'unfolding-dataframe-PyUnfold-formatted.csv')
+    df_flux = pd.read_csv(formatted_df_outfile, index_col='log_energy_bin_idx')
+    counts = df_flux['counts'].values
 
     ebins = len(counts)+1
-    earray = np.arange(ebins,dtype=float)
+    earray = np.arange(ebins, dtype=float)
     print('earray = {}'.format(earray))
     ebins -= 1
 
@@ -52,16 +41,16 @@ if __name__ == "__main__":
 
     # Prepare Combined Weighted Histograms - To be Normalized by Model After Filling
     # Isotropic Weights of Causes - For Calculating Combined Species Efficiency
-    Eff = TH1F('Compositions','Non-Normed Combined Efficiency',ebins,earray)
+    Eff = TH1F('Compositions', 'Non-Normed Combined Efficiency', ebins, earray)
     Eff.GetXaxis().SetTitle('Effects')
     Eff.GetYaxis().SetTitle('Counts')
     Eff.SetStats(0)
     Eff.Sumw2()
 
     for ci in xrange(0,ebins):
-        print('counts[ci] = {}'.format(counts[ci]))
-        Eff.SetBinContent(ci+1,counts[ci])
-        Eff.SetBinError(ci+1,np.sqrt(counts[ci]))
+        print('counts[{}] = {}'.format(ci, counts[ci]))
+        Eff.SetBinContent(ci+1, counts[ci])
+        Eff.SetBinError(ci+1, np.sqrt(counts[ci]))
 
     # Write the weighted histograms to file
     Eff.Write()

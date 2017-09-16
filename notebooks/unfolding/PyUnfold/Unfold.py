@@ -27,46 +27,47 @@ try:
     import RootReader as rr
 
 except ImportError as e:
-    print e
-    raise ImportError
-
-# Global program options
-global args
-args = None
+    raise ImportError(e)
 
 
 # Allow for function functionality
-def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, fluxmodel='h3a', **kwargs):
+def Unfold(config_name="", return_dists=False, EffDist=None, effects_err=None,
+           priors=None, plot_local=False, df_outfile=None, **kwargs):
 
-    if (not config_name): raise Exception, "Need a config file!"
+    if not config_name:
+        raise ValueError("Input config file not specified...")
 
     #### Get the Configuration Parameters from the Config File ####
     config = Utils.ConfigFM(config_name)
 
     # Input Data ROOT File Name
     dataHeader = "data"
-    InputFile = config.get(dataHeader,"inputfile",default="",cast=str)
-    NE_meas_name = config.get(dataHeader,"ne_meas",default="",cast=str)
-    isMC = config.get_boolean(dataHeader,"ismc",default=False)
+    InputFile = config.get(dataHeader, "inputfile", default="", cast=str)
+    NE_meas_name = config.get(dataHeader, "ne_meas", default="", cast=str)
+    isMC = config.get_boolean(dataHeader, "ismc", default=False)
 
     # Output ROOT File Name
     outHeader = "output"
-    WriteOutput = config.get_boolean(outHeader,"write_output",default=False)
-    OutFile = config.get(outHeader,"outfile",default="",cast=str)
-    PlotDir = config.get(outHeader,"plotdir",default=os.path.dirname(OutFile),cast=str)
-    NC_meas = config.get(outHeader,"nc_meas",default="",cast=str)
+    WriteOutput = config.get_boolean(outHeader, "write_output", default=False)
+    OutFile = config.get(outHeader, "outfile", default="", cast=str)
+    PlotDir = config.get(outHeader, "plotdir", default=os.path.dirname(OutFile), cast=str)
+    NC_meas = config.get(outHeader, "nc_meas", default="", cast=str)
 
     # Analysis Bin
     binHeader = "analysisbins"
-    binnumberStr = config.get(binHeader,"bin",default=0,cast=str)
-    stackFlag = config.get_boolean(binHeader,"stack",default=False)
+    binnumberStr = config.get(binHeader, "bin", default=0, cast=str)
+    stackFlag = config.get_boolean(binHeader, "stack", default=False)
     binList = ["bin"+val.replace(" ","") for val in binnumberStr.split(",")]
     nStack = len(binList)
 
     binnumber = 0
     if stackFlag is False:
-        try: binnumber = np.int(binnumberStr)
-        except: raise ValueError("\n\n*** You have requested more than 1 analysis bin without stacking. \n\tPlease fix your mistake. Exiting... ***\n")
+        try:
+            binnumber = np.int(binnumberStr)
+        except:
+            raise ValueError('\n\n*** You have requested more than 1 analysis'
+                'bin without stacking. \n\tPlease fix your mistake.'
+                'Exiting... ***\n')
         unfbinname = "bin%i"%binnumber
     else:
         if nStack<=1:
@@ -96,13 +97,13 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
             raise ValueError(mess+"\n\tPlease correct your mistake. Exiting... ***\n")
 
     # Mixer Name and Error Propagation Type
-    '''Options: ACM, DCM'''
+    # Options: ACM, DCM
     mixHeader = "mixer"
     MixName = config.get(mixHeader,"mix_name",default="",cast=str)
     CovError = config.get(mixHeader,"error_type",default="",cast=str)
 
     # Test Statistic - Stat Function & Options
-    '''Options: chi2, rmd, pf, ks'''
+    # Options: chi2, rmd, pf, ks
     tsHeader = "teststatistic"
     tsname = config.get(tsHeader,"ts_name",default="rmd",cast=str)
     tsTol = config.get(tsHeader,"ts_tolerance",cast=float)
@@ -138,7 +139,9 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
 
     #### Setup the Observed and MC Data Arrays ####
     # Load MC Stats (NCmc), Cause Efficiency (Eff) and Migration Matrix ( P(E|C) )
-    MCStats = LoadStats.MCTables(StatsFile,BinName=binList,RespMatrixName=MM_hist_name,EffName=Eff_hist_name,Stack=stackFlag)
+    MCStats = LoadStats.MCTables(StatsFile, BinName=binList,
+                                 RespMatrixName=MM_hist_name,
+                                 EffName=Eff_hist_name, Stack=stackFlag)
     Caxis = []
     Cedges = []
     modelList = []
@@ -154,25 +157,28 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
     Cxlab, Cylab, Ctitle = rr.get_labels(StatsFile,Eff_hist_name,binList[0],verbose=False)
 
     # Load the Observed Data (n_eff), define total observed events (n_obs)
-    #  Get from ROOT input file if requested
+    # Get from ROOT input file if requested
     if (EffDist is None):
         Exlab, Eylab, Etitle = rr.get_labels(InputFile,NE_meas_name,unfbinname,verbose=False)
         Eaxis, Eedges, n_eff, n_eff_err = rr.get1d(InputFile,NE_meas_name,unfbinname)
-        EffDist = Utils.DataDist(Etitle,data=n_eff,error=n_eff_err,axis=Eaxis,edges=Eedges,xlabel=Exlab,ylabel=Eylab,units="")
+        EffDist = Utils.DataDist(Etitle, data=n_eff, error=n_eff_err,
+                                 axis=Eaxis, edges=Eedges, xlabel=Exlab,
+                                 ylabel=Eylab, units="")
     #  Otherwise get from input EffDist object
-    Exlab = EffDist.xlab
-    Eylab = EffDist.ylab
-    Etitle = EffDist.name
-    n_eff = EffDist.getData()
-    n_eff_err = EffDist.getError()
+    # Exlab = EffDist.xlab
+    # Eylab = EffDist.ylab
+    # Etitle = EffDist.name
+    n_eff = EffDist
+    # n_eff = formatted_df['counts']
+    # n_eff = EffDist.getData()
+    n_eff_err = effects_err
+    # n_eff_err = EffDist.getError()
     n_obs = np.sum(n_eff)
 
     # Initial best guess (0th prior) expected prob dist (Jeffrey's Prior)
     # n_c = Utils.UserPrior(priorList, Caxis, n_obs)
-    formatted_df = pd.read_csv('../formatted-dataframe.csv')
-    priors = formatted_df['{}_priors'.format(fluxmodel)].values
-    print('priors = {}'.format(priors))
     n_c = np.array(priors)
+    np.testing.assert_allclose(n_c.sum(), 1)
 
     print "\n\n====================================================\n"
     print "Total number of observed events:\t%e"%n_obs
@@ -193,24 +199,29 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
     tsFunc = [tsMeth(tsname,tol=tsTol,Xaxis=Caxis[i],TestRange=tsRange,verbose=tsVerbFlag) for i in range(nStack)]
 
     # Prepare Mixer
-    Mixer = Mix.Mixer(MixName,ErrorType=CovError,MCTables=MCStats,EffectsDist=EffDist)
+    Mixer = Mix.Mixer(MixName, ErrorType=CovError, MCTables=MCStats,
+                      effects=n_eff, effects_err=n_eff_err)
 
     # Unfolder!!!
     if stackFlag:
         UnfolderName += "_"+"".join(binList)
-    Unfolder = IterUnfold.IterativeUnfolder(UnfolderName,maxIter=UnfMaxIter,smoothIter=UnfSmoothIter,n_c=n_c,\
-                                            MixFunc=Mixer,RegFunc=Rglzr,TSFunc=tsFunc,Stack=stackFlag,verbose=UnfVerbFlag)
+    Unfolder = IterUnfold.IterativeUnfolder(
+                    UnfolderName, maxIter=UnfMaxIter, smoothIter=UnfSmoothIter,
+                    n_c=n_c, MixFunc=Mixer, RegFunc=Rglzr, TSFunc=tsFunc,
+                    Stack=stackFlag, verbose=UnfVerbFlag)
 
     # Iterate the Unfolder
-    Unfolder.IUnfold()
+    Unfolder.IUnfold(df_outfile=df_outfile)
 
     if (WriteOutput):
         # Output Subdirectory Name
-        subDirName = "%s_%s_%s"%(UnfolderName,tsname,CovError)
+        subDirName = "%s_%s_%s"%(UnfolderName, tsname, CovError)
 
         # Write the Results to ROOT File
-        Unfolder.SetAxesLabels(Exlab,Eylab,Cxlab,Cylab)
-        Unfolder.WriteResults(OutFileName=OutFile,NCName=NC_meas,NEName=NE_meas_name,Eaxis=Eedges,BinList=binList,subdirName=subDirName)
+        # Unfolder.SetAxesLabels(Exlab,Eylab,Cxlab,Cylab)
+        Unfolder.WriteResults(OutFileName=OutFile, NCName=NC_meas,
+                              NEName=NE_meas_name, Eaxis=Eedges,
+                              BinList=binList, subdirName=subDirName)
 
         # If MC, Write Thrown Cause Distribution
         if (isMC):
@@ -284,7 +295,9 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
     if (return_dists):
         n_c = Unfolder.n_c_final
         n_c_err = np.sqrt(np.diagonal(Unfolder.covM))
-        CauseDist = Utils.DataDist(Ctitle,data=n_c,error=n_c_err,axis=Caxis,edges=Cedges,xlabel=Cxlab,ylabel=Cylab,units="GeV")
+        CauseDist = Utils.DataDist(Ctitle, data=n_c, error=n_c_err, axis=Caxis,
+                                   edges=Cedges, xlabel=Cxlab, ylabel=Cylab,
+                                   units="GeV")
         CauseDist.setStatErr(Unfolder.statErr)
         CauseDist.setSysErr(Unfolder.sysErr)
         return CauseDist
@@ -293,17 +306,25 @@ def Unfold(config_name="",return_dists=False,EffDist=None,plot_local=False, flux
 # Allow for standalone execution
 if __name__ == '__main__':
     p = argparse.ArgumentParser(description="Script to Run an Unfolding")
-    p.add_argument("-c", "--config", dest="config_name", required=True, help="Configuration file")
-    p.add_argument("-p", "--plot", dest="plot", action="store_true", help="Friendly plotter")
+    p.add_argument("-c", "--config", dest="config_name",
+                   help="Configuration file")
+    p.add_argument("-p", "--plot", dest="plot", default=False,
+                   action="store_true", help="Friendly plotter")
     p.add_argument("--fluxmodel", dest="fluxmodel", default='h3a')
 
-    try:
-        args = p.parse_args()
-    except:
-        p.print_help()
-        sys.exit(0)
+    args = p.parse_args()
 
-    if (not args.config_name): raise Exception, "Need a config file!"
+    if not args.config_name:
+        raise ValueError("Input config file not specified...")
 
-    Unfold(config_name=args.config_name,return_dists=False,EffDist=None,plot_local=args.plot,
-        fluxmodel=args.fluxmodel)
+    # Load formatted DataFrame
+    formatted_df_outfile = os.path.join('/data/user/jbourbeau/composition',
+                    'unfolding', 'unfolding-dataframe-PyUnfold-formatted.csv')
+    formatted_df = pd.read_csv(formatted_df_outfile, index_col='log_energy_bin_idx')
+
+    effects = formatted_df['counts'].values
+    effects_err = formatted_df['counts_err'].values
+    priors = formatted_df['{}_priors'.format(args.fluxmodel)].values
+
+    Unfold(config_name=args.config_name, return_dists=False, EffDist=effects,
+           effects_err=effects_err, priors=priors, plot_local=args.plot)

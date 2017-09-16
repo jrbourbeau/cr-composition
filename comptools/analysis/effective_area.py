@@ -110,14 +110,18 @@ def calculate_effective_area_vs_energy(df_sim, energy_bins, verbose=True):
 
     energy = df_sim['MC_energy'].values
     ptype = df_sim['MC_type'].values
+    # num_ptypes = 2
     num_ptypes = np.unique(ptype).size
+    print('num_ptypes = {}'.format(num_ptypes))
+    print('simlist = {}'.format(simlist))
+    print('complist = {}'.format(map(sim_to_comp, simlist)))
+    print('\n')
     cos_theta = np.cos(df_sim['MC_zenith']).values
     areas = 1.0/generator(energy, ptype, cos_theta)
     # binwidth = 2*np.pi*(1-np.cos(40*(np.pi/180)))*np.diff(energy_bins)
     binwidth = 2*np.pi*(1-np.cos(40*(np.pi/180)))*np.diff(energy_bins)*num_ptypes
     eff_area = np.histogram(energy, weights=areas, bins=energy_bins)[0]/binwidth
-    eff_area_error = np.sqrt(np.histogram(energy,
-            bins=energy_bins, weights=areas**2)[0])/binwidth
+    eff_area_error = np.sqrt(np.histogram(energy, bins=energy_bins, weights=areas**2)[0])/binwidth
 
     energy_midpoints = (energy_bins[1:] + energy_bins[:-1]) / 2
 

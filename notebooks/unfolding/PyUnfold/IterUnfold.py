@@ -11,6 +11,7 @@ __version__ = "$Id"
 
 try:
     import numpy as np
+    import pandas as pd
     import sys
     import os
 
@@ -32,8 +33,10 @@ except ImportError as e:
     raise ImportError
 
 class IterativeUnfolder():
-    'Common base class for Unfolder'
-    def __init__(self,name,maxIter=100,smoothIter=False,n_c=[],MixFunc=[],RegFunc=[],TSFunc=[],Stack=False,verbose=False,**kwargs):
+    '''Common base class for Unfolder
+    '''
+    def __init__(self, name, maxIter=100, smoothIter=False, n_c=[], MixFunc=[],
+                 RegFunc=[], TSFunc=[], Stack=False, verbose=False, **kwargs):
         self.name = name
         self.maxIter = maxIter
         self.smoothIter = smoothIter
@@ -85,10 +88,13 @@ class IterativeUnfolder():
 
     def GetIParams(self,ind):
         return self.ParamOut[ind]
+
     def GetINMeasured(self):
         return self.N_measured_out
+
     def GetITS(self,ind):
         return self.TS_out[ind]
+
     def GetINC(self,ind):
         return self.n_c_iters[ind], self.n_c_labels
 
@@ -105,7 +111,12 @@ class IterativeUnfolder():
             passFlag *= self.tsFunc[iS].PassTol()
         return passFlag
 
-    def IUnfold(self):
+    def IUnfold(self, df_outfile=None):
+
+        iter_counts_dict = {}
+        iter_stat_err_dict = {}
+        iter_sys_err_dict = {}
+
         print("\n====Starting Iterative Unfolding! Exciting!!!===\n")
         print("Iter: %i"%self.counter)
         # First Mixing
@@ -130,6 +141,11 @@ class IterativeUnfolder():
 
             # Updated unfolded distribution
             n_c = n_c_update.copy()
+
+            iter_counts_dict[self.counter] = n_c
+            iter_stat_err_dict[self.counter] = self.Mix.getStatErr()
+            iter_sys_err_dict[self.counter] = self.Mix.getMCErr()
+
             # For test statistic purposes.
             # Don't want to compare reg_fit to n_c_update
             n_c_prev = n_c_update.copy()
@@ -170,9 +186,13 @@ class IterativeUnfolder():
                 self.TS_out[iS].append(TS_cur)
             prev_fit = reg_fit.copy()
 
-
         # Final Iteration
         n_c_final = n_c_update.copy()
+
+        iter_counts_dict[self.counter] = n_c_final
+        iter_stat_err_dict[self.counter] = self.Mix.getStatErr()
+        iter_sys_err_dict[self.counter] = self.Mix.getMCErr()
+
         self.n_c_final = n_c_final.copy()
         # Calculate error estimates
         self.covM = self.Mix.getCov()
@@ -192,6 +212,13 @@ class IterativeUnfolder():
 
         ## Plot results of iterations
         self.n_c_labels.append("Final")
+
+        # Save unfolded distributions to disk
+        if df_outfile is not None:
+            with pd.HDFStore(df_outfile) as store:
+                store['counts'] = pd.DataFrame.from_dict(iter_counts_dict)
+                store['sys_err'] = pd.DataFrame.from_dict(iter_sys_err_dict)
+                store['stat_err'] = pd.DataFrame.from_dict(iter_stat_err_dict)
 
     # Set the Labels for ROOT Plots
     def SetAxesLabels(self,Exlab,Eylab,Cxlab,Cylab):

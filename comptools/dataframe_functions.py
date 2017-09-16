@@ -51,7 +51,7 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
     # cut_dict['min_energy_lap'] = df['lap_energy'] > 10**5.0
     cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
-    cut_dict['max_energy_lap'] = df['lap_energy'] < 10**9.2
+    cut_dict['max_energy_lap'] = df['lap_energy'] < 10**8.0
     # cut_dict['IceTop_charge_175m'] = np.logical_not(df['IceTop_charge_175m'].isnull())
     # cut_dict['IceTop_charge'] = np.logical_not(df['IceTop_charge'].isnull()) & cut_dict['IceTop_charge_175m']
 
@@ -92,9 +92,11 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
         selection_mask = np.array([True] * len(df))
         if dataprocessing:
             standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
+                # 'num_hits_1_60', 'max_qfrac_1_60']
                 'reco_energy_range', 'num_hits_1_60', 'max_qfrac_1_60']
         else:
             standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
+                # 'passed_InIceQualityCuts', 'num_hits_1_60']
                 'passed_InIceQualityCuts', 'num_hits_1_60', 'reco_energy_range']
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]
@@ -133,6 +135,9 @@ def add_convenience_variables(df):
     for dist in ['50', '80', '125', '180', '250', '500']:
         df['log_s'+dist] = np.log10(df['lap_s'+dist])
     df['log_dEdX'] = np.log10(df['eloss_1500_standard'])
+    df['log_d4r_peak_energy'] = np.log10(df['d4r_peak_energy'])
+    df['log_d4r_peak_sigma'] = np.log10(df['d4r_peak_sigma'])
+
     # df['log_IceTop_charge'] = np.log10(df['IceTop_charge'])
     # df['log_IceTop_charge_175m'] = np.log10(df['IceTop_charge_175m'])
     # df['IT_charge_ratio'] = df['IceTop_charge_175m']/df['IceTop_charge']
@@ -152,7 +157,8 @@ def add_convenience_variables(df):
 
 
 def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
-                   comp_key='MC_comp_class', columns=None, verbose=False):
+                   comp_key='MC_comp_class', columns=None, verbose=False,
+                   chunksize=100000):
     '''Loads pandas DataFrame object with appropreiate information
 
     Parameters
@@ -204,26 +210,16 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
         df_file = os.path.join(paths.comp_data_dir,
             '{}_{}/{}_dataframe.hdf5'.format(config, datatype, datatype))
 
-    df_list = []
     with pd.HDFStore(df_file, mode='r') as store:
-        for df_chunk in store.select('dataframe', chunksize=100000):
+        df = store.select('dataframe')
 
-            df_chunk = apply_quality_cuts(df_chunk, datatype, verbose=verbose)
-            df_chunk = add_convenience_variables(df_chunk)
+    df = (df.pipe(apply_quality_cuts, datatype, verbose=verbose)
+            .pipe(add_convenience_variables)
+         )
 
-            if datatype == 'sim':
-                df_chunk['target'] = df_chunk[comp_key].apply(comp_to_label)
-                df_chunk['is_thinned'] = df_chunk['sim'].apply(sim_to_thinned)
-
-            if columns is not None:
-                if datatype == 'sim':
-                    df_chunk = df_chunk[columns + ['target']]
-                else:
-                    df_chunk = df_chunk[columns]
-
-            df_list.append(df_chunk)
-
-    df = pd.concat(df_list, ignore_index=True)
+    if datatype == 'sim':
+        df['target'] = df[comp_key].apply(comp_to_label)
+        df['is_thinned'] = df['sim'].apply(sim_to_thinned)
 
     # If specified, split into training and testing DataFrames
     if test_size:
@@ -264,7 +260,7 @@ def dataframe_to_array(df, columns, drop_null=True):
     df = df.loc[:, columns]
     # If specified, drop rows that contain a null value
     if drop_null:
-        df.dropna(axis=0, how='any', inplace=True)
+        df = df.replace([np.inf, -np.inf], np.nan).dropna(axis=0, how='any')
     array = df.values
 
     return array

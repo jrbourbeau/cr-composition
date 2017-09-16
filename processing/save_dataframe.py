@@ -51,8 +51,8 @@ if __name__ == "__main__":
                       'passed_IceTopQualityCuts',
                       'passed_InIceQualityCuts',
                     #   'IceTop_charge_175m',
-                      'refit_beta', 'refit_log_s125',
-                      'avg_inice_radius', 'std_inice_radius',
+                    #   'refit_beta', 'refit_log_s125',
+                      'avg_inice_radius', 'std_inice_radius', 'median_inice_radius',
                       'frac_outside_one_std_inice_radius',
                       'frac_outside_two_std_inice_radius']
 
@@ -130,6 +130,12 @@ if __name__ == "__main__":
         series_dict['lap_chi2'] = laputop_params['chi2'] / laputop_params['ndf']
         series_dict['lap_fitstatus_ok'] = input_store['lap_fitstatus_ok']['value'].astype(bool)
 
+        # Get DDDDR information
+        d4r_params = input_store['I3MuonEnergyLaputopParams']
+        d4r_keys = ['N', 'b', 'gamma', 'peak_energy', 'peak_sigma', 'exists', 'mean', 'median']
+        for key in d4r_keys:
+            series_dict['d4r_{}'.format(key)] = d4r_params[key]
+
         # Get number of high energy stochastics
         # series_dict['n_he_stoch_standard'] = input_store[
         #     'Stoch_Reco']['n_he_stoch']
@@ -153,7 +159,4 @@ if __name__ == "__main__":
             dataframe = comptools.apply_quality_cuts(dataframe, datatype='data',
                                                      dataprocessing=True)
         # Add dataframe to output_store
-        output_store.put('dataframe', dataframe, format='table', data_columns=True)
-
-    # # Also save a csv file
-    # dataframe.to_csv(args.output, chunksize=10000)
+        output_store.put('dataframe', dataframe, format='fixed')
