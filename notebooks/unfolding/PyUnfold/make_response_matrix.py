@@ -84,25 +84,26 @@ def main():
     block_response_err = np.loadtxt(res_mat_err_file)
 
     cbins = len(counts)+1
-    carray = np.arange(cbins,dtype=float)
+    carray = np.arange(cbins, dtype=float)
     print('carray = {}'.format(carray))
     print('cbins = {}'.format(cbins))
 
     ebins = len(counts)+1
-    earray = np.arange(ebins,dtype=float)
+    earray = np.arange(ebins, dtype=float)
     print('earray = {}'.format(earray))
     cbins -= 1
     ebins -= 1
 
     # Prepare Combined Weighted Histograms - To be Normalized by Model After Filling
     # Isotropic Weights of Causes - For Calculating Combined Species Efficiency
-    Eff = TH1F("%s"%(EffName),'Non-Normed Combined Efficiency',cbins,carray)
+    Eff = TH1F("%s"%(EffName), 'Non-Normed Combined Efficiency', cbins, carray)
     Eff.GetXaxis().SetTitle('Causes')
     Eff.GetYaxis().SetTitle("Efficiency")
     Eff.SetStats(0)
     Eff.Sumw2()
     # Isotropic Weighted Mixing Matrix - For Calculating Combined Species MM
-    WMM = TH2F("%s"%(WMMName),'Weighted Combined Mixing Matrix',cbins,carray,ebins,earray)
+    WMM = TH2F("%s"%(WMMName), 'Weighted Combined Mixing Matrix',
+               cbins, carray, ebins, earray)
     WMM.GetXaxis().SetTitle('Causes')
     WMM.GetYaxis().SetTitle('Effects')
     WMM.SetStats(0)
@@ -114,7 +115,7 @@ def main():
     # ModelMM.SetStats(0)
     # ModelMM.Sumw2()
     # Raw Number of Events in Each Bin
-    NMM = TH2F("NMM",'Number of Events Matrix',cbins,carray,ebins,earray)
+    NMM = TH2F("NMM", 'Number of Events Matrix', cbins, carray, ebins, earray)
     NMM.GetXaxis().SetTitle('Causes')
     NMM.GetYaxis().SetTitle('Effects')
     NMM.SetStats(0)
@@ -127,8 +128,8 @@ def main():
         # Eval = Eff.GetBinContent(ci+1)/binwidth[ci]/throwArea
         # dEval = Eff.GetBinError(ci+1)/binwidth[ci]/throwArea
         dEval, Eval = 1, 1
-        Eff.SetBinContent(ci+1,Eval)
-        # Eff.SetBinError(ci+1,dEval)
+        Eff.SetBinContent(ci+1, Eval)
+        # Eff.SetBinError(ci+1, dEval)
 
         # Normalize Species Probability Matrix
         sum2 = 0

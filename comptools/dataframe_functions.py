@@ -23,7 +23,9 @@ def validate_datatype(datatype):
 
 
 def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
-                       dataprocessing=False, verbose=True):
+                       dataprocessing=False, verbose=True, log_energy_min=None,
+                       log_energy_max=None):
+
     validate_dataframe(df)
     validate_datatype(datatype)
 
@@ -49,15 +51,25 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
     cut_dict['NStations'] = df['NStations'] >= 5
     cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
-    # cut_dict['min_energy_lap'] = df['lap_energy'] > 10**5.0
-    cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
-    cut_dict['max_energy_lap'] = df['lap_energy'] < 10**8.0
+
+    # Set up min/max energy cuts
+    cut_dict['min_energy_lap'] = np.ones(len(df['lap_energy']), dtype=bool)
+    cut_dict['max_energy_lap'] = np.ones(len(df['lap_energy']), dtype=bool)
+    if log_energy_min is not None:
+        cut_dict['min_energy_lap'] = df['lap_energy'] > 10**log_energy_min
+    if log_energy_max is not None:
+        cut_dict['max_energy_lap'] = df['lap_energy'] < 10**log_energy_max
+
+    # cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
+    # cut_dict['max_energy_lap'] = df['lap_energy'] < 10**8.0
+
     # cut_dict['IceTop_charge_175m'] = np.logical_not(df['IceTop_charge_175m'].isnull())
     # cut_dict['IceTop_charge'] = np.logical_not(df['IceTop_charge'].isnull()) & cut_dict['IceTop_charge_175m']
 
     # InIce specific cuts
     cut_dict['passed_InIceQualityCuts'] = df['passed_InIceQualityCuts'].astype(bool)
-    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
+    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
+                'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
         cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)
     for i in ['1_60']:
     # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
@@ -158,7 +170,7 @@ def add_convenience_variables(df):
 
 def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
                    comp_key='MC_comp_class', columns=None, verbose=False,
-                   chunksize=100000):
+                   log_energy_min=6.0, log_energy_max=8.0):
     '''Loads pandas DataFrame object with appropreiate information
 
     Parameters
@@ -196,8 +208,6 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
         test_size = 0.0
     if datatype == 'sim' and not comp_key:
         raise ValueError('Must specify a comp_key variable for simulation data')
-    # if not config in get_sim_configs():
-    #     raise ValueError('config must be in {}'.format(get_sim_configs()))
     if datatype == 'sim' and not config in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
     if datatype == 'data' and not config in get_data_configs():
@@ -208,12 +218,14 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
     # If df_file is not specified, use default path
     if df_file is None:
         df_file = os.path.join(paths.comp_data_dir,
-            '{}_{}/{}_dataframe.hdf5'.format(config, datatype, datatype))
+                               '{}_{}'.format(config, datatype),
+                               '{}_dataframe.hdf5'.format(datatype))
 
     with pd.HDFStore(df_file, mode='r') as store:
         df = store.select('dataframe')
 
-    df = (df.pipe(apply_quality_cuts, datatype, verbose=verbose)
+    df = (df.pipe(apply_quality_cuts, datatype, log_energy_min=log_energy_min,
+                  log_energy_max=log_energy_max, verbose=verbose)
             .pipe(add_convenience_variables)
          )
 

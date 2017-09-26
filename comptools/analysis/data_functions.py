@@ -22,9 +22,11 @@ def get_ratio_error(num, num_err, den, den_err):
     return ratio_err
 
 @export
-def ratio_error(num, num_err, den, den_err):
+def ratio_error(num, num_err, den, den_err, nan_to_num=False):
     ratio = num/den
-    ratio_err = ratio * np.sqrt((num_err / num)**2 + (den_err / den)**2)
+    ratio_err = np.abs(ratio) * np.sqrt((num_err / num)**2 + (den_err / den)**2)
+    if nan_to_num:
+        ratio_err = np.nan_to_num(ratio_err)
     return ratio, ratio_err
 
 @export

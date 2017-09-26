@@ -129,10 +129,11 @@ if __name__ == "__main__":
     # Uncompress Level3 diff files
     tray.Add(uncompress, 'uncompress')
 
-    # Filter out all events that don't pass standard IceTop cuts
-    tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
-    # Filter out non-coincident P frames
-    tray.Add(lambda frame: inice_pulses in frame)
+    if args.type == 'data':
+        # Filter out all events that don't pass standard IceTop cuts
+        tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
+        # Filter out non-coincident P frames
+        tray.Add(lambda frame: inice_pulses in frame)
 
     # # If processing data, cut out event with log10(energy) < 6.0 GeV
     # if args.type == 'data':

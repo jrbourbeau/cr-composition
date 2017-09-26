@@ -2,8 +2,8 @@
 
 import os
 import glob
+from itertools import chain
 import numpy as np
-from sklearn.utils import shuffle
 
 from icecube.weighting.weighting import from_simprod
 
@@ -69,6 +69,7 @@ def config_to_sim(config):
 
     return sim_list
 
+
 def sim_to_comp(sim):
     # Will utilize the weighting project found here
     # http://software.icecube.wisc.edu/documentation/projects/weighting
@@ -79,6 +80,7 @@ def sim_to_comp(sim):
     composition = generator.spectra.keys()[0].name
 
     return composition
+
 
 def sim_to_thinned(sim):
     # IC79.2010 simulation sets
@@ -96,22 +98,39 @@ def sim_to_thinned(sim):
 
 
 
+def _get_level3_sim_file_pattern(sim):
+
+    config = sim_to_config(sim)
+    prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
+    sim_file_pattern = os.path.join(prefix, str(sim), 'Level3_*.i3.gz')
+
+    return sim_file_pattern
+
+
 def get_level3_sim_files(sim, just_gcd=False):
 
     # Get GCD file
     config = sim_to_config(sim)
-    # prefix = '/data/ana/CosmicRay/IceTop_level3/sim/v1/{}/'.format(config)
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
     gcd_file = os.path.join(prefix,'GCD/Level3_{}_GCD.i3.gz'.format(sim))
     if just_gcd:
         return gcd_file
 
-    sim_file_pattern = os.path.join(prefix, str(sim), 'Level3_*.i3.gz')
-    files = glob.glob(sim_file_pattern)
+    files = glob.glob(_get_level3_sim_file_pattern(sim))
     # Don't forget to sort files
     files = sorted(files)
 
     return gcd_file, files
+
+
+def get_level3_sim_files_iterator(sim_list):
+
+    if isinstance(sim_list, int):
+        sim_list = [sim_list]
+
+    file_patterns = [_get_level3_sim_file_pattern(sim) for sim in sim_list]
+
+    return chain.from_iterable(glob.iglob(pattern) for pattern in file_patterns)
 
 
 def reco_pulses():
