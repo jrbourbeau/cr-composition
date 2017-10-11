@@ -220,7 +220,7 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
 
 
 @export
-def plot_steps(edges, y, yerr=None, color='C0', lw=1, alpha=1.0,
+def plot_steps(edges, y, yerr=None, color='C0', lw=1, ls='-', alpha=1.0,
                fillalpha=0.2, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects
@@ -234,10 +234,10 @@ def plot_steps(edges, y, yerr=None, color='C0', lw=1, alpha=1.0,
 
     ax.step(edges[:-1], y, where='post',
             marker='None', color=color, linewidth=lw,
-            linestyle='-', label=label, alpha=alpha)
+            linestyle=ls, label=label, alpha=alpha)
     ax.plot(edges[-2:], 2*[y[-1]], marker='None',
             color=color, linewidth=lw,
-            linestyle='-', alpha=alpha)
+            linestyle=ls, alpha=alpha)
 
     if yerr is not None:
         err_lower = y - yerr if yerr.ndim == 1 else y - yerr[0]

@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#==============================================================================
+# This module is outdated and should probably be removed! 
+#==============================================================================
+
 
 import numpy as np
 from sklearn.preprocessing import LabelEncoder, StandardScaler

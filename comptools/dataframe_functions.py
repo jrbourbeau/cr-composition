@@ -1,5 +1,6 @@
 
 from __future__ import print_function, division
+from collections import OrderedDict
 import os
 from functools import wraps, partial
 from functools32 import lru_cache
@@ -11,6 +12,9 @@ from sklearn.preprocessing import LabelEncoder
 from .base import get_paths
 from .simfunctions import sim_to_thinned, get_sim_configs
 from .datafunctions import get_data_configs
+from .composition_encoding import (composition_group_labels,
+                                   encode_composition_groups, comp_to_label,
+                                   label_to_comp)
 
 
 def validate_dataframe(df):
@@ -34,23 +38,23 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict = {}
     # MC-level cuts
     if datatype == 'sim':
-        cut_dict['FractionContainment_MCPrimary_IceTop'] = (
-            df['FractionContainment_MCPrimary_IceTop'] < 1.0)
-        cut_dict['FractionContainment_MCPrimary_InIce'] = (
-            df['FractionContainment_MCPrimary_InIce'] < 1.0)
+    #     cut_dict['FractionContainment_MCPrimary_IceTop'] = (
+    #         df['FractionContainment_MCPrimary_IceTop'] < 1.0)
+    #     cut_dict['FractionContainment_MCPrimary_InIce'] = (
+    #         df['FractionContainment_MCPrimary_InIce'] < 1.0)
         df['MC_log_energy'] = np.nan_to_num(np.log10(df['MC_energy']))
     # IT specific cuts
     cut_dict['passed_IceTopQualityCuts'] = df['passed_IceTopQualityCuts'].astype(bool)
-    cut_dict['lap_fitstatus_ok'] = df['lap_fitstatus_ok']
-    cut_dict['FractionContainment_Laputop_IceTop'] = df[
-        'FractionContainment_Laputop_IceTop'] < 0.96
-    cut_dict['lap_beta'] = (df['lap_beta'] < 9.5) & (df['lap_beta'] > 1.4)
-    cut_dict['lap_rlogl'] = df['lap_rlogl'] < 2
-    cut_dict['IceTopMaxSignalInEdge'] = ~df['IceTopMaxSignalInEdge'].astype(bool)
-    cut_dict['IceTopMaxSignal'] = (df['IceTopMaxSignal'] >= 6)
-    cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
+    # cut_dict['lap_fitstatus_ok'] = df['lap_fitstatus_ok']
+    # cut_dict['FractionContainment_Laputop_IceTop'] = df[
+    #     'FractionContainment_Laputop_IceTop'] < 0.96
+    # cut_dict['lap_beta'] = (df['lap_beta'] < 9.5) & (df['lap_beta'] > 1.4)
+    # cut_dict['lap_rlogl'] = df['lap_rlogl'] < 2
+    # cut_dict['IceTopMaxSignalInEdge'] = ~df['IceTopMaxSignalInEdge'].astype(bool)
+    # cut_dict['IceTopMaxSignal'] = (df['IceTopMaxSignal'] >= 6)
+    # cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
     cut_dict['NStations'] = df['NStations'] >= 5
-    cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
+    # cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
 
     # Set up min/max energy cuts
     cut_dict['min_energy_lap'] = np.ones(len(df['lap_energy']), dtype=bool)
@@ -68,9 +72,9 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
 
     # InIce specific cuts
     cut_dict['passed_InIceQualityCuts'] = df['passed_InIceQualityCuts'].astype(bool)
-    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
-                'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
-        cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)
+    # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
+    #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
+    #     cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)
     for i in ['1_60']:
     # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         cut_dict['NChannels_' + i] = df['NChannels_' + i] >= 8
@@ -83,17 +87,18 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # cut_dict['num_millipede_cascades'] = df['num_millipede_cascades'] >= 3
 
     # Some conbined cuts
-    cut_dict['lap_reco_success'] = cut_dict['lap_fitstatus_ok'] & cut_dict['lap_beta'] & cut_dict['lap_rlogl']
+    # cut_dict['lap_reco_success'] = cut_dict['lap_fitstatus_ok'] & cut_dict['lap_beta'] & cut_dict['lap_rlogl']
     # cut_dict['num_hits_1_60'] = cut_dict['NChannels_1_60'] & cut_dict['NStations']
     for i in ['1_60']:
     # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         cut_dict['num_hits_'+i] = cut_dict['NChannels_'+i] & cut_dict['NStations']
-    cut_dict['lap_containment'] = cut_dict[
-        'FractionContainment_Laputop_IceTop'] & cut_dict['FractionContainment_Laputop_InIce']
-    cut_dict['IT_signal'] = cut_dict['IceTopMaxSignalInEdge'] & cut_dict[
-        'IceTopMaxSignal'] & cut_dict['IceTopNeighbourMaxSignal']
+    # cut_dict['lap_containment'] = cut_dict[
+    #     'FractionContainment_Laputop_IceTop'] & cut_dict['FractionContainment_Laputop_InIce']
+    # cut_dict['IT_signal'] = cut_dict['IceTopMaxSignalInEdge'] & cut_dict[
+    #     'IceTopMaxSignal'] & cut_dict['IceTopNeighbourMaxSignal']
+
     cut_dict['reco_energy_range'] = cut_dict['min_energy_lap'] & cut_dict['max_energy_lap']
-    cut_dict['lap_IT_containment'] = cut_dict['FractionContainment_Laputop_IceTop'] & cut_dict['IT_signal']
+    # cut_dict['lap_IT_containment'] = cut_dict['FractionContainment_Laputop_IceTop'] & cut_dict['IT_signal']
     # cut_dict['mil_reco_success'] = cut_dict['mil_rlogl'] & cut_dict[
     #     'mil_qtot_ratio'] & cut_dict['num_millipede_cascades']
 
@@ -168,59 +173,20 @@ def add_convenience_variables(df):
     return df
 
 
-def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
-                   comp_key='MC_comp_class', columns=None, verbose=False,
-                   log_energy_min=6.0, log_energy_max=8.0):
-    '''Loads pandas DataFrame object with appropreiate information
+def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
+                          comp_key='MC_comp_class', columns=None,
+                          verbose=False, log_energy_min=6.0,
+                          log_energy_max=8.0):
 
-    Parameters
-    ----------
-    df_file : path, optional
-        If specified, the given path to a pandas.DataFrame will be loaded
-        (default is None, so the file path will be determined from the
-        datatype and config).
-    datatype : {'sim', 'data'}
-        Specifies whether to load a simulation or experimental data
-        DataFrame.
-    config : str, optional
-        Detector configuration (default is 'IC79').
-    test_size : float, optional
-        Fraction of DataFrame to split of into a seperate testing set
-        (default is 0.3). Note: if datatype is 'data', then test_size will
-        be set to 0.0.
-    comp_key : {'MC_comp_class', 'MC_comp'}
-        Option to use the true composition, or composition classes
-        (light and heavy) as the target variable (default is
-        'MC_comp_class').
-    verbose : bool, optional
-        Option for verbose output (default is True).
-
-    Returns
-    -------
-    pandas.DataFrame, tuple
-        Return a single DataFrame if test_size is 0, otherwise return
-        a 2-tuple of training and testing DataFrame.
-
-    '''
-    # Validate user input
     validate_datatype(datatype)
-    if datatype == 'data':
-        test_size = 0.0
-    if datatype == 'sim' and not comp_key:
-        raise ValueError('Must specify a comp_key variable for simulation data')
-    if datatype == 'sim' and not config in get_sim_configs():
-        raise ValueError('config must be in {}'.format(get_sim_configs()))
-    if datatype == 'data' and not config in get_data_configs():
-        raise ValueError('config must be in {}'.format(get_data_configs()))
-
-    # Load simulation dataframe
-    paths = get_paths()
     # If df_file is not specified, use default path
     if df_file is None:
+        paths = get_paths()
         df_file = os.path.join(paths.comp_data_dir,
                                '{}_{}'.format(config, datatype),
                                '{}_dataframe.hdf5'.format(datatype))
-
+    if not os.path.exists(df_file):
+        raise IOError('The DataFrame file {} doesn\'t exist'.format(df_file))
     with pd.HDFStore(df_file, mode='r') as store:
         df = store.select('dataframe')
 
@@ -229,21 +195,76 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
             .pipe(add_convenience_variables)
          )
 
-    if datatype == 'sim':
-        df['target'] = df[comp_key].apply(comp_to_label)
-        df['is_thinned'] = df['sim'].apply(sim_to_thinned)
+    return df
+
+
+def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
+             comp_key='MC_comp_class', log_energy_min=6.0, log_energy_max=8.0,
+             verbose=False):
+    '''Function to load processed simulation DataFrame
+
+    Parameters
+    ----------
+    df_file : path, optional
+        If specified, the given path to a pandas.DataFrame will be loaded
+        (default is None, so the file path will be determined from the
+        datatype and config).
+    config : str, optional
+        Detector configuration (default is 'IC86.2012').
+    test_size : int, float, optional
+        Fraction or number of events to be split off into a seperate testing
+        set (default is 0.3). test_size will be passed to
+        sklearn.model_selection.StratifiedShuffleSplit.
+    comp_key : {'MC_comp_class', 'MC_comp'}
+        Option to use the true composition, or composition classes
+        (light and heavy) as the target variable (default is
+        'MC_comp_class').
+    log_energy_min : int, float, optional
+        Option to set a lower limit on the reconstructed log energy in GeV
+        (default is 6.0).
+    log_energy_max : int, float, optional
+        Option to set a upper limit on the reconstructed log energy in GeV
+        (default is 8.0).
+    verbose : bool, optional
+        Option for verbose output (default is True).
+
+    Returns
+    -------
+    pandas.DataFrame, tuple of pandas.DataFrame
+        Return a single DataFrame if test_size is 0, otherwise return
+        a 2-tuple of training and testing DataFrame.
+
+    '''
+
+    if not config in get_sim_configs():
+        raise ValueError('config must be in {}'.format(get_sim_configs()))
+    if not isinstance(test_size, (int, float)):
+        raise TypeError('test_size must be a floating-point number')
+
+    df = _load_basic_dataframe(df_file=df_file, datatype='sim', config=config,
+                               comp_key=comp_key,
+                               log_energy_min=log_energy_min,
+                               log_energy_max=log_energy_max, verbose=verbose)
+
+    df['target'] = df[comp_key].apply(comp_to_label)
+
+    # Add composition group labels
+    for num_groups in [2, 3, 4]:
+        label_key = 'comp_group_{}'.format(num_groups)
+        df[label_key] = composition_group_labels(df['MC_comp'],
+                                                 num_groups=num_groups)
+        # Add encoded composition group labels for training sklearn models
+        target_key = 'comp_target_{}'.format(num_groups)
+        df[target_key] = encode_composition_groups(df[label_key],
+                                                   num_groups=num_groups)
 
     # If specified, split into training and testing DataFrames
-    if test_size:
-        # If target variable is specified, perform a stratified split, otherwise a shuffle split
-        splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=2)
+    if test_size > 0:
+        splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size,
+                                          random_state=2)
         train_mask, test_mask = next(splitter.split(df, df['target']))
-
-        train_df = (df.iloc[train_mask]
-                      .reset_index(drop=True))
-        test_df = (df.iloc[test_mask]
-                     .reset_index(drop=True))
-
+        train_df = df.iloc[train_mask].reset_index(drop=True)
+        test_df = df.iloc[test_mask].reset_index(drop=True)
         output = train_df, test_df
     else:
         output = df
@@ -251,15 +272,47 @@ def load_dataframe(df_file=None, datatype='sim', config='IC79', test_size=0.3,
     return output
 
 
-# Define convenience functions for loading simulation and data DataFrames
-# By default __module__ is undefined, and __doc__ isn't meaningful for partials
-load_sim = partial(load_dataframe, datatype='sim')
-load_sim.__doc__ = load_dataframe.__doc__
-load_sim.__module__ = load_dataframe.__module__
+def load_data(df_file=None, config='IC86.2012', comp_key='MC_comp_class',
+              log_energy_min=6.0, log_energy_max=8.0, verbose=False):
+    '''Function to load processed data DataFrame
 
-load_data = partial(load_dataframe, datatype='data')
-load_data.__doc__ = load_dataframe.__doc__
-load_data.__module__ = load_dataframe.__module__
+    Parameters
+    ----------
+    df_file : path, optional
+        If specified, the given path to a pandas.DataFrame will be loaded
+        (default is None, so the file path will be determined from the
+        datatype and config).
+    config : str, optional
+        Detector configuration (default is 'IC86.2012').
+    comp_key : {'MC_comp_class', 'MC_comp'}
+        Option to use the true composition, or composition classes
+        (light and heavy) as the target variable (default is
+        'MC_comp_class').
+    log_energy_min : int, float, optional
+        Option to set a lower limit on the reconstructed log energy in GeV
+        (default is 6.0).
+    log_energy_max : int, float, optional
+        Option to set a upper limit on the reconstructed log energy in GeV
+        (default is 8.0).
+    verbose : bool, optional
+        Option for verbose output (default is True).
+
+    Returns
+    -------
+    pandas.DataFrame
+        Return a DataFrame with processed data
+
+    '''
+
+    if not config in get_data_configs():
+        raise ValueError('config must be in {}'.format(get_data_configs()))
+
+    df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
+                               comp_key=comp_key,
+                               log_energy_min=log_energy_min,
+                               log_energy_max=log_energy_max, verbose=verbose)
+
+    return df
 
 
 def dataframe_to_array(df, columns, drop_null=True):
@@ -286,19 +339,3 @@ def dataframe_to_X_y(df, feature_list, drop_null=True):
     y = dataframe_to_array(df, 'target', drop_null=drop_null)
 
     return X, y
-
-
-comp_to_label_dict = {'light': 0, 'heavy': 1}
-
-def comp_to_label(composition):
-    try:
-        return comp_to_label_dict[composition]
-    except KeyError:
-        raise KeyError('Incorrect composition ({}) entered'.format(composition))
-
-def label_to_comp(label):
-    label_to_comp_dict = {value: key for key, value in comp_to_label_dict.iteritems()}
-    try:
-        return label_to_comp_dict[label]
-    except KeyError:
-        raise KeyError('Incorrect label ({}) entered'.format(label))

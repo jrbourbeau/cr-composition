@@ -20,17 +20,23 @@ if __name__ == '__main__':
     else:
         fout.Close()
         print('\n=========================\n')
-        errormessage = 'Directory {} already exists!\nEither try another bin number or delete {} and start again. Exiting...\n'.format(binname, outfile)
-        raise ValueError(errormessage)
+        raise ValueError('Directory {} already exists!\nEither try another '
+                         'bin number or delete {} and start again. '
+                         'Exiting...\n'.format(binname, outfile))
 
     # Go to home of ROOT file
     fout.cd(binname)
 
-    formatted_df_outfile  = os.path.join('/data/user/jbourbeau/composition/unfolding',
-                                        'unfolding-dataframe-PyUnfold-formatted.csv')
-    df_flux = pd.read_csv(formatted_df_outfile , index_col='log_energy_bin_idx')
+    formatted_df_outfile  = os.path.join(
+        '/data/user/jbourbeau/composition/unfolding',
+        'unfolding-dataframe-PyUnfold-formatted.csv')
+    df_flux = pd.read_csv(formatted_df_outfile, index_col='log_energy_bin_idx')
     counts = df_flux['counts'].values
+    efficiencies = df_flux['efficiencies'].values
+    efficiencies_err = df_flux['efficiencies_err'].values
+
     print('counts = {}'.format(counts))
+    print('efficiencies = {}'.format(efficiencies))
 
     cbins = len(counts)+1
     carray = np.arange(cbins, dtype=float)
@@ -42,7 +48,6 @@ if __name__ == '__main__':
     cbins -= 1
     ebins -= 1
 
-
     # Load response matrix array
     res_mat_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
                                 'response.txt')
@@ -50,14 +55,6 @@ if __name__ == '__main__':
     res_mat_err_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
                                     'response_err.txt')
     response_err_array = np.loadtxt(res_mat_err_file)
-
-    # Load detection efficiency arrays
-    eff_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
-                            'efficiency.npy')
-    eff_err_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
-                                'efficiency-err.npy')
-    efficiencies = np.load(eff_file)
-    efficiencies_err = np.load(eff_err_file)
 
     # Measured effects distribution
     ne_meas = TH1F('ne_meas', 'effects histogram', ebins, earray)

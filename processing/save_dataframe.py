@@ -153,10 +153,10 @@ if __name__ == "__main__":
 
     with pd.HDFStore(args.output, mode='w') as output_store:
         dataframe = pd.DataFrame(series_dict)
-        # Don't want to save data events that don't pass quality cuts
-        # because there is just too much data for that
-        if args.type == 'data':
-            dataframe = comptools.apply_quality_cuts(dataframe, datatype='data',
-                                                     dataprocessing=True)
+        # # Don't want to save data events that don't pass quality cuts
+        # # because there is just too much data for that
+        # if args.type == 'data':
+        #     dataframe = comptools.apply_quality_cuts(dataframe, datatype='data',
+        #                                              dataprocessing=True)
         # Add dataframe to output_store
         output_store.put('dataframe', dataframe, format='fixed')

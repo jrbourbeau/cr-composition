@@ -42,7 +42,7 @@ def get_level3_run_i3_files(config=None, run=None):
 
     prefix = _get_data_path_prefix(config=config)
     data_file_pattern = os.path.join(prefix,
-            '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
+        '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
     run_files = glob.glob(data_file_pattern)
 
     # Extract (and validate) the GCD file for this run
@@ -76,27 +76,6 @@ def get_level3_livetime_hist(config=None, month=None):
     summed_counts = np.sum(bin_values, axis=0)
 
     return summed_counts
-
-
-# def get_level3_GCD_file(config=None, run=None):
-#
-#     if config is None:
-#         raise('Detector configuration not specified...')
-#     elif config == 'IC79.2010':
-#         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
-#     else:
-#         prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
-#
-#     file_pattern = os.path.join(prefix, 'GCD/Level3_{}_data_Run{}_????_GCD.i3.gz'.format(config, run))
-#     file_list = glob.glob(file_pattern)
-#     if len(file_list) == 0:
-#         raise ValueError('Didn\'t find any GCD files for config {} and run {}'.format(config, run))
-#     elif len(file_list) > 1:
-#         raise ValueError('Found multiple GCD files for config {} and run {}'.format(config, run))
-#     else:
-#         GCD_file = file_list[0]
-#
-#     return GCD_file
 
 
 def reco_pulses():

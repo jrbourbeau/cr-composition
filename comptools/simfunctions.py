@@ -101,6 +101,8 @@ def sim_to_thinned(sim):
 def _get_level3_sim_file_pattern(sim):
 
     config = sim_to_config(sim)
+    if config == 'IC79.2010':
+        config = 'IC79'
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
     sim_file_pattern = os.path.join(prefix, str(sim), 'Level3_*.i3.gz')
 
@@ -111,6 +113,8 @@ def get_level3_sim_files(sim, just_gcd=False):
 
     # Get GCD file
     config = sim_to_config(sim)
+    if config == 'IC79.2010':
+        config = 'IC79'
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
     gcd_file = os.path.join(prefix,'GCD/Level3_{}_GCD.i3.gz'.format(sim))
     if just_gcd:
@@ -124,6 +128,19 @@ def get_level3_sim_files(sim, just_gcd=False):
 
 
 def get_level3_sim_files_iterator(sim_list):
+    '''Function to return an iterable of simulation files
+
+    Parameters
+    ----------
+    sim_list : int, array-like
+        Simulation(s) sets to get i3 files for (e.g. 12360 or
+        [12360, 12362, 12630, 12631]).
+
+    Returns
+    -------
+    files : itertools.chain object
+        Iterable of simulation i3 files.
+    '''
 
     if isinstance(sim_list, int):
         sim_list = [sim_list]
@@ -131,6 +148,56 @@ def get_level3_sim_files_iterator(sim_list):
     file_patterns = [_get_level3_sim_file_pattern(sim) for sim in sim_list]
 
     return chain.from_iterable(glob.iglob(pattern) for pattern in file_patterns)
+
+
+def run_to_energy_bin(run):
+    '''Gives the CORSIKA energy bin for a given simulation run
+
+    Parameters
+    ----------
+    run : int
+        Run number for a simulation set.
+
+    Returns
+    -------
+    energy_bin : float
+        Corresponding CORSIKA energy bin for run.
+    '''
+    ebin_first = 5.0
+    ebin_last = 7.9
+    # Taken from simulation production webpage:
+    # http://simprod.icecube.wisc.edu/cgi-bin/simulation/cgi/cfg?dataset=12360
+    return (ebin_first*10+(run-1)%(ebin_last*10-ebin_first*10+1))/10
+
+
+@np.vectorize
+def get_sim_thrown_radius(log_energy):
+    '''Gives the thrown simulation radius for a given log_energy
+
+    Parameters
+    ----------
+    log_energy : float, array-like
+        Log energy (in GeV) for a CR shower.
+
+    Returns
+    -------
+    thrown_radius : float, array-like
+        Corresponding thrown radius.
+    '''
+    if log_energy <= 6:
+        thrown_radius = 800.0
+    elif (log_energy > 6) & (log_energy <=7):
+        thrown_radius = 1100.0
+    elif (log_energy > 7) & (log_energy <=8):
+        thrown_radius = 1700.0
+    elif (log_energy > 8) & (log_energy <=9):
+        thrown_radius = 2600.0
+    elif (log_energy > 9) & (log_energy <=10):
+        thrown_radius = 2900.0
+    else:
+        raise ValueError('Invalid energy entered')
+
+    return thrown_radius
 
 
 def reco_pulses():
