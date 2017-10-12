@@ -1,9 +1,9 @@
 
 import os
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor,
+                              AdaBoostClassifier, GradientBoostingClassifier)
 from sklearn.pipeline import make_pipeline
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.externals import joblib
 from sklearn.decomposition import PCA
 from sklearn.base import TransformerMixin
@@ -54,12 +54,16 @@ def get_pipeline(classifier_name='BDT'):
         classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5), n_estimators=100, learning_rate=0.1, random_state=2)
         # classifier = AdaBoostClassifier(n_estimators=50, learning_rate=0.1, random_state=2)
     elif classifier_name in ['GBDT', 'BDT']:
-        classifier = GradientBoostingClassifier(loss='exponential', max_depth=3,
-            n_estimators=100, random_state=2)
+        classifier = GradientBoostingClassifier(
+            loss='exponential', max_depth=3, n_estimators=100, random_state=2)
         # classifier = GradientBoostingClassifier(loss='deviance', max_depth=3,
         #     n_estimators=500, random_state=2)
+    elif classifier_name == 'RF_energy':
+        classifier = RandomForestRegressor(
+            n_estimators=100, max_depth=10, n_jobs=20, random_state=2)
     else:
-        raise ValueError('{} is not a valid classifier name...'.format(classifier_name))
+        raise ValueError(
+            '{} is not a valid classifier name'.format(classifier_name))
 
     pipeline = Pipeline([
         # ('scaler', StandardScaler()),

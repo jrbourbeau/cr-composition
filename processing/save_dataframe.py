@@ -99,8 +99,7 @@ if __name__ == "__main__":
         # Get MCPrimary information
         if args.type == 'sim':
             for key in ['x', 'y', 'energy', 'zenith', 'azimuth', 'type']:
-                series_dict['MC_{}'.format(key)] = input_store[
-                    'MCPrimary'][key]
+                series_dict['MC_{}'.format(key)] = input_store['MCPrimary'][key]
             # Add simulation set number and corresponding composition
             sim_num = int(os.path.splitext(args.input)[0].split('_')[-1])
             series_dict['sim'] = pd.Series([sim_num] * series_size, dtype=int)
@@ -148,11 +147,29 @@ if __name__ == "__main__":
         series_dict['mil_qtot_measured'] = input_store['MillipedeFitParams']['qtotal']
         series_dict['mil_qtot_predicted'] = input_store['MillipedeFitParams']['predicted_qtotal']
 
+        # Construct unique index from run/event/subevent info in I3EventHeader
+        runs = input_store['I3EventHeader']['Run']
+        events = input_store['I3EventHeader']['Event']
+        sub_events = input_store['I3EventHeader']['SubEvent']
+        index = ['{}_{}_{}'.format(run, event, sub_event)
+                 for run, event, sub_event in zip(runs, events, sub_events)]
+
+        # Extract measured charge for each DOM
+        grouped = input_store['NNcharges'].groupby(['Run','Event'])
+        charges_list, columns = [], []
+        for name, group in grouped:
+            if not columns:
+                col_info = zip(group['string'].values, group['om'].values,
+                               group['pmt'].values)
+                columns = ['{}_{}_{}'.format(*info) for info in col_info]
+            charges_list.append(group['item'].values)
+
+        df_tank_charges = pd.DataFrame(charges_list, columns=columns)
+
     # Open HDFStore for output hdf5 file
     comptools.check_output_dir(args.output)
-
     with pd.HDFStore(args.output, mode='w') as output_store:
-        dataframe = pd.DataFrame(series_dict)
+        dataframe = pd.DataFrame(series_dict, index=index)
         # # Don't want to save data events that don't pass quality cuts
         # # because there is just too much data for that
         # if args.type == 'data':
@@ -160,3 +177,4 @@ if __name__ == "__main__":
         #                                              dataprocessing=True)
         # Add dataframe to output_store
         output_store.put('dataframe', dataframe, format='fixed')
+        output_store.put('tank_charges', df_tank_charges, format='fixed')

@@ -18,6 +18,20 @@ import comptools.icetray_software as icetray_software
 
 
 def get_good_file_list(files):
+    '''Checks that input i3 files aren't corrupted
+
+    Parameters
+    ----------
+    files : array-like
+        Iterable of i3 file paths to check.
+
+    Returns
+    -------
+    good_file_list : list
+        List of i3 files (from input files) that were able to be
+        succeessfully loaded.
+
+    '''
     good_file_list = []
     for i3file in files:
         try:
@@ -34,6 +48,7 @@ def get_good_file_list(files):
             icetray.logging.log_warn('File {} is truncated'.format(i3file))
             pass
         del test_tray
+
     return good_file_list
 
 
@@ -112,6 +127,7 @@ if __name__ == "__main__":
     # keys += ['IceTop_charge_175m']
 
     # keys += ['refit_beta', 'refit_log_s125']
+    keys += ['NNcharges']
 
     t0 = time.time()
 
@@ -176,22 +192,25 @@ if __name__ == "__main__":
              key='angle_MCPrimary_Laputop',
              If=lambda frame: 'MCPrimary' in frame and 'Laputop' in frame)
 
-
     pulses=['IceTopLaputopSeededSelectedHLC', 'IceTopLaputopSeededSelectedSLC']
     # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
     tray.Add(icetray_software.add_IceTop_tankXYcharge, pulses=pulses,
+             If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+    tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
              If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
     # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
     #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
     #====================================================================
     # Finish
-
     comptools.check_output_dir(args.outfile)
+
     hdf = I3HDFTableService(args.outfile)
     keys = {key: tableio.default for key in keys}
     if args.type == 'data':
-        keys['Laputop'] = [dataclasses.converters.I3ParticleConverter(), astro.converters.I3AstroConverter()]
+        keys['Laputop'] = [dataclasses.converters.I3ParticleConverter(),
+                           astro.converters.I3AstroConverter()]
+
     tray.Add(I3TableWriter, tableservice=hdf, keys=keys, SubEventStreams=['ice_top'])
 
     tray.Execute()

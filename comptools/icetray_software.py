@@ -1,6 +1,8 @@
 
 from __future__ import division
+from collections import defaultdict
 import numpy as np
+import pandas as pd
 from scipy import optimize
 from I3Tray import NaN, Inf
 from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclasses
@@ -55,13 +57,13 @@ class AddFractionContainment(icetray.I3ConditionalModule):
         pass
 
     def Geometry(self, frame):
-        print('Working on Geometry frame')
+        # print('Working on Geometry frame')
         self.geometry = frame['I3Geometry']
         self.scaling = phys_services.I3ScaleCalculator(self.geometry)
         self.PushFrame(frame)
 
     def Physics(self, frame):
-        print('Working on Physics frame')
+        # print('Working on Physics frame')
         # print('track = {}'.format(self.track))
         # print('keys = {}'.format(frame.keys()))
         icetop_containment = self.scaling.scale_icetop(frame[self.track])
@@ -206,6 +208,67 @@ class AddInIceMuonRadius(icetray.I3ConditionalModule):
         self.PushFrame(frame)
 
     def Finish(self):
+        return
+
+
+class AddIceTopNNCharges(icetray.I3ConditionalModule):
+
+    def __init__(self, context):
+        icetray.I3ConditionalModule.__init__(self, context)
+        self.AddParameter('pulses',
+                          'Pulses to caluclate distances to from track',
+                          'SRTCoincPulses')
+        self.AddOutBox('OutBox')
+
+    def Configure(self):
+        self.pulses = self.GetParameter('pulses')
+        pass
+
+    def Geometry(self, frame):
+        self.geometry = frame['I3Geometry']
+        self.geomap = self.geometry.omgeo
+        self.PushFrame(frame)
+
+    def Physics(self, frame):
+        union_key = 'I3RecoPulseSeriesMap_union'
+        frame[union_key] = dataclasses.I3RecoPulseSeriesMapUnion(frame,
+                                                                 self.pulses)
+        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,
+                                                                union_key)
+        # tanks_x, tanks_y, tanks_charge = [], [], []
+        tank_charges = defaultdict(list)
+        for omkey, omgeo in self.geomap:
+            # Only interested in saving IceTop OM charges
+            if omgeo.omtype.name != 'IceTop':
+                continue
+            # x, y, z = omgeo.position
+            # tanks_x.append(x)
+            # tanks_y.append(y)
+            try:
+                pulses = pulse_map[omkey]
+                charge = sum([pulse.charge for pulse in pulses])
+            except KeyError:
+                charge = 0
+            tank_charges[omkey].append(charge)
+
+        # if tanks_x and tanks_y and tanks_charge:
+        #     frame['tanks_x'] = dataclasses.I3VectorDouble(tanks_x)
+        #     frame['tanks_y'] = dataclasses.I3VectorDouble(tanks_y)
+        #     frame['tanks_charge'] = dataclasses.I3VectorDouble(tanks_charge)
+        # self.tank_charges.append(pd.DataFrame(tank_charges))
+
+        del frame[union_key]
+        frame['NNcharges'] = dataclasses.I3MapKeyVectorDouble(tank_charges)
+
+        self.PushFrame(frame)
+
+    def Finish(self):
+        # df_charges = pd.DataFrame(self.tank_charges)
+        # columns = {c:'{}_{}_{}'.format(c.string, c.om, c.pmt) for c in df_charges.columns}
+        # df_charges.rename(index=str, columns=columns, inplace=True)
+        # with pd.HDFStore('test_charges_1.hdf') as output_store:
+        #     output_store['dataframe'] = df_charges
+
         return
 
 

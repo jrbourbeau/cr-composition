@@ -48,8 +48,9 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
                               config+'_sim/hdf5_files')
 
         # Split file list into smaller batches for submission
-        batches = [files[i:i + args['n']]
-                   for i in range(0, len(files), args['n'])]
+        if args['test']:
+            args['n'] = 25
+        batches = [files[i:i + args['n']] for i in range(0, len(files), args['n'])]
         if args['test']:
             batches = batches[:2]
 
@@ -130,7 +131,8 @@ def add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
     # Ensure that merge_hdf5_job completes before save_df_job
     save_df_job.add_parent(merge_hdf5_job)
     run_list = comptools.datafunctions.get_run_list(config)
-    if args['test']: run_list = run_list[:2]
+    if args['test']:
+        run_list = run_list[:2]
     bar = pyprind.ProgBar(len(run_list),
         title='Adding {} data jobs'.format(config))
     for run in run_list:

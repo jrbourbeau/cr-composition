@@ -22,10 +22,10 @@ if __name__ == "__main__":
                         default='IC79',
                         help='Detector configuration')
     parser.add_argument('--output', dest='output',
-                        help='(Optional) Path to output dataframe hdf5 file')
+                        help='Path to output dataframe hdf5 file (optional)')
     parser.add_argument('--overwrite', dest='overwrite',
                         default=False, action='store_true',
-                        help='Overwrite existing merged files')
+                        help='Overwrite existing merged file')
     args = parser.parse_args()
 
     if args.output:
@@ -50,11 +50,10 @@ if __name__ == "__main__":
         for f in files:
             with pd.HDFStore(f) as input_store:
                 input_df = input_store['dataframe']
-
-                # print('Appending {}...'.format(f))
                 if args.type == 'sim':
                     output_store.append('dataframe', input_df, format='table',
-                                        data_columns=True, min_itemsize={'MC_comp':15})
+                                        data_columns=True,
+                                        min_itemsize={'MC_comp':15})
                 else:
                     output_store.append('dataframe', input_df, format='table',
                                         data_columns=True)

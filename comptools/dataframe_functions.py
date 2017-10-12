@@ -251,12 +251,12 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     # Add composition group labels
     for num_groups in [2, 3, 4]:
         label_key = 'comp_group_{}'.format(num_groups)
-        df[label_key] = composition_group_labels(df['MC_comp'],
-                                                 num_groups=num_groups)
+        df[label_key] = df['MC_comp'].apply(composition_group_labels,
+                                            num_groups=num_groups)
         # Add encoded composition group labels for training sklearn models
         target_key = 'comp_target_{}'.format(num_groups)
-        df[target_key] = encode_composition_groups(df[label_key],
-                                                   num_groups=num_groups)
+        df[target_key] = df[label_key].apply(encode_composition_groups,
+                                             num_groups=num_groups)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
