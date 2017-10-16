@@ -49,17 +49,14 @@ if __name__ == "__main__":
     with pd.HDFStore(output, 'w') as output_store:
         for f in files:
             with pd.HDFStore(f) as input_store:
-                input_df = input_store['dataframe']
                 if args.type == 'sim':
-                    output_store.append('dataframe', input_df, format='table',
-                                        data_columns=True,
+                    output_store.append('dataframe', input_store['dataframe'],
+                                        format='table', data_columns=True,
                                         min_itemsize={'MC_comp':15})
                 else:
-                    output_store.append('dataframe', input_df, format='table',
-                                        data_columns=True)
-
-    # merged_dataframe = pd.concat(dataframes, ignore_index=True, copy=False)
-    #
-    #     # output_store['dataframe'] = merged_dataframe
-    #     output_store.put('dataframe', merged_dataframe,
-    #                      format='table', data_columns=True)
+                    output_store.append('dataframe', input_store['dataframe'],
+                                        format='table', data_columns=True)
+                # # Add tank_charges dataframe to output_store
+                # output_store.append('tank_charges',
+                #                     input_store['tank_charges'],
+                #                     format='table', data_columns=False)

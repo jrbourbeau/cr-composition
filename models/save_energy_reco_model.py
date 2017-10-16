@@ -15,23 +15,17 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.simfunctions.get_sim_configs(),
                    help='Detector configuration')
-    parser.add_argument('--pipeline', dest='pipeline',
-                   default='BDT', choices=['BDT', 'GBDT'],
-                   help='Detector configuration')
     args = parser.parse_args()
 
-    comp_class = True
-    comp_key = 'MC_comp_class' if comp_class else 'MC_comp'
-    comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
-
     # Load untrained model
-    pipeline_str = args.pipeline
+    pipeline_str = 'RF_energy_{}'.format(args.config)
     pipeline = comp.get_pipeline(pipeline_str)
     # Load training data and fit model
     df_sim_train, df_sim_test = comp.load_sim(config=args.config)
-    feature_list, feature_labels = comp.analysis.get_training_features()
-    pipeline.named_steps['classifier'].set_params(**{'n_jobs': 1})
-    pipeline.fit(df_sim_train[feature_list], df_sim_train.target)
+    feature_list, feature_labels = comp.get_training_features()
+    pipeline.fit(df_sim_train[feature_list], df_sim_train['MC_log_energy'])
+    # # Get predicted reconstructed energy
+    # reco_log_energy = pipeline.predict(df_sim_test[feature_list])
 
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:
@@ -41,6 +35,6 @@ if __name__ == '__main__':
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
     # Save trained model w/metadata to disk
-    outfile_dir = os.path.join(comp.paths.project_home, 'models')
-    outfile_basename = '{}_{}.pkl'.format(pipeline_str, args.config)
+    outfile_dir = os.path.join(comp.paths.project_root, 'models')
+    outfile_basename = '{}.pkl'.format(pipeline_str)
     joblib.dump(model_dict, os.path.join(outfile_dir, outfile_basename))

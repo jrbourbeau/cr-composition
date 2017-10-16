@@ -123,7 +123,7 @@ def get_energybins():
 
 
 def get_color_dict():
-    color_dict = {'light': 'C0', 'heavy': 'C1', 'total': 'C2',
+    color_dict = {'light': 'C0', 'heavy': 'C1', 'intermediate': 'C3', 'total': 'C2',
                  'P': 'C0', 'He': 'C1', 'O': 'C3', 'Fe':'C4',
                  'PPlus': 'C0', 'He4Nucleus': 'C4', 'O16Nucleus': 'C3', 'Fe56Nucleus':'C1',
                  'data': 'k'}

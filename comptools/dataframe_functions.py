@@ -6,8 +6,10 @@ from functools import wraps, partial
 from functools32 import lru_cache
 import numpy as np
 import pandas as pd
+import dask.dataframe as dd
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from sklearn.preprocessing import LabelEncoder
+from sklearn.externals import joblib
 
 from .base import get_paths
 from .simfunctions import sim_to_thinned, get_sim_configs
@@ -130,8 +132,8 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
                     cut_dict[key]) / n_total, np.sum(cumulative_cut_mask) / n_total))
             print('\n')
 
-        df_cut = df[selection_mask].reset_index(drop=True)
-        # df_cut = df_cut.reset_index(drop=True)
+        df_cut = df[selection_mask]
+        # df_cut = df[selection_mask].reset_index(drop=True)
 
         return df_cut
 
@@ -195,6 +197,11 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
             .pipe(add_convenience_variables)
          )
 
+    model_dict = load_trained_model('RF_energy_{}'.format(config))
+    pipeline = model_dict['pipeline']
+    feature_list = list(model_dict['training_features'])
+    df['reco_log_energy'] = pipeline.predict(df[feature_list])
+
     return df
 
 
@@ -251,20 +258,22 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     # Add composition group labels
     for num_groups in [2, 3, 4]:
         label_key = 'comp_group_{}'.format(num_groups)
-        df[label_key] = df['MC_comp'].apply(composition_group_labels,
-                                            num_groups=num_groups)
+        df[label_key] = composition_group_labels(df['MC_comp'],
+                                                 num_groups=num_groups)
         # Add encoded composition group labels for training sklearn models
         target_key = 'comp_target_{}'.format(num_groups)
-        df[target_key] = df[label_key].apply(encode_composition_groups,
-                                             num_groups=num_groups)
+        df[target_key] = encode_composition_groups(df[label_key],
+                                                   num_groups=num_groups)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
         splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size,
                                           random_state=2)
         train_mask, test_mask = next(splitter.split(df, df['target']))
-        train_df = df.iloc[train_mask].reset_index(drop=True)
-        test_df = df.iloc[test_mask].reset_index(drop=True)
+        train_df = df.iloc[train_mask]
+        test_df = df.iloc[test_mask]
+        # train_df = df.iloc[train_mask].reset_index(drop=True)
+        # test_df = df.iloc[test_mask].reset_index(drop=True)
         output = train_df, test_df
     else:
         output = df
@@ -315,6 +324,20 @@ def load_data(df_file=None, config='IC86.2012', comp_key='MC_comp_class',
     return df
 
 
+def load_tank_charges(config='IC79.2010', datatype='sim', return_dask=False):
+    paths = get_paths()
+    file_pattern = os.path.join(paths.comp_data_dir,
+                           '{}_{}'.format(config, datatype),
+                           'dataframe_files',
+                           'dataframe_*.hdf5')
+    tank_charges = dd.read_hdf(file_pattern, 'tank_charges')
+
+    if return_dask:
+        return tank_charges
+    else:
+        return tank_charges.compute()
+
+
 def dataframe_to_array(df, columns, drop_null=True):
 
     validate_dataframe(df)
@@ -331,11 +354,36 @@ def dataframe_to_array(df, columns, drop_null=True):
     return array
 
 
-def dataframe_to_X_y(df, feature_list, drop_null=True):
+def dataframe_to_X_y(df, feature_list, target='comp_target_2', drop_null=True):
 
     validate_dataframe(df)
 
     X = dataframe_to_array(df, feature_list, drop_null=drop_null)
-    y = dataframe_to_array(df, 'target', drop_null=drop_null)
+    y = dataframe_to_array(df, target, drop_null=drop_null)
 
     return X, y
+
+
+def load_trained_model(pipeline_str='BDT'):
+    """Function to load pre-trained model to avoid re-training
+
+    Parameters
+    ----------
+    pipeline_str : str, optional
+        Name of model to load (default is 'BDT').
+
+    Returns
+    -------
+    model_dict : dict
+        Dictionary containing trained model as well as relevant metadata.
+
+    """
+    paths = get_paths()
+    model_file = os.path.join(paths.project_root, 'models',
+                              '{}.pkl'.format(pipeline_str))
+    if not os.path.exists(model_file):
+        raise IOError('There is no saved model file {}'.format(model_file))
+
+    model_dict = joblib.load(model_file)
+
+    return model_dict

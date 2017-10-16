@@ -10,29 +10,24 @@ from icecube import dataio, dataclasses, icetray, phys_services
 from icecube.frame_object_diff.segments import uncompress
 from I3Tray import *
 
-import composition as comp
-import composition.i3modules as i3modules
-# from composition.llh_ratio_i3_module import IceTop_LLH_Ratio
+import comptools as comp
 
 
 if __name__ == "__main__":
 
     # Setup global path names
-    mypaths = comp.Paths()
-    comp.checkdir(mypaths.comp_data_dir)
+    comp.check_output_dir(comp.paths.comp_data_dir)
 
     p = argparse.ArgumentParser(
         description='Saves tank xy coordinates for plotting purposes')
     p.add_argument('-o', '--outfile', dest='outfile',
-                   default=os.path.join(mypaths.comp_data_dir, 'tankcoordinates.csv'),
+                   default=os.path.join(comp.paths.comp_data_dir, 'tankcoordinates.hdf'),
                    help='Output file')
     args = p.parse_args()
 
     t0 = time.time()
 
     file_list = ['/data/ana/CosmicRay/IceTop_level3/sim/IC79/GCD/Level3_7006_GCD.i3.gz']
-
-
 
     tray = I3Tray()
 
@@ -44,29 +39,35 @@ if __name__ == "__main__":
 
         def __init__(self, context):
             icetray.I3Module.__init__(self, context)
-            self.AddParameter('outfile', 'Output file for tank coordinates', args.outfile)
+            self.AddParameter('outfile', 'Output file for tank coordinates',
+                              args.outfile)
             self.AddOutBox('OutBox')
 
         def Configure(self):
             self.outfile = self.GetParameter('outfile')
-            self.coordinates = defaultdict(list)
+            self.coordinates = {}
             pass
 
         def Geometry(self, frame):
             self.geometry = frame['I3Geometry']
-            self.stationgeo = self.geometry.stationgeo
+            self.geomap = self.geometry.omgeo
 
-            for tank1, tank2 in self.stationgeo.itervalues():
-                self.coordinates['x'].append(tank1.position.x)
-                self.coordinates['y'].append(tank1.position.y)
-                self.coordinates['x'].append(tank2.position.x)
-                self.coordinates['y'].append(tank2.position.y)
+            for omkey, omgeo in self.geomap:
+                # Only interested in saving IceTop OM charges
+                if omgeo.omtype.name != 'IceTop':
+                    continue
+                x, y, z = omgeo.position
+                key = 'IT_{}_{}_{}'.format(omkey.string, omkey.om, omkey.pmt)
+                self.coordinates[key] = [x, y, z]
+
             self.PushFrame(frame)
 
         def Finish(self):
-            dataframe = pd.DataFrame.from_dict(self.coordinates)
-            print(dataframe.head())
-            dataframe.to_csv(self.outfile)
+            # print(self.coordinates)
+            dataframe = pd.DataFrame.from_dict(self.coordinates, orient='index')
+            dataframe.columns = ['x', 'y', 'z']
+            print(dataframe)
+            dataframe.to_hdf(self.outfile, 'dataframe')
             return
 
     tray.Add(GetTankCoordinates)

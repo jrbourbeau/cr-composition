@@ -58,9 +58,12 @@ def get_pipeline(classifier_name='BDT'):
             loss='exponential', max_depth=3, n_estimators=100, random_state=2)
         # classifier = GradientBoostingClassifier(loss='deviance', max_depth=3,
         #     n_estimators=500, random_state=2)
-    elif classifier_name == 'RF_energy':
-        classifier = RandomForestRegressor(
-            n_estimators=100, max_depth=10, n_jobs=20, random_state=2)
+    elif classifier_name == 'RF_energy_IC86.2012':
+        classifier = RandomForestRegressor(n_estimators=100, max_depth=7,
+                                           n_jobs=10, random_state=2)
+    elif classifier_name == 'RF_energy_IC79.2010':
+        classifier = RandomForestRegressor(n_estimators=100, max_depth=8,
+                                           n_jobs=10, random_state=2)
     else:
         raise ValueError(
             '{} is not a valid classifier name'.format(classifier_name))
@@ -75,14 +78,12 @@ def get_pipeline(classifier_name='BDT'):
 
 
 @export
-def load_trained_model(config='IC86.2012', pipeline='BDT'):
+def load_trained_model(pipeline_str='BDT'):
     """Function to load pre-trained model to avoid re-training
 
     Parameters
     ----------
-    config : str
-        Detector configuration.
-    pipeline : str, optional
+    pipeline_str : str, optional
         Name of model to load (default is 'BDT').
 
     Returns
@@ -91,20 +92,13 @@ def load_trained_model(config='IC86.2012', pipeline='BDT'):
         Dictionary containing trained model as well as relevant metadata.
 
     """
-
-    if not config in get_sim_configs():
-        raise ValueError('Do not have simulation for detector '
-                         'configuration {}'.format(config))
-
     paths = get_paths()
+    model_file = os.path.join(paths.project_root, 'models',
+                              '{}.pkl'.format(pipeline_str))
+    if not os.path.exists(model_file):
+        raise IOError('There is no saved model file {}'.format(model_file))
 
-    model_file = os.path.join(paths.project_root,
-                     'models/{}_{}.pkl'.format(pipeline, config))
-    try:
-        model_dict = joblib.load(model_file)
-    except IOError:
-        raise IOError('There is no {} model saved for {} '
-              '({} doesn\'t exist)'.format(pipeline, config, model_file))
+    model_dict = joblib.load(model_file)
 
     return model_dict
 

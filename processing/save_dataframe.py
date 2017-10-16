@@ -12,7 +12,7 @@ import comptools
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Converts an input hdf5 file and converts to it a well-formatted output dataframe')
+        description='Converts an input hdf5 file (from save_hdf.py) to it a well-formatted pandas dataframe object')
     parser.add_argument('--type', dest='type',
                         choices=['data', 'sim'],
                         default='sim',
@@ -151,30 +151,33 @@ if __name__ == "__main__":
         runs = input_store['I3EventHeader']['Run']
         events = input_store['I3EventHeader']['Event']
         sub_events = input_store['I3EventHeader']['SubEvent']
-        index = ['{}_{}_{}'.format(run, event, sub_event)
+        index = ['{}_{}_{}_{}'.format(sim_num, run, event, sub_event)
                  for run, event, sub_event in zip(runs, events, sub_events)]
 
         # Extract measured charge for each DOM
-        grouped = input_store['NNcharges'].groupby(['Run','Event'])
-        charges_list, columns = [], []
-        for name, group in grouped:
-            if not columns:
-                col_info = zip(group['string'].values, group['om'].values,
-                               group['pmt'].values)
-                columns = ['{}_{}_{}'.format(*info) for info in col_info]
-            charges_list.append(group['item'].values)
+        # grouped = input_store['NNcharges'].groupby(['Run', 'Event', 'SubEvent'])
+        # charges_list, columns, tank_charges_index = [], [], []
+        # for name, group in input_store['NNcharges'].groupby(['Run', 'Event', 'SubEvent']):
+        #     if not columns:
+        #         col_info = zip(group['string'].values, group['om'].values,
+        #                        group['pmt'].values)
+        #         columns = ['IT_{}_{}_{}'.format(*info) for info in col_info]
+        #     charges_list.append(group['item'].values)
+        #     tank_charges_index.append('{}_{}_{}_{}'.format(sim_num, *name))
 
-        df_tank_charges = pd.DataFrame(charges_list, columns=columns)
+        # df_tank_charges = pd.DataFrame(charges_list, columns=columns)
+        # df_tank_charges.index = tank_charges_index
 
     # Open HDFStore for output hdf5 file
     comptools.check_output_dir(args.output)
     with pd.HDFStore(args.output, mode='w') as output_store:
-        dataframe = pd.DataFrame(series_dict, index=index)
+        dataframe = pd.DataFrame(series_dict)
+        dataframe.index = index
         # # Don't want to save data events that don't pass quality cuts
         # # because there is just too much data for that
         # if args.type == 'data':
         #     dataframe = comptools.apply_quality_cuts(dataframe, datatype='data',
         #                                              dataprocessing=True)
         # Add dataframe to output_store
-        output_store.put('dataframe', dataframe, format='fixed')
-        output_store.put('tank_charges', df_tank_charges, format='fixed')
+        output_store.put('dataframe', dataframe, format='table')
+        # output_store.put('tank_charges', df_tank_charges, format='table')

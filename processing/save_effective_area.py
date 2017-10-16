@@ -91,6 +91,13 @@ if __name__ == "__main__":
     df_sim = comp.load_sim(config=args.config, test_size=0,
                            log_energy_min=None, log_energy_max=None)
 
+    # Add reconstructed energy
+    feature_list, feature_labels = comp.get_training_features()
+    pipeline_str = 'RF_energy_{}'.format(args.config)
+    energy_pipeline_dict = comp.load_trained_model(pipeline_str)
+    energy_pipeline = energy_pipeline_dict['pipeline']
+    df_sim['reco_log_energy'] = energy_pipeline.predict(df_sim[feature_list])
+
     geom_factor = (df_sim.lap_cos_zenith.max() + df_sim.lap_cos_zenith.min()) / 2
 
     # Get simulation thrown areas for each energy bin
@@ -104,9 +111,9 @@ if __name__ == "__main__":
         thrown_showers = thrown_showers_per_ebin(sim_list, log_energy_bins=bins)
 
         dataset_mask = df_sim.sim.isin(sim_list)
-        # passed_showers = np.histogram(df_sim.loc[dataset_mask, 'lap_log_energy'],
         passed_showers = np.histogram(
-            df_sim.loc[dataset_mask, 'MC_log_energy'], bins=bins)[0]
+            df_sim.loc[dataset_mask, 'reco_log_energy'], bins=bins)[0]
+            # df_sim.loc[dataset_mask, 'MC_log_energy'], bins=bins)[0]
 
         efficiency, efficiency_err = comp.ratio_error(
                                     passed_showers, np.sqrt(passed_showers),
@@ -142,6 +149,8 @@ if __name__ == "__main__":
         ndof = len(eff_area_fit[midpoints_fitmask]) - len(p0)
         print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
                                                        ndof, chi2/ndof))
+        print('({}) eff_area_fit = {}'.format(composition, effective_area_fit[composition][midpoints_fitmask]))
+        print('({}) effective_area_err = {}'.format(composition, effective_area_err[composition][midpoints_fitmask]))
 
     effective_area_sample_fits = defaultdict(list)
     for i in pyprind.prog_bar(range(args.n_samples)):

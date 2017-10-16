@@ -1,14 +1,40 @@
 #==============================================================================
-# This module is outdated and should probably be removed! 
+# This module is outdated and should probably be removed!
 #==============================================================================
 
-
+import os
 import numpy as np
+import joblib
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from . import export
 from ..dataframe_functions import load_dataframe
-from .base import DataSet
+from .base import DataSet, get_paths
+
+@export
+def load_trained_model(pipeline_str='BDT'):
+    """Function to load pre-trained model to avoid re-training
+
+    Parameters
+    ----------
+    pipeline_str : str, optional
+        Name of model to load (default is 'BDT').
+
+    Returns
+    -------
+    model_dict : dict
+        Dictionary containing trained model as well as relevant metadata.
+
+    """
+    paths = get_paths()
+    model_file = os.path.join(paths.project_root, 'models',
+                              '{}.pkl'.format(pipeline_str))
+    if not os.path.exists(model_file):
+        raise IOError('There is no saved model file {}'.format(model_file))
+
+    model_dict = joblib.load(model_file)
+
+    return model_dict
 
 
 @export

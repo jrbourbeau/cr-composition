@@ -222,6 +222,7 @@ class AddIceTopNNCharges(icetray.I3ConditionalModule):
 
     def Configure(self):
         self.pulses = self.GetParameter('pulses')
+        self.omkey_to_position = {}
         pass
 
     def Geometry(self, frame):
@@ -237,13 +238,15 @@ class AddIceTopNNCharges(icetray.I3ConditionalModule):
                                                                 union_key)
         # tanks_x, tanks_y, tanks_charge = [], [], []
         tank_charges = defaultdict(list)
+        # tank_x = defaultdict(list)
+        # tank_y = defaultdict(list)
         for omkey, omgeo in self.geomap:
             # Only interested in saving IceTop OM charges
             if omgeo.omtype.name != 'IceTop':
                 continue
             # x, y, z = omgeo.position
-            # tanks_x.append(x)
-            # tanks_y.append(y)
+            # tank_x[omkey].append(x)
+            # tank_y[omkey].append(y)
             try:
                 pulses = pulse_map[omkey]
                 charge = sum([pulse.charge for pulse in pulses])
@@ -259,6 +262,8 @@ class AddIceTopNNCharges(icetray.I3ConditionalModule):
 
         del frame[union_key]
         frame['NNcharges'] = dataclasses.I3MapKeyVectorDouble(tank_charges)
+        # frame['tank_x'] = dataclasses.I3MapKeyVectorDouble(tank_x)
+        # frame['tank_y'] = dataclasses.I3MapKeyVectorDouble(tank_y)
 
         self.PushFrame(frame)
 

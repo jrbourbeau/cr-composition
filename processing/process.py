@@ -49,10 +49,10 @@ def add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex, **args):
 
         # Split file list into smaller batches for submission
         if args['test']:
-            args['n'] = 25
+            args['n'] = 50
         batches = [files[i:i + args['n']] for i in range(0, len(files), args['n'])]
         if args['test']:
-            batches = batches[:2]
+            batches = batches[:20]
 
         merger_input = ''
         for files in batches:
