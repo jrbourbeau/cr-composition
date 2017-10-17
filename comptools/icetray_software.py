@@ -338,7 +338,7 @@ class AddIceTopChargeDistance(icetray.I3ConditionalModule):
                 # print('lap_beta, refit_beta = {}, {}'.format(lap_beta, beta))
                 # print('lap_log_s125, refit_log_s125 = {}, {}'.format(lap_log_s125, log_s125))
                 # print('='*20)
-            except Exception, e:
+            except Exception as e:
                 print('Refitting shower to DLP didn\'t work out. '
                       'Setting to NaN...')
                 print(e)
