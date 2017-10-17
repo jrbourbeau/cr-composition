@@ -21,7 +21,9 @@ if __name__ == '__main__':
     pipeline_str = 'RF_energy_{}'.format(args.config)
     pipeline = comp.get_pipeline(pipeline_str)
     # Load training data and fit model
-    df_sim_train, df_sim_test = comp.load_sim(config=args.config)
+    df_sim_train, df_sim_test = comp.load_sim(config=args.config,
+                                              log_energy_min=5.0,
+                                              log_energy_max=None)
     feature_list, feature_labels = comp.get_training_features()
     pipeline.fit(df_sim_train[feature_list], df_sim_train['MC_log_energy'])
     # # Get predicted reconstructed energy

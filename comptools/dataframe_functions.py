@@ -73,7 +73,8 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # cut_dict['IceTop_charge'] = np.logical_not(df['IceTop_charge'].isnull()) & cut_dict['IceTop_charge_175m']
 
     # InIce specific cuts
-    cut_dict['passed_InIceQualityCuts'] = df['passed_InIceQualityCuts'].astype(bool)
+    cut_dict['eloss_positive'] = df['eloss_1500_standard'] > 0
+    cut_dict['passed_InIceQualityCuts'] = df['passed_InIceQualityCuts'].astype(bool) & cut_dict['eloss_positive']
     # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
     #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
     #     cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)

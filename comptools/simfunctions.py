@@ -5,7 +5,10 @@ import glob
 from itertools import chain
 import numpy as np
 
-from icecube.weighting.weighting import from_simprod
+try:
+    from icecube.weighting.weighting import from_simprod
+except ImportError as e:
+    pass
 
 
 def comp2mass(composition):

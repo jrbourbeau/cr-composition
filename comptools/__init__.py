@@ -12,7 +12,10 @@ from .composition_encoding import get_comp_list, comp_to_label, label_to_comp
 from .analysis import *
 from . import anisotropy
 from .livetime import get_livetime_file, get_detector_livetime
-from . import icetray_software
+try:
+    from . import icetray_software
+except ImportError as e:
+    pass
 # from .PyUnfold import *
 # from .RootReader import get1d
 

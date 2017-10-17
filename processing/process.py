@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
-import glob
 import os
-import re
+import glob
 import argparse
-import time
-import getpass
 import numpy as np
 import pyprind
 
@@ -225,10 +222,10 @@ if __name__ == "__main__":
         args.sim = comptools.simfunctions.config_to_sim(args.config)
 
     # Define output directories
-    error = comptools.paths.condor_data_dir + '/error'
-    output = comptools.paths.condor_data_dir + '/output'
-    log = comptools.paths.condor_scratch_dir + '/log'
-    submit = comptools.paths.condor_scratch_dir + '/submit'
+    error = os.path.join(comptools.paths.condor_data_dir, '/error')
+    output = os.path.join(comptools.paths.condor_data_dir, '/output')
+    log = os.path.join(comptools.paths.condor_scratch_dir, '/log')
+    submit = os.path.join(comptools.paths.condor_scratch_dir, '/submit')
 
     # Create Dagman to manage processing workflow
     name = 'processing_{}_{}'.format(args.type, args.config)
@@ -243,11 +240,11 @@ if __name__ == "__main__":
                               'save_dataframe.py')
 
     if args.type == 'sim':
-        dagman = add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex,
-                                    save_df_ex, **vars(args))
+        dagman = add_sim_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex,
+                              **vars(args))
     else:
-        dagman = add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex,
-                                    save_df_ex, **vars(args))
+        dagman = add_data_jobs(dagman, save_hdf5_ex, merge_hdf5_ex, save_df_ex,
+                               **vars(args))
 
     # Add dataframe merger job
     merge_df_ex = os.path.join(comptools.paths.project_root, 'processing',
@@ -268,8 +265,7 @@ if __name__ == "__main__":
     if args.overwrite:
         merge_df_arg += ' --overwrite'
     merge_df_job.add_arg(merge_df_arg)
-    # merge_df_job.add_arg(merge_df_arg, retry=15)
-    # Add merge_df_job to dagman
+
     dagman.add_job(merge_df_job)
 
     # Ensure that all dataframes are made before merging
@@ -279,4 +275,17 @@ if __name__ == "__main__":
         else:
             continue
 
+    # Add job for training and saving energy reconstruction model
+    if args.type == 'sim':
+        energy_reco_ex = os.path.join(comptools.paths.project_root, 'models',
+                                      'save_energy_reco_model.py')
+        energy_reco_job = pycondor.Job('energy_reco', energy_reco_ex,
+                                       error=error, output=output,
+                                       log=log, submit=submit,
+                                       verbose=1)
+
+        energy_reco_job.add_arg('--config {}'.format(args.config))
+        dagman.add_job(energy_reco_job)
+
+    # Build and submit dagman
     dagman.build_submit(maxjobs=args.maxjobs, fancyname=True)
