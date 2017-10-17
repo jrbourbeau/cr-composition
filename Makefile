@@ -2,8 +2,8 @@
 requirements:
 	pip freeze > requirements.txt
 
-test:
-	py.test -v tests
+tests:
+	py.test -v comptools/tests
 
 YEARS = 2011 2012 2013 2014 2015
 

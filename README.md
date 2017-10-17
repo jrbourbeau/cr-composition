@@ -1,5 +1,7 @@
 # Cosmic-ray composition analysis
 
+[![Build Status](https://travis-ci.org/jrbourbeau/cr-composition.svg?branch=master)](https://travis-ci.org/jrbourbeau/cr-composition)
+
 This repository is used to investigate the cosmic-ray composition spectrum
 using data collected by the IceCube South Pole Neutrino Observatory.
 
