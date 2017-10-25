@@ -54,7 +54,6 @@ def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
         y = y / eff_area
         y_err = y_err / eff_area
     else:
-        eff_area_err = 0.01 * eff_area
         y, y_err = ratio_error(y, y_err, eff_area, eff_area_err)
     # Add solid angle
     y = y / solid_angle

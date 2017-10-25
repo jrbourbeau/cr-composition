@@ -58,7 +58,6 @@ def decode_composition_groups(labels, num_groups=2):
         raise KeyError('Incorrect label entered')
 
 
-
 def get_comp_list(num_groups=2):
     group_to_label = _get_group_encoding_dict(num_groups=num_groups)
     return list(group_to_label.keys())

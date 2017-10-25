@@ -222,10 +222,10 @@ if __name__ == "__main__":
         args.sim = comptools.simfunctions.config_to_sim(args.config)
 
     # Define output directories
-    error = os.path.join(comptools.paths.condor_data_dir, '/error')
-    output = os.path.join(comptools.paths.condor_data_dir, '/output')
-    log = os.path.join(comptools.paths.condor_scratch_dir, '/log')
-    submit = os.path.join(comptools.paths.condor_scratch_dir, '/submit')
+    error = os.path.join(comptools.paths.condor_data_dir, 'error')
+    output = os.path.join(comptools.paths.condor_data_dir, 'output')
+    log = os.path.join(comptools.paths.condor_scratch_dir, 'log')
+    submit = os.path.join(comptools.paths.condor_scratch_dir, 'submit')
 
     # Create Dagman to manage processing workflow
     name = 'processing_{}_{}'.format(args.type, args.config)
@@ -285,6 +285,7 @@ if __name__ == "__main__":
                                        verbose=1)
 
         energy_reco_job.add_arg('--config {}'.format(args.config))
+        energy_reco_job.add_parent(merge_df_job)
         dagman.add_job(energy_reco_job)
 
     # Build and submit dagman

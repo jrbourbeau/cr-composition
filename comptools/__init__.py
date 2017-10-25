@@ -12,11 +12,15 @@ from .composition_encoding import get_comp_list, comp_to_label, label_to_comp
 from .analysis import *
 from . import anisotropy
 from .livetime import get_livetime_file, get_detector_livetime
+
 try:
-    from . import icetray_software
+    import icecube
+    _has_icecube = True
 except ImportError as e:
-    pass
-# from .PyUnfold import *
-# from .RootReader import get1d
+    _has_icecube = False
+    print('Couldn\'t find IceCube software. Importing comptools without it.')
+
+if _has_icecube:
+    from . import icetray_software
 
 paths = get_paths()

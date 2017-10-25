@@ -26,9 +26,6 @@ if __name__ == '__main__':
                                               log_energy_max=None)
     feature_list, feature_labels = comp.get_training_features()
     pipeline.fit(df_sim_train[feature_list], df_sim_train['MC_log_energy'])
-    # # Get predicted reconstructed energy
-    # reco_log_energy = pipeline.predict(df_sim_test[feature_list])
-
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:
     # http://scikit-learn.org/stable/modules/model_persistence.html#security-maintainability-limitations

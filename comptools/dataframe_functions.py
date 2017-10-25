@@ -37,13 +37,6 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # Quality Cuts #
     # Adapted from PHYSICAL REVIEW D 88, 042004 (2013)
     cut_dict = {}
-    # MC-level cuts
-    if datatype == 'sim':
-    #     cut_dict['FractionContainment_MCPrimary_IceTop'] = (
-    #         df['FractionContainment_MCPrimary_IceTop'] < 1.0)
-    #     cut_dict['FractionContainment_MCPrimary_InIce'] = (
-    #         df['FractionContainment_MCPrimary_InIce'] < 1.0)
-        df['MC_log_energy'] = np.nan_to_num(np.log10(df['MC_energy']))
     # IT specific cuts
     cut_dict['passed_IceTopQualityCuts'] = df['passed_IceTopQualityCuts'].astype(bool)
     # cut_dict['lap_fitstatus_ok'] = df['lap_fitstatus_ok']
@@ -138,9 +131,11 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
         return df_cut
 
 
-def add_convenience_variables(df):
+def add_convenience_variables(df, datatype='sim'):
     validate_dataframe(df)
 
+    if datatype == 'sim':
+        df['MC_log_energy'] = np.nan_to_num(np.log10(df['MC_energy']))
     # Add log-scale columns to df
     df['lap_log_energy'] = np.nan_to_num(np.log10(df['lap_energy']))
     # df['InIce_log_charge_1_60'] = np.nan_to_num(np.log10(df['InIce_charge_1_60']))
@@ -194,7 +189,7 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
 
     df = (df.pipe(apply_quality_cuts, datatype, log_energy_min=log_energy_min,
                   log_energy_max=log_energy_max, verbose=verbose)
-            .pipe(add_convenience_variables)
+            .pipe(add_convenience_variables, datatype=datatype)
          )
 
     model_dict = load_trained_model('RF_energy_{}'.format(config))
@@ -272,8 +267,6 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
         train_mask, test_mask = next(splitter.split(df, df['target']))
         train_df = df.iloc[train_mask]
         test_df = df.iloc[test_mask]
-        # train_df = df.iloc[train_mask].reset_index(drop=True)
-        # test_df = df.iloc[test_mask].reset_index(drop=True)
         output = train_df, test_df
     else:
         output = df

@@ -16,6 +16,7 @@ from .data_functions import ratio_error
 from .pipelines import get_pipeline
 from .features import get_training_features
 
+from . import export
 
 
 def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
@@ -109,15 +110,18 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
 
 
 @delayed
-def _cross_validate_comp(config, pipeline_str, param_name, param_value,
-                                feature_list=None, target='comp_target_2',
-                                scoring='r2', num_groups=2, n_splits=10):
+def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
+                         param_value, feature_list=None,
+                         target='comp_target_2', scoring='r2', num_groups=2,
+                         n_splits=10):
     '''Calculates stratified k-fold CV scores for a given hyperparameter value
 
     Parameters
     ----------
-    config : str
-        Detector configuration.
+    df_train : pandas.DataFrame
+        Training DataFrame (see comptools.load_sim()).
+    df_test : pandas.DataFrame
+        Testing DataFrame (see comptools.load_sim()).
     pipeline_str : str
         Name of pipeline to use (e.g. 'BDT', 'RF_energy', etc.).
     param_name : str
@@ -147,7 +151,6 @@ def _cross_validate_comp(config, pipeline_str, param_name, param_value,
     comp_list = get_comp_list(num_groups=num_groups)
     if feature_list is None:
         feature_list, _ = get_training_features()
-    df_sim_train, df_sim_test = load_sim(config=config, verbose=False)
 
     pipeline = get_pipeline(pipeline_str)
     pipeline.named_steps['classifier'].set_params(**{param_name: param_value})
@@ -169,9 +172,9 @@ def _cross_validate_comp(config, pipeline_str, param_name, param_value,
     else:
         scorer = accuracy_score
 
-    for train_index, test_index in kf.split(df_sim_train):
+    for train_index, test_index in kf.split(df_train.values):
 
-        df_train_fold, df_test_fold = df_sim_train.iloc[train_index], df_sim_train.iloc[test_index]
+        df_train_fold, df_test_fold = df_train.iloc[train_index], df_train.iloc[test_index]
 
         X_train, y_train = dataframe_to_X_y(df_train_fold, feature_list,
                                             target=target)
@@ -208,17 +211,60 @@ def _cross_validate_comp(config, pipeline_str, param_name, param_value,
     return data_dict
 
 
-def cross_validate_comp(config, pipeline_str, param_name, param_values,
-                        feature_list=None, target='comp_target_2',
-                        scoring='r2', num_groups=2, n_splits=10, n_jobs=1,
-                        verbose=False):
+@export
+def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
+                        param_values, feature_list=None,
+                        target='comp_target_2', scoring='r2', num_groups=2,
+                        n_splits=10, n_jobs=1, verbose=False):
+    '''Calculates stratified k-fold CV scores for a given hyperparameter value
+
+    Similar to sklearn.model_selection.cross_validate, but returns results
+    for individual composition groups as well as the combined CV result.
+
+    Parameters
+    ----------
+    df_train : pandas.DataFrame
+        Training DataFrame (see comptools.load_sim()).
+    df_test : pandas.DataFrame
+        Testing DataFrame (see comptools.load_sim()).
+    pipeline_str : str
+        Name of pipeline to use (e.g. 'BDT', 'RF_energy', etc.).
+    param_name : str
+        Name of hyperparameter (e.g. 'max_depth', 'learning_rate', etc.).
+    param_values : array-like
+        Values to set hyperparameter to.
+    feature_list : list, optional
+        List of training feature columns to use (default is to use
+        comptools.get_training_features()).
+    target : str, optional
+        Training target to use (default is 'comp_target_2').
+    scoring : {'r2', 'mse', 'accuracy'}
+        Scoring metric to calculate for each CV fold (default is 'r2').
+    num_groups : int, optional
+        Number of composition class groups to use (default is 2).
+    n_splits : int, optional
+        Number of folds to use in (KFold) cross-validation
+        (default is 10).
+    n_jobs : int, optional
+        Number of jobs to run in parallel (default is 1).
+    verbose : bool, optional
+        Option to print a progress bar (default is False).
+
+    Returns
+    -------
+        df_cv : pandas.DataFrame
+            Returns a DataFrame with average scores as well as CV errors
+            on those scores for each composition.
+
+    '''
     cv_dicts = []
     for param_value in param_values:
-        cv_dict_delayed = _cross_validate_comp(
-                    config, pipeline_str, param_name, param_value,
+        cv_dict = _cross_validate_comp(
+                    df_train, df_test, pipeline_str,
+                    param_name, param_value,
                     feature_list=feature_list, target=target,
-                    scoring=scoring, num_groups=num_groups, n_splits=10)
-        cv_dicts.append(cv_dict_delayed)
+                    scoring=scoring, num_groups=num_groups, n_splits=n_splits)
+        cv_dicts.append(cv_dict)
 
     df_cv = delayed(pd.DataFrame.from_records)(cv_dicts, index='param_value')
 

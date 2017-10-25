@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import pyprind
 
 import comptools as comp
 from comptools.analysis import plotting
@@ -54,7 +53,7 @@ def sigmoid_slant(log_energy, p0, p1, p2, p3):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Extracts and saves desired information from simulation/data .i3 files')
+        description='Calculates, plots, and saves detector effective area')
     parser.add_argument('-s', '--sim', dest='sim', nargs='*', type=int,
                         help='Simulation to run over')
     parser.add_argument('-c', '--config', dest='config',
@@ -64,6 +63,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--n_samples', dest='n_samples', type=int,
                         default=1000,
                         help='Number of random samples to use in calcuating the fit error')
+    parser.add_argument('--n_groups', dest='n_groups', type=int,
+                        default=2,
+                        help='Number of composition groups to use')
     parser.add_argument('--sigmoid', dest='sigmoid', default='slant',
                         choices=['flat', 'slant'],
                         help='Sigmoid function to fit to effective area')
@@ -73,32 +75,18 @@ if __name__ == "__main__":
     if not args.sim:
         args.sim = comp.simfunctions.config_to_sim(args.config)
 
-    # There are aspects of this script that will only work with IC86.2012
-    # simulation (e.g. definition of sim_dict). Need to generalize.
-    if not args.config == 'IC86.2012':
-        raise ValueError('Currently only IC86.2012 is supported...')
-
-    num_groups = 2
+    num_groups = args.n_groups
     comp_list = comp.get_comp_list(num_groups=num_groups)
 
     energybins = comp.analysis.get_energybins()
-    bins = np.arange(5, 8.4, 0.1)
+    bins = np.arange(5, 8.1, 0.1)
     bin_midpoints = (bins[1:] + bins[:-1]) / 2
-    bin_midpoints_mask = bin_midpoints >= energybins.log_energy_min
-
-    sim_dict = {'light': [12360, 12630],
-                'heavy': [12362, 12631],
-                'total': [12360, 12362, 12630, 12631]}
+    bin_midpoints_mask = np.logical_and(
+                    bin_midpoints >= energybins.log_energy_min,
+                    bin_midpoints <= energybins.log_energy_max)
 
     df_sim = comp.load_sim(config=args.config, test_size=0,
                            log_energy_min=None, log_energy_max=None)
-
-    # # Add reconstructed energy
-    # feature_list, feature_labels = comp.get_training_features()
-    # pipeline_str = 'RF_energy_{}'.format(args.config)
-    # energy_pipeline_dict = comp.load_trained_model(pipeline_str)
-    # energy_pipeline = energy_pipeline_dict['pipeline']
-    # df_sim['reco_log_energy'] = energy_pipeline.predict(df_sim[feature_list])
 
     geom_factor = (df_sim.lap_cos_zenith.max() + df_sim.lap_cos_zenith.min()) / 2
 
@@ -106,16 +94,19 @@ if __name__ == "__main__":
     thrown_radii = comp.simfunctions.get_sim_thrown_radius(bin_midpoints)
     thrown_areas = np.pi * thrown_radii**2
 
-    # Calculate light and heavy effective areas
+    # Calculate efficiencies and effective areas for each composition group
     efficiencies, efficiencies_err = {}, {}
     effective_area, effective_area_err = {}, {}
-    for composition, sim_list in sim_dict.items():
+    for composition in comp_list:
+        # Get list of simulation sets for composition
+        comp_mask = df_sim['comp_group_{}'.format(num_groups)] == composition
+        sim_list = df_sim.loc[comp_mask, 'sim'].unique()
+        # Get number of thrown showers and number of showers that pass cuts
+        # for energy bins for sim_list
         thrown_showers = thrown_showers_per_ebin(sim_list, log_energy_bins=bins)
 
-        dataset_mask = df_sim.sim.isin(sim_list)
-        passed_showers = np.histogram(
-            # df_sim.loc[dataset_mask, 'reco_log_energy'], bins=bins)[0]
-            df_sim.loc[dataset_mask, 'MC_log_energy'], bins=bins)[0]
+        passed_showers = np.histogram(df_sim.loc[comp_mask, 'MC_log_energy'],
+                                      bins=bins)[0]
 
         efficiency, efficiency_err = comp.ratio_error(
                                     passed_showers, np.sqrt(passed_showers),
@@ -124,19 +115,15 @@ if __name__ == "__main__":
         efficiencies[composition] = efficiency
         efficiencies_err[composition] = efficiency_err
 
-        eff_area = efficiency * thrown_areas
-        eff_area_err = efficiency_err * thrown_areas
+        # Calculate effective area from efficiencies and thrown areas
+        effective_area[composition] = efficiency * thrown_areas
+        effective_area_err[composition] = efficiency_err * thrown_areas
 
-        effective_area[composition] = eff_area
-        effective_area_err[composition] = eff_area_err
-
+    # Fit effective area
     fit_func = sigmoid_flat if args.sigmoid == 'flat' else sigmoid_slant
     p0 = [7e4, 8.0, 50.0] if args.sigmoid == 'flat' else [7e4, 8.5, 50.0, 800]
-    # Perform several fits to random fluxuations of the effective area
     effective_area_fit = {}
-    # First fit the actual data
     energy_min_fit, energy_max_fit = 5.8, 7.9
-    # energy_min_fit, energy_max_fit = 5.8, 8.0
     midpoints_fitmask = np.logical_and(bin_midpoints > energy_min_fit,
                                        bin_midpoints < energy_max_fit)
     for composition in comp_list:
@@ -152,8 +139,9 @@ if __name__ == "__main__":
         print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
                                                        ndof, chi2/ndof))
 
+    # Perform several fits to random fluxuations of the effective area
     effective_area_sample_fits = defaultdict(list)
-    for i in pyprind.prog_bar(range(args.n_samples)):
+    for _ in range(args.n_samples):
         for composition in comp_list:
             # Get new random sample to fit
             eff_area_sample = np.random.normal(effective_area_fit[composition][midpoints_fitmask],
@@ -185,11 +173,13 @@ if __name__ == "__main__":
         eff_fit['eff_err_high_{}'.format(composition)] = fit_err_high / thrown_areas
 
     # Save fit effective areas and efficiencies to disk
-    eff_area_outfile = os.path.join(comp.paths.comp_data_dir, 'unfolding',
+    eff_area_outfile = os.path.join(comp.paths.comp_data_dir,
+                                    args.config + '_sim',
                                     'effective_area_fit.hdf')
     eff_area_fit[bin_midpoints_mask].reset_index(drop=True).to_hdf(eff_area_outfile, 'dataframe')
 
-    eff_outfile = os.path.join(comp.paths.comp_data_dir, 'unfolding',
+    eff_outfile = os.path.join(comp.paths.comp_data_dir,
+                               args.config + '_sim',
                                'efficiency_fit.hdf')
     eff_fit[bin_midpoints_mask].reset_index(drop=True).to_hdf(eff_outfile, 'dataframe')
 

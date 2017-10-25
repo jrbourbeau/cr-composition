@@ -7,7 +7,7 @@ import glob
 import numpy as np
 import pandas as pd
 
-import comptools
+import comptools as comp
 
 
 if __name__ == "__main__":
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         output = args.output
     else:
         output = '{}/{}_{}/{}_dataframe.hdf5'.format(
-                comptools.paths.comp_data_dir, args.config,
+                comp.paths.comp_data_dir, args.config,
                 args.type, args.type)
     # If output file already exists and you want to overwrite,
     # delete existing output file
@@ -41,11 +41,11 @@ if __name__ == "__main__":
 
     # Get input hdf5 files to merge
     file_pattern = '{}/{}_{}/dataframe_files/dataframe_*.hdf5'.format(
-                            comptools.paths.comp_data_dir,
+                            comp.paths.comp_data_dir,
                             args.config, args.type)
     files = glob.glob(file_pattern)
     files = sorted(files)
-    comptools.check_output_dir(output)
+    comp.check_output_dir(output)
     with pd.HDFStore(output, 'w') as output_store:
         for f in files:
             with pd.HDFStore(f) as input_store:
