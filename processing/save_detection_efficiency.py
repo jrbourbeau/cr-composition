@@ -16,15 +16,15 @@ color_dict = comp.analysis.get_color_dict()
 
 def thrown_showers_per_ebin(sim_list, log_energy_bins=None):
     e_bins = []
-    for f in comp.simfunctions.get_level3_sim_files_iterator(sim_list):
-        start_idx = f.find('Run')
-        run = int(f[start_idx+3: start_idx+9])
-        e_bin = comp.simfunctions.run_to_energy_bin(run)
-        e_bins.append(e_bin)
+    for sim in sim_list:
+        for f in comp.simfunctions.get_level3_sim_files_iterator(sim):
+            start_idx = f.find('Run')
+            run = int(f[start_idx+3: start_idx+9])
+            e_bin = comp.simfunctions.run_to_energy_bin(run, sim)
+            e_bins.append(e_bin)
 
     if log_energy_bins is None:
         log_energy_bins = np.arange(5, 8.1, 0.1)
-    log_energy_midpoints = (log_energy_bins[1:] + log_energy_bins[:-1]) / 2
     vals = np.histogram(e_bins, bins=log_energy_bins)[0]
 
     n_resamples = 100
@@ -78,8 +78,12 @@ if __name__ == "__main__":
     num_groups = args.n_groups
     comp_list = comp.get_comp_list(num_groups=num_groups)
 
-    energybins = comp.analysis.get_energybins()
-    bins = np.arange(5, 8.1, 0.1)
+    energybins = comp.analysis.get_energybins(config=args.config)
+    if args.config == 'IC79.2010':
+        bins = np.concatenate((np.arange(5, 7.9, 0.1), np.arange(8.0, 9.2, 0.2)))
+    if args.config == 'IC86.2012':
+        bins = np.arange(5, 8.1, 0.1)
+    print('bins = {}'.format(bins))
     bin_midpoints = (bins[1:] + bins[:-1]) / 2
     bin_midpoints_mask = np.logical_and(
                     bin_midpoints >= energybins.log_energy_min,
@@ -93,6 +97,7 @@ if __name__ == "__main__":
     # Get simulation thrown areas for each energy bin
     thrown_radii = comp.simfunctions.get_sim_thrown_radius(bin_midpoints)
     thrown_areas = np.pi * thrown_radii**2
+    thrown_areas_max = thrown_areas.max()
 
     # Calculate efficiencies and effective areas for each composition group
     efficiencies, efficiencies_err = {}, {}
@@ -112,72 +117,66 @@ if __name__ == "__main__":
                                     passed_showers, np.sqrt(passed_showers),
                                     thrown_showers, np.sqrt(thrown_showers),
                                     nan_to_num=False)
-        efficiencies[composition] = efficiency
-        efficiencies_err[composition] = efficiency_err
 
         # Calculate effective area from efficiencies and thrown areas
         effective_area[composition] = efficiency * thrown_areas
         effective_area_err[composition] = efficiency_err * thrown_areas
 
-    # Fit effective area
+        # Scale efficiencies by geometric factor to take into account
+        # different simulated thrown radii
+        thrown_radius_factor = thrown_areas / thrown_areas_max
+        efficiencies[composition] = efficiency * thrown_radius_factor
+        efficiencies_err[composition] = efficiency_err * thrown_radius_factor
+
+    # Fit efficiencies
     fit_func = sigmoid_flat if args.sigmoid == 'flat' else sigmoid_slant
     p0 = [7e4, 8.0, 50.0] if args.sigmoid == 'flat' else [7e4, 8.5, 50.0, 800]
-    effective_area_fit = {}
+    efficiencies_fit = {}
     energy_min_fit, energy_max_fit = 5.8, 7.9
     midpoints_fitmask = np.logical_and(bin_midpoints > energy_min_fit,
                                        bin_midpoints < energy_max_fit)
     for composition in comp_list:
         popt, pcov = curve_fit(
             fit_func, bin_midpoints[midpoints_fitmask],
-            effective_area[composition][midpoints_fitmask],
-            sigma=effective_area_err[composition][midpoints_fitmask], p0=p0)
-        eff_area_fit = fit_func(bin_midpoints, *popt)
-        effective_area_fit[composition] = eff_area_fit
+            efficiencies[composition][midpoints_fitmask],
+            sigma=efficiencies_err[composition][midpoints_fitmask], p0=p0)
+        eff_fit = fit_func(bin_midpoints, *popt)
+        efficiencies_fit[composition] = eff_fit
 
-        chi2 = np.sum((effective_area[composition][midpoints_fitmask] - eff_area_fit[midpoints_fitmask])**2 / (effective_area_err[composition][midpoints_fitmask]) ** 2)
-        ndof = len(eff_area_fit[midpoints_fitmask]) - len(p0)
+        chi2 = np.sum((efficiencies[composition][midpoints_fitmask] - eff_fit[midpoints_fitmask])**2 / (efficiencies_err[composition][midpoints_fitmask]) ** 2)
+        ndof = len(eff_fit[midpoints_fitmask]) - len(p0)
         print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
                                                        ndof, chi2/ndof))
 
-    # Perform several fits to random fluxuations of the effective area
-    effective_area_sample_fits = defaultdict(list)
+    # Perform several fits to random fluxuations of the efficiencies
+    efficiencies_fit_samples = defaultdict(list)
     for _ in range(args.n_samples):
         for composition in comp_list:
             # Get new random sample to fit
-            eff_area_sample = np.random.normal(effective_area_fit[composition][midpoints_fitmask],
-                                               effective_area_err[composition][midpoints_fitmask])
+            eff_sample = np.random.normal(efficiencies_fit[composition][midpoints_fitmask],
+                                          efficiencies_err[composition][midpoints_fitmask])
             # Fit with error bars
             popt, pcov = curve_fit(fit_func, bin_midpoints[midpoints_fitmask],
-               eff_area_sample, p0=p0,
-               sigma=effective_area_err[composition][midpoints_fitmask])
+               eff_sample, p0=p0,
+               sigma=efficiencies_err[composition][midpoints_fitmask])
 
-            eff_area_fit_sample = fit_func(bin_midpoints, *popt)
-            effective_area_sample_fits[composition].append(eff_area_fit_sample)
+            eff_fit_sample = fit_func(bin_midpoints, *popt)
+            efficiencies_fit_samples[composition].append(eff_fit_sample)
 
-    # Calculate median and error of effective area fit
-    eff_area_fit = pd.DataFrame()
+    # Calculate median and error of efficiency fits
     eff_fit = pd.DataFrame()
     for composition in comp_list:
         fit_median, fit_err_low, fit_err_high = np.percentile(
-            effective_area_sample_fits[composition], (50, 16, 84), axis=0)
+            efficiencies_fit_samples[composition], (50, 16, 84), axis=0)
         fit_err_low = np.abs(fit_err_low - fit_median)
         fit_err_high = np.abs(fit_err_high - fit_median)
 
-        eff_area_fit['eff_area_median_{}'.format(composition)] = fit_median
-        eff_area_fit['eff_area_err_low_{}'.format(composition)] = fit_err_low
-        eff_area_fit['eff_area_err_high_{}'.format(composition)] = fit_err_high
+        # Calculate fit efficiencies
+        eff_fit['eff_median_{}'.format(composition)] = fit_median
+        eff_fit['eff_err_low_{}'.format(composition)] = fit_err_low
+        eff_fit['eff_err_high_{}'.format(composition)] = fit_err_high
 
-        # Calculate fit efficiencies from the fit effective areas
-        eff_fit['eff_median_{}'.format(composition)] = fit_median / thrown_areas
-        eff_fit['eff_err_low_{}'.format(composition)] = fit_err_low / thrown_areas
-        eff_fit['eff_err_high_{}'.format(composition)] = fit_err_high / thrown_areas
-
-    # Save fit effective areas and efficiencies to disk
-    eff_area_outfile = os.path.join(comp.paths.comp_data_dir,
-                                    args.config + '_sim',
-                                    'effective_area_fit.hdf')
-    eff_area_fit[bin_midpoints_mask].reset_index(drop=True).to_hdf(eff_area_outfile, 'dataframe')
-
+    # Save fit efficiencies to disk
     eff_outfile = os.path.join(comp.paths.comp_data_dir,
                                args.config + '_sim',
                                'efficiency_fit.hdf')
@@ -191,19 +190,11 @@ if __name__ == "__main__":
                             yerr=effective_area_err[composition],
                             color=color_dict[composition], label=composition,
                             ax=ax)
-        # Plot fit effective area
-        ax.errorbar(bin_midpoints, eff_area_fit['eff_area_median_{}'.format(composition)],
-                    yerr=[eff_area_fit['eff_area_err_low_{}'.format(composition)],
-                          eff_area_fit['eff_area_err_high_{}'.format(composition)]],
-                    marker='.', ls=':', color=color_dict[composition],
-                    alpha=0.9, label=composition + ' (fit)')
-
     ax.axvline(6.4, marker='None', ls='-.', color='k')
     ax.set_xlabel('$\mathrm{\log_{10}(E_{true}/GeV)}$')
     ax.set_ylabel('Effective area [$\mathrm{m^2}$]')
-    ax.set_xlim(bins.min(), 8.0)
+    ax.set_xlim(bins.min(), bins.max())
     ax.set_ylim(0)
-    # ax.set_yscale("log", nonposy='clip')
     ax.ticklabel_format(style='sci',axis='y')
     ax.yaxis.major.formatter.set_powerlimits((0,0))
     ax.grid()
@@ -227,13 +218,11 @@ if __name__ == "__main__":
                           eff_fit['eff_err_high_{}'.format(composition)]],
                     marker='.', ls=':', color=color_dict[composition],
                     alpha=0.9, label=composition + ' (fit)')
-
     ax.axvline(6.4, marker='None', ls='-.', color='k')
     ax.set_xlabel('$\mathrm{\log_{10}(E_{true}/GeV)}$')
-    ax.set_ylabel('Detection efficiency \n($\mathrm{N_{passed}/N_{thrown}}$)')
-    ax.set_xlim(bins.min(), 8.0)
+    ax.set_ylabel('Detection efficiency')
+    ax.set_xlim(bins.min(), bins.max())
     ax.set_ylim(0)
-    # ax.set_yscale("log", nonposy='clip')
     ax.ticklabel_format(style='sci',axis='y')
     ax.yaxis.major.formatter.set_powerlimits((0,0))
     ax.grid()
@@ -242,58 +231,3 @@ if __name__ == "__main__":
                            'efficiencies_{}_{}-sigmoid.png'.format(args.config,
                                                               args.sigmoid))
     plt.savefig(outfile)
-
-    # # Plot correspondingn detector efficiency
-    # def eff_area_to_efficiency(eff_area, eff_area_err_low, eff_area_err_upper):
-    #     eff = eff_area / thrown_areas
-    #     eff_err_low = eff_area_err_low / thrown_areas
-    #     eff_err_low = eff_area_err_upper / thrown_areas
-    #     # eff = eff_area / (thrown_areas * geom_factor)
-    #     # eff_err_low = eff_area_err_low / (thrown_areas * geom_factor)
-    #     # eff_err_low = eff_area_err_upper / (thrown_areas * geom_factor)
-    #     return eff, eff_err_low, eff_err_low
-    #
-    # fig, ax = plt.subplots()
-    # efficiencies_pyunfold = np.empty(len(energybins.log_energy_midpoints)*2)
-    # efficiencies_err_pyunfold = np.empty_like(efficiencies_pyunfold)
-    # for composition in ['light', 'heavy']:
-    #
-    #     plotting.plot_steps(bins, efficiencies[composition],
-    #                         yerr=efficiencies_err[composition],
-    #                         color=color_dict[composition], label=composition,
-    #                         ax=ax)
-    #
-    #     eff, eff_err_low, eff_err_high = eff_area_to_efficiency(
-    #                         eff_area_fit_params[composition]['median'],
-    #                         eff_area_fit_params[composition]['err_low'],
-    #                         eff_area_fit_params[composition]['err_high'])
-    #     ax.errorbar(bin_midpoints, eff, yerr=[eff_err_low, eff_err_high],
-    #                 color=color_dict[composition], label=composition + '(fit)',
-    #                 marker='.', ls=':')
-    #
-    #     # Save efficiency array for unfolding
-    #     start_idx = 0 if composition == 'light' else 1
-    #     efficiencies_pyunfold[start_idx::2] = eff[bin_midpoints_mask]
-    #     efficiencies_err_pyunfold[start_idx::2] = eff_err_low[bin_midpoints_mask]
-    #
-    # eff_outfile = os.path.join(comp.paths.comp_data_dir, 'unfolding',
-    #                            'efficiency.npy')
-    # np.save(eff_outfile, efficiencies_pyunfold)
-    #
-    # eff_err_outfile = os.path.join(comp.paths.comp_data_dir, 'unfolding',
-    #                                'efficiency-err.npy')
-    # np.save(eff_err_outfile, efficiencies_err_pyunfold)
-    #
-    # ax.axvline(6.4, marker='None', ls='-.', color='k')
-    # ax.set_xlabel('$\mathrm{\log_{10}(E_{true}/GeV)}$')
-    # ax.set_ylabel('Detection efficiency \n($\mathrm{N_{passed}/N_{thrown}}$)')
-    # ax.set_xlim(bins.min(), 8.0)
-    # ax.set_ylim(0)
-    # # ax.set_yscale("log", nonposy='clip')
-    # ax.ticklabel_format(style='sci',axis='y')
-    # ax.yaxis.major.formatter.set_powerlimits((0,0))
-    # ax.grid()
-    # ax.legend(title='True composition', fontsize=14)
-    # outfile = os.path.join(comp.paths.figures_dir,
-    #                        'efficiency-fit.png')
-    # plt.savefig(outfile)

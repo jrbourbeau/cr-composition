@@ -171,9 +171,9 @@ def add_convenience_variables(df, datatype='sim'):
 
 
 def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
-                          comp_key='MC_comp_class', columns=None,
-                          verbose=False, log_energy_min=6.0,
-                          log_energy_max=8.0):
+                          energy_key='reco_log_energy', columns=None,
+                          verbose=False, log_energy_min=None,
+                          log_energy_max=None):
 
     validate_datatype(datatype)
     # If df_file is not specified, use default path
@@ -184,25 +184,35 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                                '{}_dataframe.hdf5'.format(datatype))
     if not os.path.exists(df_file):
         raise IOError('The DataFrame file {} doesn\'t exist'.format(df_file))
-    with pd.HDFStore(df_file, mode='r') as store:
-        df = store.select('dataframe')
 
-    df = (df.pipe(apply_quality_cuts, datatype, log_energy_min=log_energy_min,
-                  log_energy_max=log_energy_max, verbose=verbose)
-            .pipe(add_convenience_variables, datatype=datatype)
-         )
+    # If specified, construct energy selection string
+    where_energy = ''
+    if log_energy_min is not None:
+        where_energy += '{}>{}'.format(energy_key, log_energy_min)
+    if log_energy_max is not None:
+        where_energy += ' and {}<{}'.format(energy_key, log_energy_max)
+
+    with pd.HDFStore(df_file, mode='r') as store:
+        df = store.select('dataframe', columns=columns)
+                        #   where=where_energy if where_energy else None)
 
     model_dict = load_trained_model('RF_energy_{}'.format(config))
     pipeline = model_dict['pipeline']
     feature_list = list(model_dict['training_features'])
     df['reco_log_energy'] = pipeline.predict(df[feature_list])
 
-    return df
+    energy_mask = np.ones_like(df[energy_key].values, dtype=bool)
+    if log_energy_min is not None:
+        energy_mask = energy_mask & (df[energy_key] > log_energy_min)
+    if log_energy_max is not None:
+        energy_mask = energy_mask & (df[energy_key] < log_energy_max)
+
+    return df.loc[energy_mask, :]
 
 
-def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
-             comp_key='MC_comp_class', log_energy_min=6.0, log_energy_max=8.0,
-             verbose=False):
+def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
+             columns=None, energy_key='reco_log_energy', log_energy_min=6.0,
+             log_energy_max=8.0, verbose=False):
     '''Function to load processed simulation DataFrame
 
     Parameters
@@ -217,10 +227,8 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
         Fraction or number of events to be split off into a seperate testing
         set (default is 0.3). test_size will be passed to
         sklearn.model_selection.StratifiedShuffleSplit.
-    comp_key : {'MC_comp_class', 'MC_comp'}
-        Option to use the true composition, or composition classes
-        (light and heavy) as the target variable (default is
-        'MC_comp_class').
+    energy_key : str, optional
+        Energy key to apply cuts to (default is 'lap_log_energy').
     log_energy_min : int, float, optional
         Option to set a lower limit on the reconstructed log energy in GeV
         (default is 6.0).
@@ -244,27 +252,16 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
         raise TypeError('test_size must be a floating-point number')
 
     df = _load_basic_dataframe(df_file=df_file, datatype='sim', config=config,
-                               comp_key=comp_key,
+                               energy_key=energy_key, columns=columns,
                                log_energy_min=log_energy_min,
                                log_energy_max=log_energy_max, verbose=verbose)
-
-    df['target'] = df[comp_key].apply(comp_to_label)
-
-    # Add composition group labels
-    for num_groups in [2, 3, 4]:
-        label_key = 'comp_group_{}'.format(num_groups)
-        df[label_key] = composition_group_labels(df['MC_comp'],
-                                                 num_groups=num_groups)
-        # Add encoded composition group labels for training sklearn models
-        target_key = 'comp_target_{}'.format(num_groups)
-        df[target_key] = encode_composition_groups(df[label_key],
-                                                   num_groups=num_groups)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
         splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size,
                                           random_state=2)
-        train_mask, test_mask = next(splitter.split(df, df['target']))
+        split_gen = splitter.split(df, df['comp_target_{}'.format(num_groups)])
+        train_mask, test_mask = next(split_gen)
         train_df = df.iloc[train_mask]
         test_df = df.iloc[test_mask]
         output = train_df, test_df
@@ -274,8 +271,9 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     return output
 
 
-def load_data(df_file=None, config='IC86.2012', comp_key='MC_comp_class',
-              log_energy_min=6.0, log_energy_max=8.0, verbose=False):
+def load_data(df_file=None, config='IC86.2012', columns=None,
+              energy_key='reco_log_energy', log_energy_min=6.0,
+              log_energy_max=8.0, verbose=False):
     '''Function to load processed data DataFrame
 
     Parameters
@@ -310,7 +308,7 @@ def load_data(df_file=None, config='IC86.2012', comp_key='MC_comp_class',
         raise ValueError('config must be in {}'.format(get_data_configs()))
 
     df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
-                               comp_key=comp_key,
+                               energy_key=energy_key, columns=columns,
                                log_energy_min=log_energy_min,
                                log_energy_max=log_energy_max, verbose=verbose)
 

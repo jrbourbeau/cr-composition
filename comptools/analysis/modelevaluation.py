@@ -19,7 +19,7 @@ from .features import get_training_features
 from . import export
 
 
-def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
+def get_frac_correct(df_train, df_test, feature_columns, comp_target, pipeline, comp_list,
                     log_energy_bins=get_energybins().log_energy_bins):
     '''Calculates the fraction of correctly identified samples in each energy bin
     for each composition in comp_list. In addition, the statisitcal error for the
@@ -60,7 +60,7 @@ def get_frac_correct(df_train, df_test, feature_columns, pipeline, comp_list,
     return frac_correct, frac_correct_err
 
 
-def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
+def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
                         log_energy_bins=get_energybins().log_energy_bins,
                         n_splits=10):
 
@@ -69,41 +69,29 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, comp_list,
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
     frac_correct_folds = defaultdict(list)
 
-    if not pipeline_str in ['BDT', 'stacked']:
-        bar = pyprind.ProgBar(10, monitor=True, title='10-fold CV', stream=1)
-        for train_index, test_index in skf.split(df_train, df_train.target):
-            df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
-            df_test_fold = df_train.iloc[test_index].reset_index(drop=True)
-            frac_correct, frac_correct_err = get_frac_correct(df_train_fold,
-                            df_test_fold, train_columns, pipeline, comp_list)
+    comp_list = comp.get_comp_list(num_groups=num_groups)
+    comp_target = 'comp_target_{}'.format(num_groups)
 
-            for composition in comp_list+['total']:
-                frac_correct_folds[composition].append(frac_correct[composition])
+    # Set up get_frac_correct to run on each CV fold
+    folds = []
+    for train_index, test_index in skf.split(df_train, df_train[comp_target]):
+        df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
+        df_test_fold = df_train.iloc[test_index].reset_index(drop=True)
+        frac_correct = delayed(get_frac_correct)(df_train_fold, df_test_fold,
+                    train_columns, pipeline, comp_list, log_energy_bins)
+        folds.append(frac_correct)
 
-            bar.update(force_flush=True)
+    # Run get_frac_correct on each fold in parallel
+    print('Running {}-fold CV model evaluation...'.format(n_splits))
+    with ProgressBar():
+        folds = compute(folds, get=multiprocessing.get,
+                        num_works=min(n_splits, 20))[0]
 
-        print(bar)
-    else:
-        # Set up get_frac_correct to run on each CV fold
-        folds = []
-        for train_index, test_index in skf.split(df_train, df_train.target):
-            df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
-            df_test_fold = df_train.iloc[test_index].reset_index(drop=True)
-            frac_correct = delayed(get_frac_correct)(df_train_fold, df_test_fold,
-                        train_columns, pipeline, comp_list, log_energy_bins)
-            folds.append(frac_correct)
-
-        # Run get_frac_correct on each fold in parallel
-        print('Running {}-fold CV model evaluation...'.format(n_splits))
-        with ProgressBar():
-            folds = compute(folds, get=multiprocessing.get,
-                            num_works=min(n_splits, 20))[0]
-
-        # Get process results from the output queue
-        for fold in folds:
-            frac_correct, frac_correct_err = fold
-            for composition in comp_list+['total']:
-                frac_correct_folds[composition].append(frac_correct[composition])
+    # Get process results from the output queue
+    for fold in folds:
+        frac_correct, frac_correct_err = fold
+        for composition in comp_list+['total']:
+            frac_correct_folds[composition].append(frac_correct[composition])
 
 
     return frac_correct_folds
@@ -155,7 +143,10 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
     pipeline = get_pipeline(pipeline_str)
     pipeline.named_steps['classifier'].set_params(**{param_name: param_value})
     # Only run on a single core
-    pipeline.named_steps['classifier'].set_params(**{'n_jobs': 1})
+    try:
+        pipeline.named_steps['classifier'].set_params(**{'n_jobs': 1})
+    except ValueError:
+        pass
 
     data_dict = {'classifier': pipeline_str, 'param_name': param_name,
                  'param_value': param_value, 'n_splits': n_splits}
@@ -174,8 +165,8 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
 
     for train_index, test_index in kf.split(df_train.values):
 
-        df_train_fold, df_test_fold = df_train.iloc[train_index], df_train.iloc[test_index]
-
+        df_train_fold = df_train.iloc[train_index]
+        df_test_fold = df_train.iloc[test_index]
         X_train, y_train = dataframe_to_X_y(df_train_fold, feature_list,
                                             target=target)
         X_test, y_test = dataframe_to_X_y(df_test_fold, feature_list,
@@ -193,14 +184,17 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
 
         # Get testing/training scores for each composition group
         for composition in comp_list:
-            comp_mask_train = df_train_fold['comp_group_{}'.format(num_groups)] == composition
-            comp_score_train = scorer(y_train[comp_mask_train], train_pred[comp_mask_train])
+            comp_key = 'comp_group_{}'.format(num_groups)
+
+            comp_mask_train = df_train_fold[comp_key] == composition
+            comp_score_train = scorer(y_train[comp_mask_train],
+                                      train_pred[comp_mask_train])
             train_scores[composition].append(comp_score_train)
 
-            comp_mask_test = df_test_fold['comp_group_{}'.format(num_groups)] == composition
-            comp_score_test = scorer(y_test[comp_mask_test], test_pred[comp_mask_test])
+            comp_mask_test = df_test_fold[comp_key] == composition
+            comp_score_test = scorer(y_test[comp_mask_test],
+                                     test_pred[comp_mask_test])
             test_scores[composition].append(comp_score_test)
-
 
     for label in comp_list + ['total']:
         data_dict['train_mean_{}'.format(label)] = np.mean(train_scores[label])

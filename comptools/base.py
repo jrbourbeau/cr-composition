@@ -32,7 +32,6 @@ def get_paths(username=None):
         be saved to / loaded from, etc).
 
     '''
-
     if username is None:
         username = getpass.getuser()
 
@@ -81,7 +80,6 @@ def check_output_dir(outfile, makedirs=True):
     -------
     None
     '''
-
     # Ensure that outfile gives an absolute path
     outfile = os.path.abspath(outfile)
     outdir, basename = os.path.split(outfile)
@@ -95,3 +93,27 @@ def check_output_dir(outfile, makedirs=True):
             raise IOError('The directory {} doesn\'t exist'.format(outdir))
 
     return
+
+
+def file_batches(files, n_files, n_batches=None):
+    '''Generates batches of files
+
+    Parameters
+    ----------
+    files : array-like
+        Iterable of files.
+    n_files : int
+        Number of files to have in each batch.
+    n_batches : int, optional
+        Limit the number of batches to yield (default is to yield all batches).
+
+    Returns
+    -------
+    batch : list
+        Batch of files of size n_files.
+    '''
+    for batch_num, i in enumerate(range(0, len(files), n_files), start=1):
+        if n_batches is not None and batch_num > n_batches:
+            raise StopIteration
+        batch = list(files[i:i+n_files])
+        yield batch

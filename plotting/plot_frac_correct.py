@@ -19,26 +19,23 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.simfunctions.get_sim_configs(),
                    help='Detector configuration')
+    parser.add_argument('--num_groups', dest='num_groups', type=int,
+                   default=2,
+                   help='Number of composition groups to use.')
     parser.add_argument('-n', '--n_splits', dest='n_splits', type=int,
                    default=10,
                    help='Detector configuration')
     args = parser.parse_args()
 
-    comp_class = True
-    comp_key = 'MC_comp_class' if comp_class else 'MC_comp'
-    comp_list = ['light', 'heavy'] if comp_class else ['P', 'He', 'O', 'Fe']
+    energybins = comp.analysis.get_energybins(args.config)
+    comp_list = comp.get_comp_list(num_groups=args.num_groups)
+    feature_list, feature_labels = comp.get_training_features()
+    pipeline_str = 'BDT_comp_{}'.format(args.config)
 
-    pipeline_str = 'BDT'
-    pipeline = comp.get_pipeline(pipeline_str)
-
-    energybins = comp.analysis.get_energybins()
-    feature_list, feature_labels = comp.analysis.get_training_features()
-
-    df_sim_train, df_sim_test = comp.load_sim(config=args.config,
-                                              log_energy_min=6.3,
-                                              log_energy_max=8.1)
-    # df_sim_train, df_sim_test = comp.load_dataframe(datatype='sim',
-    #                                 config=args.config, comp_key=comp_key)
+    df_sim_train, df_sim_test = comp.load_sim(
+                                config=args.config, energy_key='reco_log_energy',
+                                log_energy_min=energybins.log_energy_min,
+                                log_energy_max=energybins.log_energy_max)
 
     frac_correct_folds = comp.analysis.get_CV_frac_correct(df_sim_train,
         feature_list, pipeline_str, comp_list, n_splits=args.n_splits)
@@ -47,12 +44,10 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots()
     for composition in comp_list:
-    # for composition in comp_list + ['total']:
         performance_mean = np.mean(frac_correct_folds[composition], axis=0)
         performance_std = np.std(frac_correct_folds[composition], axis=0)
         print('performance_mean = {}'.format(performance_mean))
         print('performance_std = {}'.format(performance_std))
-    #     err = np.sqrt(frac_correct_gen_err[composition]**2 + reco_frac_stat_err[composition]**2)
         plotting.plot_steps(energybins.log_energy_bins, performance_mean, yerr=performance_std,
                             ax=ax, color=color_dict[composition], label=composition)
     ax.set_xlabel('$\mathrm{\log_{10}(E_{reco}/GeV)}$')

@@ -127,7 +127,7 @@ if __name__ == "__main__":
     # keys += ['IceTop_charge_175m']
 
     # keys += ['refit_beta', 'refit_log_s125']
-    keys += ['NNcharges']
+    # keys += ['NNcharges']
 
     t0 = time.time()
 
@@ -196,8 +196,8 @@ if __name__ == "__main__":
     # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
     tray.Add(icetray_software.add_IceTop_tankXYcharge, pulses=pulses,
              If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-    tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
-             If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+    # tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
+    #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
     # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
     #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 

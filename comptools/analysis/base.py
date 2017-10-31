@@ -56,7 +56,7 @@ class DataSet(object):
         return is_null
 
 
-def get_energybins():
+def get_energybins(config='IC86.2012'):
 
     # Create EnergyBins object to store all realted information
     EnergyBins = namedtuple('EnergyBins', ['energy_min', 'energy_max',
@@ -64,45 +64,27 @@ def get_energybins():
         'log_energy_min', 'log_energy_max', 'log_energy_bin_width',
         'log_energy_bins', 'log_energy_midpoints'])
 
-    # # Define full energy range
-    # log_energy_min_full = 5.0
-    # log_energy_max_full = 9.5
-    # energy_min = 10**log_energy_min_full
-    # energy_max = 10**log_energy_max_full
-    # # Define energy binning for this analysis
-    # log_energy_bin_width = 0.1
-    # log_energy_bins_full = np.arange(log_energy_min_full,
-    #     log_energy_max_full+log_energy_bin_width, log_energy_bin_width)
-    # # log_energy_midpoints_full = (log_energy_bins[1:] + log_energy_bins[:-1]) / 2
-    #
-    # energy_bins_full = 10**log_energy_bins
-    # energy_midpoints_full = 10**log_energy_midpoints
-    # energy_bin_widths_full = energy_bins[1:] - energy_bins[:-1]
-
     # Define energy range for this analysis
-    # log_energy_min = 5.5
-    log_energy_min = 6.1
-    log_energy_break = 8.0
-    log_energy_max = 8.0
-    # log_energy_max = 9.0
-    energy_min = 10**log_energy_min
-    energy_max = 10**log_energy_max
-    # Define energy binning for this analysis
-    log_energy_bin_width = 0.1
+    if 'IC79' in config:
+        log_energy_min = 6.1
+        log_energy_break = 8.0
+        log_energy_max = 9.0
+        log_energy_bins = np.concatenate(
+                        (np.arange(log_energy_min, log_energy_break-0.1, 0.1),
+                         np.arange(log_energy_break, log_energy_max+0.2, 0.2)))
+    elif 'IC86' in config:
+        log_energy_min = 6.1
+        log_energy_max = 8.0
+        log_energy_bins = np.arange(log_energy_min, log_energy_max+0.1, 0.1)
+    else:
+        raise ValueError(
+            'Invalid detector configuration entered: {}'.format(config))
 
-    # log_energy_small_bins = np.arange(log_energy_min,
-    #     log_energy_max+log_energy_bin_width, log_energy_bin_width)
-
-    # log_energy_small_bins = np.arange(log_energy_min, log_energy_break, log_energy_bin_width)
-    # log_energy_large_bins = np.arange(log_energy_break,
-    #     log_energy_max+2*log_energy_bin_width, 2*log_energy_bin_width)
-    # log_energy_bins = np.arange(log_energy_min, log_energy_break, log_energy_bin_width)
-
-    log_energy_bins = np.arange(log_energy_min, log_energy_max,
-                                log_energy_bin_width)
-
+    log_energy_bin_width = log_energy_bins[1:] - log_energy_bins[:-1]
     log_energy_midpoints = (log_energy_bins[1:] + log_energy_bins[:-1]) / 2
 
+    energy_min = 10**log_energy_min
+    energy_max = 10**log_energy_max
     energy_bins = 10**log_energy_bins
     energy_midpoints = 10**log_energy_midpoints
     energy_bin_widths = energy_bins[1:] - energy_bins[:-1]

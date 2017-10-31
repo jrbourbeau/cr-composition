@@ -100,6 +100,24 @@ def sim_to_thinned(sim):
         raise ValueError('Invalid simulation set, {}, entered'.format(sim))
 
 
+def sim_to_energy_bins(sim):
+    # IC79.2010 simulation sets
+    not_thinned = [7006, 7241, 7263, 7242, 7262, 7007]
+    is_thinned = [7579, 7791, 7851, 7784]
+    # IC82.2012 simulation sets
+    not_thinned.extend([12360, 12362, 12630, 12631])
+
+    if sim in not_thinned:
+        ebin_first = 5.0
+        ebin_last = 7.9
+    elif sim in is_thinned:
+        ebin_first = 7.0
+        ebin_last = 9.4
+    else:
+        raise ValueError('Invalid simulation set, {}, entered'.format(sim))
+
+    return ebin_first, ebin_last
+
 
 def _get_level3_sim_file_pattern(sim):
 
@@ -153,7 +171,7 @@ def get_level3_sim_files_iterator(sim_list):
     return chain.from_iterable(glob.iglob(pattern) for pattern in file_patterns)
 
 
-def run_to_energy_bin(run):
+def run_to_energy_bin(run, sim):
     '''Gives the CORSIKA energy bin for a given simulation run
 
     Parameters
@@ -166,8 +184,9 @@ def run_to_energy_bin(run):
     energy_bin : float
         Corresponding CORSIKA energy bin for run.
     '''
-    ebin_first = 5.0
-    ebin_last = 7.9
+    # ebin_first = 5.0
+    # ebin_last = 7.9
+    ebin_first, ebin_last = sim_to_energy_bins(sim)
     # Taken from simulation production webpage:
     # http://simprod.icecube.wisc.edu/cgi-bin/simulation/cgi/cfg?dataset=12360
     return (ebin_first*10+(run-1)%(ebin_last*10-ebin_first*10+1))/10

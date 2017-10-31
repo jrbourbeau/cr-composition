@@ -3,7 +3,7 @@ from __future__ import division, print_function
 
 __version__ = '0.0.1'
 
-from .base import get_paths, check_output_dir
+from .base import get_paths, check_output_dir, file_batches
 from . import simfunctions
 from . import datafunctions
 from .dataframe_functions import (load_data, load_sim, apply_quality_cuts,
