@@ -19,82 +19,75 @@ from .features import get_training_features
 from . import export
 
 
-def get_frac_correct(df_train, df_test, feature_columns, comp_target, pipeline, comp_list,
-                    log_energy_bins=get_energybins().log_energy_bins):
+def _get_frac_correct(df_train, df_test, feature_columns, num_groups,
+                      pipeline_str, comp_list, log_energy_bins):
     '''Calculates the fraction of correctly identified samples in each energy bin
     for each composition in comp_list. In addition, the statisitcal error for the
     fraction correctly identified is calculated.'''
 
-    # Validate input
-    assert isinstance(df_train, pd.DataFrame), 'df_train dataset must be a pandas DataFrame'
-    assert isinstance(df_test, pd.DataFrame), 'df_test dataset must be a pandas DataFrame'
-
     # Fit pipeline and get mask for correctly identified events
-    pipeline.fit(df_train[feature_columns], df_train.target)
+    target = 'comp_target_{}'.format(num_groups)
+    pipeline = get_pipeline(pipeline_str)
+    pipeline.fit(df_train[feature_columns], df_train[target])
     test_predictions = pipeline.predict(df_test[feature_columns])
-    correctly_identified_mask = (test_predictions == df_test.target)
+    correctly_identified_mask = (test_predictions == df_test[target])
 
     # Construct MC composition masks
     MC_comp_mask = {}
     for composition in comp_list:
-        MC_comp_mask[composition] = (df_test.target.apply(label_to_comp) == composition)
-    MC_comp_mask['total'] = pd.Series([True]*len(df_test))
+        MC_comp_mask[composition] = df_test['comp_group_{}'.format(num_groups)] == composition
+    MC_comp_mask['total'] = np.ones(len(df_test), dtype=bool)
 
-    frac_correct, frac_correct_err = {}, {}
-    for composition in comp_list+['total']:
+    data = {}
+    for composition in comp_list + ['total']:
         comp_mask = MC_comp_mask[composition]
         # Get number of MC comp in each reco energy bin
-        num_MC_energy = np.histogram(df_test.lap_log_energy[comp_mask], bins=log_energy_bins)[0]
+        num_MC_energy = np.histogram(df_test.loc[comp_mask, 'MC_log_energy'], bins=log_energy_bins)[0]
         num_MC_energy_err = np.sqrt(num_MC_energy)
 
         # Get number of correctly identified comp in each reco energy bin
-        num_reco_energy = np.histogram(df_test.lap_log_energy[comp_mask & correctly_identified_mask],
+        num_reco_energy = np.histogram(df_test.loc[comp_mask & correctly_identified_mask, 'MC_log_energy'],
                                        bins=log_energy_bins)[0]
         num_reco_energy_err = np.sqrt(num_reco_energy)
 
         # Calculate correctly identified fractions as a function of MC energy
-        frac_correct[composition], frac_correct_err[composition] = ratio_error(
+        frac_correct, frac_correct_err = ratio_error(
             num_reco_energy, num_reco_energy_err,
             num_MC_energy, num_MC_energy_err)
+        data['frac_correct_{}'.format(composition)] = frac_correct
+        data['frac_correct_err_{}'.format(composition)] = frac_correct_err
 
-    return frac_correct, frac_correct_err
+    return data
 
 
 def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
-                        log_energy_bins=get_energybins().log_energy_bins,
-                        n_splits=10):
-
-    pipeline = get_pipeline(pipeline_str)
+                        log_energy_bins, n_splits=10, n_jobs=1):
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
     frac_correct_folds = defaultdict(list)
 
-    comp_list = comp.get_comp_list(num_groups=num_groups)
+    comp_list = get_comp_list(num_groups=num_groups)
     comp_target = 'comp_target_{}'.format(num_groups)
 
     # Set up get_frac_correct to run on each CV fold
     folds = []
     for train_index, test_index in skf.split(df_train, df_train[comp_target]):
-        df_train_fold = df_train.iloc[train_index].reset_index(drop=True)
-        df_test_fold = df_train.iloc[test_index].reset_index(drop=True)
-        frac_correct = delayed(get_frac_correct)(df_train_fold, df_test_fold,
-                    train_columns, pipeline, comp_list, log_energy_bins)
+        df_train_fold = df_train.iloc[train_index]
+        df_test_fold = df_train.iloc[test_index]
+        frac_correct = delayed(_get_frac_correct)(df_train_fold, df_test_fold,
+                    train_columns, num_groups, pipeline_str, comp_list,
+                    log_energy_bins)
         folds.append(frac_correct)
+
+    df_cv = delayed(pd.DataFrame.from_records)(folds)
 
     # Run get_frac_correct on each fold in parallel
     print('Running {}-fold CV model evaluation...'.format(n_splits))
     with ProgressBar():
-        folds = compute(folds, get=multiprocessing.get,
-                        num_works=min(n_splits, 20))[0]
+        get = multiprocessing.get if n_jobs > 1 else dask.get
+        df_cv = df_cv.compute(get=get, num_works=n_jobs)
 
-    # Get process results from the output queue
-    for fold in folds:
-        frac_correct, frac_correct_err = fold
-        for composition in comp_list+['total']:
-            frac_correct_folds[composition].append(frac_correct[composition])
-
-
-    return frac_correct_folds
+    return df_cv
 
 
 @delayed

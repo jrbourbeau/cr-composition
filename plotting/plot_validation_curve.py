@@ -49,7 +49,7 @@ if __name__ == "__main__":
                 config=args.config, log_energy_min=energybins.log_energy_min,
                 log_energy_max=energybins.log_energy_max)
 
-    # Params need to be converted to the appropreiate dtype
+    # Calculate CV scores for each composition
     params = np.asarray(args.param_values).astype(args.param_type)
     df_cv = comp.cross_validate_comp(
                             df_sim_train, df_sim_test, pipeline_str,
@@ -60,6 +60,7 @@ if __name__ == "__main__":
                             n_splits=args.cv, verbose=True,
                             n_jobs=min(len(params), 15))
 
+    # Plot validation curve for hyperparameter
     fig, ax = plt.subplots()
     for composition in comp_list:
         # Plot testing curve
@@ -72,7 +73,6 @@ if __name__ == "__main__":
         test_err_low = test_mean - test_std
         ax.fill_between(df_cv.index, test_err_high, test_err_low,
                         color=color_dict[composition], alpha=0.3)
-
         # Plot training curve
         ax.plot(df_cv.index, df_cv['train_mean_{}'.format(composition)],
                 marker='.', ls='-', color=color_dict[composition],

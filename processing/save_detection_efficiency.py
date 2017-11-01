@@ -63,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--n_samples', dest='n_samples', type=int,
                         default=1000,
                         help='Number of random samples to use in calcuating the fit error')
-    parser.add_argument('--n_groups', dest='n_groups', type=int,
+    parser.add_argument('--num_groups', dest='num_groups', type=int,
                         default=2,
                         help='Number of composition groups to use')
     parser.add_argument('--sigmoid', dest='sigmoid', default='slant',
@@ -75,15 +75,12 @@ if __name__ == "__main__":
     if not args.sim:
         args.sim = comp.simfunctions.config_to_sim(args.config)
 
-    num_groups = args.n_groups
+    num_groups = args.num_groups
     comp_list = comp.get_comp_list(num_groups=num_groups)
 
     energybins = comp.analysis.get_energybins(config=args.config)
-    if args.config == 'IC79.2010':
-        bins = np.concatenate((np.arange(5, 7.9, 0.1), np.arange(8.0, 9.2, 0.2)))
-    if args.config == 'IC86.2012':
-        bins = np.arange(5, 8.1, 0.1)
-    print('bins = {}'.format(bins))
+    bins = np.concatenate((np.arange(5.0, energybins.log_energy_min, 0.1),
+                           energybins.log_energy_bins))
     bin_midpoints = (bins[1:] + bins[:-1]) / 2
     bin_midpoints_mask = np.logical_and(
                     bin_midpoints >= energybins.log_energy_min,
@@ -132,7 +129,7 @@ if __name__ == "__main__":
     fit_func = sigmoid_flat if args.sigmoid == 'flat' else sigmoid_slant
     p0 = [7e4, 8.0, 50.0] if args.sigmoid == 'flat' else [7e4, 8.5, 50.0, 800]
     efficiencies_fit = {}
-    energy_min_fit, energy_max_fit = 5.8, 7.9
+    energy_min_fit, energy_max_fit = 5.8, energybins.log_energy_max
     midpoints_fitmask = np.logical_and(bin_midpoints > energy_min_fit,
                                        bin_midpoints < energy_max_fit)
     for composition in comp_list:
@@ -145,8 +142,8 @@ if __name__ == "__main__":
 
         chi2 = np.sum((efficiencies[composition][midpoints_fitmask] - eff_fit[midpoints_fitmask])**2 / (efficiencies_err[composition][midpoints_fitmask]) ** 2)
         ndof = len(eff_fit[midpoints_fitmask]) - len(p0)
-        print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
-                                                       ndof, chi2/ndof))
+        # print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
+        #                                                ndof, chi2/ndof))
 
     # Perform several fits to random fluxuations of the efficiencies
     efficiencies_fit_samples = defaultdict(list)
@@ -178,8 +175,9 @@ if __name__ == "__main__":
 
     # Save fit efficiencies to disk
     eff_outfile = os.path.join(comp.paths.comp_data_dir,
-                               args.config + '_sim',
-                               'efficiency_fit.hdf')
+                               '{}_sim'.format(args.config), 'efficiencies',
+                               'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
+    comp.check_output_dir(eff_outfile)
     eff_fit[bin_midpoints_mask].reset_index(drop=True).to_hdf(eff_outfile, 'dataframe')
 
     # Plot effective area
@@ -199,9 +197,10 @@ if __name__ == "__main__":
     ax.yaxis.major.formatter.set_powerlimits((0,0))
     ax.grid()
     ax.legend(title='True composition')
-    outfile = os.path.join(comp.paths.figures_dir,
-                           'effarea_{}_{}-sigmoid.png'.format(args.config,
-                                                              args.sigmoid))
+    outfile = os.path.join(comp.paths.figures_dir, 'efficiencies',
+                           'effarea_{}_{}-sigmoid_num_groups_{}.png'.format(
+                                args.config, args.sigmoid, num_groups))
+    comp.check_output_dir(outfile)
     plt.savefig(outfile)
 
     # Plot efficiencies
@@ -227,7 +226,8 @@ if __name__ == "__main__":
     ax.yaxis.major.formatter.set_powerlimits((0,0))
     ax.grid()
     ax.legend(title='True composition')
-    outfile = os.path.join(comp.paths.figures_dir,
-                           'efficiencies_{}_{}-sigmoid.png'.format(args.config,
-                                                              args.sigmoid))
+    outfile = os.path.join(comp.paths.figures_dir, 'efficiencies',
+                           'efficiencies_{}_{}-sigmoid_num_groups_{}.png'.format(
+                                args.config, args.sigmoid, num_groups))
+    comp.check_output_dir(outfile)
     plt.savefig(outfile)

@@ -9,6 +9,7 @@ import pyprind
 import ROOT
 
 import PyUnfold
+import comptools as comp
 
 
 def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
@@ -231,15 +232,25 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Script to run an iterative '
                                     'Bayesian unfolding with PyUnfold')
-    parser.add_argument('-c', '--config', dest='config_name',
-                   default='config.cfg', help='Configuration file')
+    parser.add_argument('-c', '--config', dest='config',
+                   choices=comp.datafunctions.get_data_configs(),
+                   help='Detector configuration')
+    parser.add_argument('--config_file', dest='config_file',
+                   help='Configuration file')
     parser.add_argument('-o', '--outfile', dest='output_file',
-                   default='pyunfold_output.hdf', help='Output DataFrame file')
+                   help='Output DataFrame file')
 
     args = parser.parse_args()
 
+    if not args.output_file:
+        args.output_file = os.path.join(args.config, 'pyunfold_output.hdf')
+        print('Writing to output file: {}'.format(args.output_file))
+    if not args.config_file:
+        args.config_file = os.path.join(args.config, 'config.cfg')
+        print('Using config file: {}'.format(args.config_file))
+
     # Load DataFrame with saved prior distributions
-    df_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
+    df_file = os.path.join(comp.paths.comp_data_dir, 'unfolding', args.config,
                            'unfolding-dataframe-PyUnfold-formatted.csv')
     df = pd.read_csv(df_file)
 
@@ -247,6 +258,6 @@ if __name__ == '__main__':
     names = ['Jeffreys', 'h3a', 'h4a', 'Hoerandel5', 'antiHoerandel5', 'antih3a']
     for prior_name in pyprind.prog_bar(names):
         priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_priors'.format(prior_name)]
-        df_unfolding_iter = unfold(config_name=args.config_name, priors=priors)
+        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors)
         # Save to hdf file
         df_unfolding_iter.to_hdf(args.output_file, prior_name)

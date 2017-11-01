@@ -14,9 +14,6 @@ def get_data_configs():
 def _get_data_path_prefix(config=None):
     if config is None:
         raise ValueError('Detector configuration not specified...')
-    # elif config == 'IC79.2010':
-    #     prefix = '/data/ana/CosmicRay/IceTop_level3/exp/v1/{}/'.format(config)
-    # else:
     prefix = '/data/ana/CosmicRay/IceTop_level3/exp/{}/'.format(config)
 
     return prefix

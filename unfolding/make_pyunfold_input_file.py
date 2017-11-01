@@ -1,18 +1,31 @@
 #!/usr/bin/env python
 
 import os
+import argparse
 import numpy as np
 import pandas as pd
 import ROOT
 from ROOT import TH1F, TH2F, TNamed
 
+import comptools as comp
+
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Saves trained model for later use')
+    parser.add_argument('-c', '--config', dest='config',
+                   choices=comp.datafunctions.get_data_configs(),
+                   help='Detector configuration')
+    args = parser.parse_args()
 
     # Bin Definitions
     binname = 'bin0'
     # ROOT Output
-    outfile  = 'pyunfold_input.root'
+    outfile  = '{}/pyunfold_input.root'.format(args.config)
+    comp.check_output_dir(outfile)
+    if os.path.exists(outfile):
+        os.remove(outfile)
+
     fout = ROOT.TFile(outfile , 'UPDATE')
     # Check if bin directory exists, quit if so, otherwise create it!
     if not fout.GetDirectory(binname):
@@ -27,9 +40,9 @@ if __name__ == '__main__':
     # Go to home of ROOT file
     fout.cd(binname)
 
-    formatted_df_outfile  = os.path.join(
-        '/data/user/jbourbeau/composition/unfolding',
-        'unfolding-dataframe-PyUnfold-formatted.csv')
+    formatted_df_outfile  = os.path.join(comp.paths.comp_data_dir, 'unfolding',
+                                         args.config,
+                                         'unfolding-dataframe-PyUnfold-formatted.csv')
     df_flux = pd.read_csv(formatted_df_outfile, index_col='log_energy_bin_idx')
     counts = df_flux['counts'].values
     efficiencies = df_flux['efficiencies'].values
@@ -49,11 +62,11 @@ if __name__ == '__main__':
     ebins -= 1
 
     # Load response matrix array
-    res_mat_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
-                                'response.txt')
+    res_mat_file = os.path.join(comp.paths.comp_data_dir, 'unfolding',
+                                args.config, 'response.txt')
     response_array = np.loadtxt(res_mat_file)
-    res_mat_err_file = os.path.join('/data/user/jbourbeau/composition/unfolding',
-                                    'response_err.txt')
+    res_mat_err_file = os.path.join(comp.paths.comp_data_dir, 'unfolding',
+                                    args.config, 'response_err.txt')
     response_err_array = np.loadtxt(res_mat_err_file)
 
     # Measured effects distribution

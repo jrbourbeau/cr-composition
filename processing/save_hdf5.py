@@ -151,11 +151,6 @@ if __name__ == "__main__":
         # Filter out non-coincident P frames
         tray.Add(lambda frame: inice_pulses in frame)
 
-    # # If processing data, cut out event with log10(energy) < 6.0 GeV
-    # if args.type == 'data':
-    #     tray.Add(lambda frame: frame['LaputopParams'].energy() >= 10**6.0,
-    #              If=lambda frame: 'LaputopParams' in frame)
-
     tray.Add(icetray_software.add_IceTop_quality_cuts,
              If=lambda frame: 'IT73AnalysisIceTopQualityCuts' in frame)
 

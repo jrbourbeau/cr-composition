@@ -1,26 +1,54 @@
 
-requirements:
-	pip freeze > requirements.txt
+analysis: efficiencies livetimes energy-reco
+
+plots: plot-frac-correct plot-validation-curves
 
 tests:
-	py.test -v comptools/tests
+	py.test -sv comptools
+
 
 YEARS = 2011 2012 2013 2014 2015
+SIM_CONFIGS = IC79.2010 IC86.2012
 
 
 # Processing commands
 
 simulation:
-	python processing/process.py --type sim --overwrite --remove --config IC79
-	python processing/process.py --type sim --overwrite --remove --config IC86.2012
+	for config in $(SIM_CONFIGS); do \
+		python processing/process.py --type sim --overwrite --remove --config $$config; \
+	done
 
 data:
 	for year in $(YEARS); do \
 		python processing/process.py --type data --overwrite --remove --config IC86.$$year; \
     done
 
-save-livetimes:
-	python processing/save_detector_livetimes.py --config IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
+# Analysis-level commands
+
+
+efficiencies:
+	for config in $(SIM_CONFIGS); do \
+		python processing/save_detection_efficiency.py --config $$config --num_groups 2; \
+		python processing/save_detection_efficiency.py --config $$config --num_groups 3; \
+		python processing/save_detection_efficiency.py --config $$config --num_groups 4; \
+	done
+
+livetimes:
+	python processing/save_detector_livetimes.py --config IC79.2010 IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
+
+energy-reco:
+	for config in $(SIM_CONFIGS); do \
+		python models/save_energy_reco_model.py --config $$config; \
+	done
+
+save-models:
+	for config in $(SIM_CONFIGS); do \
+		python models/save_model.py --config $$config; \
+	done
+
+
+
 
 anisotropy-data:
 	python processing/anisotropy/save_anisotropy_dataframe.py
@@ -45,12 +73,6 @@ anisotropy-kstest-low-energy:
     done
 
 
-# Saving models
-
-save-models:
-	python models/save_model.py --config IC86.2012
-
-
 # Plotting commands
 
 plot-data-MC:
@@ -69,16 +91,12 @@ plot-learning-curve:
 	python plotting/plot_learning_curve.py --config IC86.2012
 
 plot-validation-curves:
-	python plotting/validation-curves/validation-curves.py --param_name max_depth --param_values 1 2 3 4 5 6 7 8 9 10 --param_type int --cv 10 --pipeline BDT --param_label 'Maximum depth'
-	python plotting/validation-curves/validation-curves.py --param_name learning_rate --param_values 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 --param_type float --cv 10 --pipeline BDT --param_label 'Learning rate'
-	python plotting/validation-curves/validation-curves.py --param_name n_estimators --param_values 5 10 25 50 100 150 200 300 400 500 --param_type int --cv 10 --pipeline BDT --param_label 'Number estimators'
+	python plotting/plot_validation_curve.py --param_name max_depth --param_values 1 2 3 4 5 6 7 8 9 10 --param_type int --cv 10 --param_label 'Maximum depth'
+	python plotting/plot_validation_curve.py --param_name learning_rate --param_values 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 --param_type float --cv 10 --param_label 'Learning rate'
+	python plotting/plot_validation_curve.py --param_name n_estimators --param_values 5 10 25 50 100 150 200 300 400 500 --param_type int --cv 10 --param_label 'Number estimators'
 
 plot-laputop-performance:
 	python plotting/plot_laputop_performance.py --config IC86.2012
 
 plot-flux:
 	python plotting/plot_flux.py --config IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
-
-environment:
-	/data/user/jbourbeau/metaprojects/icerec/V05-01-00/build/env-shell.sh
-	workon composition

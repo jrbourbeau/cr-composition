@@ -186,15 +186,8 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
         raise IOError('The DataFrame file {} doesn\'t exist'.format(df_file))
 
     # If specified, construct energy selection string
-    where_energy = ''
-    if log_energy_min is not None:
-        where_energy += '{}>{}'.format(energy_key, log_energy_min)
-    if log_energy_max is not None:
-        where_energy += ' and {}<{}'.format(energy_key, log_energy_max)
-
     with pd.HDFStore(df_file, mode='r') as store:
         df = store.select('dataframe', columns=columns)
-                        #   where=where_energy if where_energy else None)
 
     model_dict = load_trained_model('RF_energy_{}'.format(config))
     pipeline = model_dict['pipeline']
