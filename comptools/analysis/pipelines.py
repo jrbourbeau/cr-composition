@@ -58,12 +58,21 @@ def get_pipeline(classifier_name='BDT'):
     #         loss='exponential', max_depth=3, n_estimators=100, random_state=2)
     #     # classifier = GradientBoostingClassifier(loss='deviance', max_depth=3,
     #     #     n_estimators=500, random_state=2)
+
     elif classifier_name == 'BDT_comp_IC79.2010':
         classifier = GradientBoostingClassifier(
             loss='deviance', max_depth=4, n_estimators=100, random_state=2)
-    elif classifier_name == 'BDT_comp_IC86.2012':
+
+    elif classifier_name == 'BDT_comp_IC86.2012_2-groups':
         classifier = GradientBoostingClassifier(
             loss='deviance', max_depth=4, n_estimators=100, random_state=2)
+    elif classifier_name == 'BDT_comp_IC86.2012_3-groups':
+        classifier = GradientBoostingClassifier(
+            loss='deviance', max_depth=3, n_estimators=100, random_state=2)
+    elif classifier_name == 'BDT_comp_IC86.2012_4-groups':
+        classifier = GradientBoostingClassifier(
+            loss='deviance', max_depth=3, n_estimators=100, random_state=2)
+
     elif classifier_name == 'RF_energy_IC79.2010':
         classifier = RandomForestRegressor(
             n_estimators=100, max_depth=8, n_jobs=10, random_state=2)

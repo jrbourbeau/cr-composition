@@ -2,12 +2,13 @@
 from __future__ import division
 from collections import defaultdict
 import dask
-from dask import delayed, multiprocessing, compute
+from dask import delayed, multiprocessing, compute, threaded
 from dask.diagnostics import ProgressBar
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
+from sklearn.metrics import (mean_squared_error, r2_score, accuracy_score,
+                             get_scorer, make_scorer)
 import pyprind
 from ..dataframe_functions import label_to_comp, load_sim, dataframe_to_X_y
 from ..composition_encoding import get_comp_list
@@ -128,7 +129,7 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
             Return a dictionary with average scores as well as CV errors on those scores.
 
     '''
-    assert scoring in ['accuracy', 'mse', 'r2'], 'Invalid scoring parameter'
+    # assert scoring in ['accuracy', 'mse', 'r2'], 'Invalid scoring parameter'
     comp_list = get_comp_list(num_groups=num_groups)
     if feature_list is None:
         feature_list, _ = get_training_features()
@@ -149,12 +150,7 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
     ks_pval = defaultdict(list)
 
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=2)
-    if scoring == 'mse':
-        scorer = mean_squared_error
-    elif scoring == 'r2':
-        scorer = r2_score
-    else:
-        scorer = accuracy_score
+    scorer = get_scorer(scoring)
 
     for train_index, test_index in kf.split(df_train.values):
 
@@ -201,8 +197,8 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
 @export
 def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
                         param_values, feature_list=None,
-                        target='comp_target_2', scoring='r2', num_groups=2,
-                        n_splits=10, n_jobs=1, verbose=False):
+                        target='comp_target_2', scoring='accuracy',
+                        num_groups=2, n_splits=10, n_jobs=1, verbose=False):
     '''Calculates stratified k-fold CV scores for a given hyperparameter value
 
     Similar to sklearn.model_selection.cross_validate, but returns results
@@ -225,8 +221,8 @@ def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
         comptools.get_training_features()).
     target : str, optional
         Training target to use (default is 'comp_target_2').
-    scoring : {'r2', 'mse', 'accuracy'}
-        Scoring metric to calculate for each CV fold (default is 'r2').
+    scoring : str, optional
+        Scoring metric to calculate for each CV fold (default is 'accuracy').
     num_groups : int, optional
         Number of composition class groups to use (default is 2).
     n_splits : int, optional
@@ -255,7 +251,8 @@ def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
 
     df_cv = delayed(pd.DataFrame.from_records)(cv_dicts, index='param_value')
 
-    get = dask.get if n_jobs == 1 else multiprocessing.get
+    get = dask.get if n_jobs == 1 else threaded.get
+    # get = dask.get if n_jobs == 1 else multiprocessing.get
     if verbose:
         with ProgressBar():
             print('Performing {}-fold CV on {} hyperparameter values ({} fits):'.format(

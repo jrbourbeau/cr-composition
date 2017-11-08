@@ -36,8 +36,8 @@ def add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
         config = comp.simfunctions.sim_to_config(sim)
         gcd, i3_files = comp.simfunctions.get_level3_sim_files(sim)
         # Set up output directory
-        outdir = os.path.join(comp.paths.comp_data_dir,
-                              '{}_sim'.format(config), 'i3_hdf5_files')
+        outdir = os.path.join(comp.paths.comp_data_dir, config,
+                              'i3_hdf_sim')
         # Split file list into smaller batches for submission
         if args['test']:
             args['n'] = 10
@@ -65,8 +65,7 @@ def add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
         # Add job for this sim to the dagmanager
         dagman.add_job(save_hdf5_job)
 
-    df_outfile = os.path.join(comp.paths.comp_data_dir,
-                              '{}_sim'.format(args['config']),
+    df_outfile = os.path.join(comp.paths.comp_data_dir, args['config'],
                               'sim_dataframe.hdf5')
     df_input_files_str = ' '.join(save_df_input_files)
     df_arg = '--input {} --output {} --type sim --config {}'.format(
@@ -81,8 +80,8 @@ def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
     config = args['config']
 
     # Set up output directory (also, make sure directory exists)
-    outdir = os.path.join(comp.paths.comp_data_dir, '{}_data'.format(config),
-                          'i3_hdf5_files')
+    outdir = os.path.join(comp.paths.comp_data_dir, config,
+                          'i3_hdf_data')
 
     # Create a save and merge CondorJobs
     save_hdf5_name = 'save_hdf5_data_{}'.format(config)
@@ -130,8 +129,8 @@ def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
     print(bar)
 
     # Add save save_df to dagman
-    df_outfile = os.path.join(comp.paths.comp_data_dir,
-                              '{}_data'.format(config), 'data_dataframe.hdf5')
+    df_outfile = os.path.join(comp.paths.comp_data_dir, config,
+                              'data_dataframe.hdf5')
     df_input_files_str = ' '.join(save_df_input_files)
     df_arg = '--input {} --output {} --type data --config {}'.format(
         df_input_files_str, df_outfile, config)

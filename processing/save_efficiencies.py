@@ -174,9 +174,8 @@ if __name__ == "__main__":
         eff_fit['eff_err_high_{}'.format(composition)] = fit_err_high
 
     # Save fit efficiencies to disk
-    eff_outfile = os.path.join(comp.paths.comp_data_dir,
-                               '{}_sim'.format(args.config), 'efficiencies',
-                               'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
+    eff_outfile = os.path.join(comp.paths.comp_data_dir, args.config,
+                               'efficiencies', 'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
     comp.check_output_dir(eff_outfile)
     eff_fit[bin_midpoints_mask].reset_index(drop=True).to_hdf(eff_outfile, 'dataframe')
 

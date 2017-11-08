@@ -9,6 +9,7 @@ tests:
 
 YEARS = 2011 2012 2013 2014 2015
 SIM_CONFIGS = IC79.2010 IC86.2012
+NUM_GROUPS = 2 3 4
 
 
 # Processing commands
@@ -91,9 +92,16 @@ plot-learning-curve:
 	python plotting/plot_learning_curve.py --config IC86.2012
 
 plot-validation-curves:
-	python plotting/plot_validation_curve.py --param_name max_depth --param_values 1 2 3 4 5 6 7 8 9 10 --param_type int --cv 10 --param_label 'Maximum depth'
-	python plotting/plot_validation_curve.py --param_name learning_rate --param_values 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 --param_type float --cv 10 --param_label 'Learning rate'
-	python plotting/plot_validation_curve.py --param_name n_estimators --param_values 5 10 25 50 100 150 200 300 400 500 --param_type int --cv 10 --param_label 'Number estimators'
+	for config in $(SIM_CONFIGS); do \
+		for num_groups in $(NUM_GROUPS); do \
+			python plotting/plot_validation_curve.py --config $$config --num_groups $$num_groups --param_name max_depth --param_values 1 2 3 4 5 6 7 8 9 10 --param_type int --cv 10 --param_label 'Maximum depth'; \
+		done \
+	done
+
+
+asdfadsf:
+	# python plotting/plot_validation_curve.py --config $$config --num_groups $$num_groups --param_name learning_rate --param_values 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 --param_type float --cv 10 --param_label 'Learning rate'; \
+	# python plotting/plot_validation_curve.py --config $$config --num_groups $$num_groups --param_name n_estimators --param_values 5 10 25 50 100 150 200 300 400 500 --param_type int --cv 10 --param_label 'Number estimators'; \
 
 plot-laputop-performance:
 	python plotting/plot_laputop_performance.py --config IC86.2012

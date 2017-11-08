@@ -5,6 +5,7 @@ import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import zero_one_loss
 
 import comptools as comp
 
@@ -56,7 +57,7 @@ if __name__ == "__main__":
                             param_name=args.param_name, param_values=params,
                             feature_list=feature_list,
                             target='comp_target_{}'.format(args.num_groups),
-                            scoring='accuracy', num_groups=args.num_groups,
+                            scoring=zero_one_loss, num_groups=args.num_groups,
                             n_splits=args.cv, verbose=True,
                             n_jobs=min(len(params), 15))
 
@@ -85,11 +86,20 @@ if __name__ == "__main__":
                         color=color_dict[composition], alpha=0.3)
 
     ax.set_xlabel(args.param_label)
-    ax.set_ylabel('Accuracy')
+    ax.set_ylabel('Classification error')
     ax.grid()
     ax.legend(title='True compositions')
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
                            'validation-curves',
-                           '{}_{}.png'.format(pipeline_str, args.param_name))
+                           '{}_{}_num_groups-{}_zoomed.png'.format(
+                           pipeline_str, args.param_name, args.num_groups))
+    comp.check_output_dir(outfile)
+    plt.savefig(outfile)
+
+    ax.set_ylim(-0.05, 1.05)
+    outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
+                           'validation-curves',
+                           '{}_{}_num_groups-{}.png'.format(
+                            pipeline_str, args.param_name, args.num_groups))
     comp.check_output_dir(outfile)
     plt.savefig(outfile)

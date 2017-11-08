@@ -13,31 +13,21 @@ import comptools as comp
 
 
 def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
-           priors='Jeffreys', **kwargs):
+           priors='Jeffreys', input_file=None, **kwargs):
 
     if config_name is None:
         raise ValueError('config_name must be provided')
+
+    assert input_file is not None
 
     #### Get the Configuration Parameters from the Config File ####
     config = PyUnfold.Utils.ConfigFM(config_name)
 
     # Input Data ROOT File Name
     dataHeader = 'data'
-    InputFile = config.get(dataHeader, 'inputfile', default='', cast=str)
+    InputFile = input_file
     NE_meas_name = config.get(dataHeader, 'ne_meas', default='', cast=str)
-    isMC = config.get_boolean(dataHeader, 'ismc', default=False)
-
-    # Output ROOT File Name
-    outHeader = 'output'
-    WriteOutput = config.get_boolean(outHeader,'write_output',default=False)
-    OutFile = config.get(outHeader,'outfile',default='',cast=str)
-    PlotDir = config.get(outHeader,'plotdir',default=os.path.dirname(OutFile),cast=str)
-    NC_meas = config.get(outHeader,'nc_meas',default='',cast=str)
-
-    if OutFile == '':
-        InDir = os.path.dirname(InputFile)
-        InBase = os.path.basename(InputFile)
-        OutFile = 'unfolded_'+InBase
+    # isMC = config.get_boolean(dataHeader, 'ismc', default=False)
 
     # Analysis Bin
     binHeader = 'analysisbins'
@@ -117,7 +107,8 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
 
     # Get MCInput
     mcHeader = 'mcinput'
-    StatsFile = config.get(mcHeader, 'stats_file', default='', cast=str)
+    # StatsFile = config.get(mcHeader, 'stats_file', default='', cast=str)
+    StatsFile = input_file
     Eff_hist_name = config.get(mcHeader, 'eff_hist', default='', cast=str)
     MM_hist_name = config.get(mcHeader, 'mm_hist', default='', cast=str)
 
@@ -146,7 +137,6 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
         EffDist = PyUnfold.Utils.DataDist(Etitle, data=n_eff, error=n_eff_err,
                                  axis=Eaxis, edges=Eedges, xlabel=Exlab,
                                  ylabel=Eylab, units='')
-    # Otherwise get from input EffDist object
     Exlab = EffDist.xlab
     Eylab = EffDist.ylab
     Etitle = EffDist.name
@@ -163,13 +153,6 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
         raise TypeError('priors must be a np.ndarray, '
                         'but got {}'.format(type(priors)))
 
-    if plot_local:
-        xlim = [Eedges[0],Eedges[-1]]
-        ylim = [np.min(n_eff[(n_eff>0)]-np.sqrt(n_eff[(n_eff>0)])),np.max(n_eff)*1.4]
-        figure = PyUnfold.pltr.ebar(Eaxis, [n_eff], np.diff(Eedges)/2, [n_eff_err], r'Reconstructed Energy E$_{reco}$ (GeV)', Eylab, \
-                  'Observed Counts', [''], xlim, ylim, 'x,y')
-        figure.savefig('%s/ObservedCounts_%s.png'%(PlotDir,unfbinname))
-
     #### Setup the Tools Used in Unfolding ####
     # Prepare Regularizer
     Rglzr = [PyUnfold.Utils.Regularizer('REG', FitFunc=[RegFunc], Range=RegRange,
@@ -183,49 +166,20 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
 
     # Prepare Mixer
     Mixer = PyUnfold.Mix.Mixer(MixName, ErrorType=CovError, MCTables=MCStats,
-                      EffectsDist=EffDist)
+                               EffectsDist=EffDist)
 
     # Unfolder!!!
     if stackFlag:
         UnfolderName += '_'+''.join(binList)
 
-    Unfolder = PyUnfold.IterUnfold.IterativeUnfolder(UnfolderName,
-        maxIter=UnfMaxIter, smoothIter=UnfSmoothIter, n_c=n_c,
+    Unfolder = PyUnfold.IterUnfold.IterativeUnfolder(
+        UnfolderName, maxIter=UnfMaxIter, smoothIter=UnfSmoothIter, n_c=n_c,
         MixFunc=Mixer, RegFunc=Rglzr, TSFunc=tsFunc, Stack=stackFlag,
         verbose=UnfVerbFlag)
     # Iterate the Unfolder
     unfolding_result = Unfolder.IUnfold()
-    if True:
-        return unfolding_result
 
-    if WriteOutput:
-        # Output Subdirectory Name
-        subDirName = '%s_%s_%s'%(UnfolderName,tsname,CovError)
-
-        # Write the Results to ROOT File
-        Unfolder.SetAxesLabels(Exlab,Eylab,Cxlab,Cylab)
-        Unfolder.WriteResults(OutFileName=OutFile,NCName=NC_meas,NEName=NE_meas_name,Eaxis=Eedges,BinList=binList,subdirName=subDirName)
-
-        # If MC, Write Thrown Cause Distribution
-        if isMC:
-            NC_Thrown = config.get('data','nc_thrown',subDirName,cast=str)
-            Thrown_hist = PyUnfold.rr.getter(InputFile,NC_Thrown)
-            RFile = ROOT.TFile(Unfolder.RootName, 'UPDATE')
-            pdir = RFile.GetDirectory(Unfolder.SubDirName)
-            pdir.cd()
-            Thrown_hist.Write('NCThrown')
-            RFile.Close()
-
-    # Return N_C, Error Estimates
-    if return_dists:
-        n_c = Unfolder.n_c_final
-        n_c_err = np.sqrt(np.diagonal(Unfolder.covM))
-        CauseDist = PyUnfold.Utils.DataDist(Ctitle, data=n_c, error=n_c_err,
-                        axis=Caxis, edges=Cedges, xlabel=Cxlab, ylabel=Cylab,
-                        units='GeV')
-        CauseDist.setStatErr(Unfolder.statErr)
-        CauseDist.setSysErr(Unfolder.sysErr)
-        return CauseDist
+    return unfolding_result
 
 
 if __name__ == '__main__':
@@ -235,29 +189,37 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.datafunctions.get_data_configs(),
                    help='Detector configuration')
+    parser.add_argument('--num_groups', dest='num_groups', type=int,
+                   default=2, choices=[2, 3, 4], help='Detector configuration')
     parser.add_argument('--config_file', dest='config_file',
                    help='Configuration file')
+    parser.add_argument('--input_file', dest='input_file',
+                   help='Input ROOT file')
     parser.add_argument('-o', '--outfile', dest='output_file',
                    help='Output DataFrame file')
 
     args = parser.parse_args()
 
     if not args.output_file:
-        args.output_file = os.path.join(args.config, 'pyunfold_output.hdf')
+        args.output_file = os.path.join(args.config, 'pyunfold_output_{}-groups.hdf'.format(args.num_groups))
         print('Writing to output file: {}'.format(args.output_file))
     if not args.config_file:
         args.config_file = os.path.join(args.config, 'config.cfg')
         print('Using config file: {}'.format(args.config_file))
+    if not args.input_file:
+        args.input_file = os.path.join(args.config,
+                        'pyunfold_input_{}-groups.root'.format(args.num_groups))
+        print('Using input ROOT file: {}'.format(args.input_file))
 
     # Load DataFrame with saved prior distributions
-    df_file = os.path.join(comp.paths.comp_data_dir, 'unfolding', args.config,
-                           'unfolding-dataframe-PyUnfold-formatted.csv')
-    df = pd.read_csv(df_file)
+    df_file = os.path.join(comp.paths.comp_data_dir, args.config, 'unfolding',
+                           'unfolding-df_{}-groups.hdf'.format(args.num_groups))
+    df = pd.read_hdf(df_file)
 
     # Run unfolding for each of the priors
-    names = ['Jeffreys', 'h3a', 'h4a', 'Hoerandel5', 'antiHoerandel5', 'antih3a']
+    names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
     for prior_name in pyprind.prog_bar(names):
-        priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_priors'.format(prior_name)]
-        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors)
+        priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
+        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors, input_file=args.input_file)
         # Save to hdf file
         df_unfolding_iter.to_hdf(args.output_file, prior_name)

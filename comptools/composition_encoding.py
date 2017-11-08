@@ -3,11 +3,17 @@ from __future__ import print_function, division
 from collections import OrderedDict
 
 
-_two_group_labels = OrderedDict(PPlus='light', He4Nucleus='light',
-                                O16Nucleus='heavy', Fe56Nucleus='heavy')
-_three_group_labels = OrderedDict(PPlus='light', He4Nucleus='light',
-                                  O16Nucleus='intermediate',
-                                  Fe56Nucleus='heavy')
+_two_group_labels = OrderedDict()
+_two_group_labels['PPlus'] = 'light'
+_two_group_labels['He4Nucleus'] = 'light'
+_two_group_labels['O16Nucleus'] = 'heavy'
+_two_group_labels['Fe56Nucleus'] = 'heavy'
+
+_three_group_labels = OrderedDict()
+_three_group_labels['PPlus'] = 'light'
+_three_group_labels['He4Nucleus'] = 'light'
+_three_group_labels['O16Nucleus'] = 'intermediate'
+_three_group_labels['Fe56Nucleus'] = 'heavy'
 
 
 def composition_group_labels(compositions, num_groups=2):
@@ -24,10 +30,20 @@ def composition_group_labels(compositions, num_groups=2):
     return [comp_to_group[c] for c in compositions]
 
 
-_two_group_encoding = OrderedDict(light=0, heavy=1)
-_three_group_encoding = OrderedDict(light=0, intermediate=1, heavy=2)
-_four_group_encoding = OrderedDict(PPlus=0, He4Nucleus=1, O16Nucleus=2,
-                                   Fe56Nucleus=3)
+_two_group_encoding = OrderedDict()
+_two_group_encoding['light'] = 0
+_two_group_encoding['heavy'] = 1
+
+_three_group_encoding = OrderedDict()
+_three_group_encoding['light'] = 0
+_three_group_encoding['intermediate'] = 1
+_three_group_encoding['heavy'] = 2
+
+_four_group_encoding = OrderedDict()
+_four_group_encoding['PPlus'] = 0
+_four_group_encoding['He4Nucleus'] = 1
+_four_group_encoding['O16Nucleus'] = 2
+_four_group_encoding['Fe56Nucleus'] = 3
 
 
 def _get_group_encoding_dict(num_groups=2):
