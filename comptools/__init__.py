@@ -4,6 +4,10 @@ from __future__ import division, print_function
 __version__ = '0.0.1'
 
 import os
+# Ignore scikit-learn DeprecationWarning
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from .base import get_paths, check_output_dir, file_batches
 from . import simfunctions
 from . import datafunctions

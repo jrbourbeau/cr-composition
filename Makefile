@@ -1,5 +1,5 @@
 
-analysis: efficiencies livetimes energy-reco
+analysis: energy-reco efficiencies livetimes
 
 plots: plot-frac-correct plot-validation-curves
 
@@ -7,44 +7,47 @@ tests:
 	py.test -sv comptools
 
 
-YEARS = 2011 2012 2013 2014 2015
-SIM_CONFIGS = IC79.2010 IC86.2012
+CONFIGS = IC86.2012
+# CONFIGS = IC79.2010 IC86.2012
 NUM_GROUPS = 2 3 4
 
 
 # Processing commands
 
 simulation:
-	for config in $(SIM_CONFIGS); do \
-		python processing/process.py --type sim --overwrite --remove --config $$config; \
+	for config in $(CONFIGS); do \
+		python processing/process.py --type sim --config $$config; \
 	done
 
 data:
-	for year in $(YEARS); do \
-		python processing/process.py --type data --overwrite --remove --config IC86.$$year; \
+	for config in $(CONFIGS); do \
+		python processing/process.py --type data --config $$config; \
     done
 
 
 # Analysis-level commands
 
-
 efficiencies:
-	for config in $(SIM_CONFIGS); do \
-		python processing/save_detection_efficiency.py --config $$config --num_groups 2; \
-		python processing/save_detection_efficiency.py --config $$config --num_groups 3; \
-		python processing/save_detection_efficiency.py --config $$config --num_groups 4; \
+	echo 'Calculating detector efficiencies...'
+	for config in $(CONFIGS); do \
+		for num_groups in $(NUM_GROUPS); do \
+			python processing/save_efficiencies.py --config $$config --num_groups $$num_groups --sigmoid flat; \
+			python processing/save_efficiencies.py --config $$config --num_groups $$num_groups --sigmoid slant; \
+		done \
 	done
 
 livetimes:
-	python processing/save_detector_livetimes.py --config IC79.2010 IC86.2011 IC86.2012 IC86.2013 IC86.2014 IC86.2015
+	echo 'Calculating detector livetimes...'
+	python processing/save_livetimes.py --config $(CONFIGS)
 
 energy-reco:
-	for config in $(SIM_CONFIGS); do \
+	echo 'Fitting energy reconstrucion models...'
+	for config in $(CONFIGS); do \
 		python models/save_energy_reco_model.py --config $$config; \
 	done
 
 save-models:
-	for config in $(SIM_CONFIGS); do \
+	for config in $(CONFIGS); do \
 		python models/save_model.py --config $$config; \
 	done
 

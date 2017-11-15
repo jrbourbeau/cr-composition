@@ -1,9 +1,10 @@
-# Cosmic-ray composition analysis
+# Cosmic-ray mass composition analysis
 
 [![Build Status](https://travis-ci.org/jrbourbeau/cr-composition.svg?branch=master)](https://travis-ci.org/jrbourbeau/cr-composition)
+![Python 2.7](https://img.shields.io/badge/python-2.7-blue.svg)
 
-This repository is used to investigate the cosmic-ray composition spectrum
-using data collected by the IceCube South Pole Neutrino Observatory.
+
+This repository has the analysis code used to investigate the cosmic-ray composition spectrum using data collected by the IceCube South Pole Neutrino Observatory.
 
 
 ## Repository layout
@@ -38,7 +39,7 @@ While not generated with, this layout for this project was inspired by the
 
 The installation steps for this project are designed to be relatively
 hassle-free. It's recommended to install this project in its own virtual
-Python environment.
+Python environment (e.g. using `virtualenv`).
 
 1. Clone this repository to your local machine with
    ```bash
@@ -46,9 +47,9 @@ Python environment.
    ```
    This command will create a local copy of `cr-composition`.
 
-2. Install the `comptools` Python package via `pip` with the following command:
+2. Install the `comptools` Python package with the following command:
    ```bash
-   pip install -e /path/to/cr-composition
+   pip install -e cr-composition
    ```
    This will install `comptools` along with all of the required dependencies
    (`pandas`, `numpy`, `scikit-learn`, etc.).
@@ -58,24 +59,28 @@ Python environment.
 
 ## Quickstart
 
-The steps needed to run this analysis are listed below. The details of these
-commands are stored in `Makefile`. (*Note: the following commands should be
-run from the main `cr-composition` directory*)
+The steps needed to run this analysis are listed below. (*Note*: the following commands should be
+run from inside the `cr-composition` directory)
 
-1. Ensure that you have the appropriate computing environment (i.e. you've
-   run the `env-shell.sh` script for your icerec metaproject and activated
-   the virtual environment in which the `comptools` package has been installed).
+1. Ensure that you have the appropriate computing environment (i.e. you've run the `env-shell.sh` script for your icerec metaproject and activated the virtual environment in which the `comptools` package has been installed).
 
-2. Process simulation and data by running `make simulation` and `make data`.
-   These commands will try to submit jobs to HTCondor, so make sure to run
-   them on a condor submitting machine. In order to obey the best practices for
-   submitting condor jobs, you should run `make data` only after the
-   simulation jobs have completed (this avoids having too many DAGs running at
-   the same time).
+2. Process simulation and data by running `make simulation` and `make data`. These commands will submit jobs to [HTCondor](https://research.cs.wisc.edu/htcondor/), so make sure to run them on a machine that has `condor_submit_dag`. In order to obey the best practices for submitting condor jobs, you should run `make data` only after the simulation jobs have completed (this avoids having too many DAGs running at the same time).
 
-3. Calculate and save detector livetimes by running `make save-livetimes`.
+3. (*in progress*) Run `make analysis` to run the full analysis chain.
 
-4. (*in progress*) Calculate and save detector effective areas by running
-   `make save-effective-areas`.
 
-5. (*in progress*) All analysis plots can now be made with `make plots`.
+## Analysis steps
+
+The workflow for this analysis is managed using GNU `make`. The workflow commands are stored in `Makefile` and can be executed using the syntax `make -s <command>`. The available commands in `Makefile` are shown below
+
+| Name        | Command           | Description  |
+|:-------------:|:-------------:| :-----:|
+| `sim`      | `make -s sim` | Processes and saves simulation data |
+| `data`      | `make -s data` | Processes and saves data |
+| `livetimes`      | `make -s livetimes` | Calculates and saves detector livetimes |
+| `efficiencies`      | `make -s efficiencies` | Calculates and saves detection efficiencies |
+| `energy-reco`      | `make -s energy-reco` | Saves energy reconstruction models |
+| `plots`      | `make -s plots` | Makes all analysis plots |
+| `analysis`      | `make -s analysis` | Runs all commands to reproduce full analysis |
+
+*Note*: the (optional) `-s` option runs `make` in silent mode (i.e. doesn't print the commands as they are executed).

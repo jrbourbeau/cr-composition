@@ -1,26 +1,24 @@
 #!/usr/bin/env python
 
-import sys
 import os
 import argparse
 import numpy as np
 import pandas as pd
 import pyprind
-import ROOT
 
 import PyUnfold
 import comptools as comp
 
 
-def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
-           priors='Jeffreys', input_file=None, **kwargs):
+def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
+           **kwargs):
 
     if config_name is None:
         raise ValueError('config_name must be provided')
 
     assert input_file is not None
 
-    #### Get the Configuration Parameters from the Config File ####
+    # Get the Configuration Parameters from the Config File
     config = PyUnfold.Utils.ConfigFM(config_name)
 
     # Input Data ROOT File Name
@@ -31,9 +29,9 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
 
     # Analysis Bin
     binHeader = 'analysisbins'
-    binnumberStr = config.get(binHeader,'bin',default=0,cast=str)
-    stackFlag = config.get_boolean(binHeader,'stack',default=False)
-    binList = ['bin'+val.replace(' ','') for val in binnumberStr.split(',')]
+    binnumberStr = config.get(binHeader, 'bin', default=0, cast=str)
+    stackFlag = config.get_boolean(binHeader, 'stack', default=False)
+    binList = ['bin'+val.replace(' ', '') for val in binnumberStr.split(',')]
     nStack = len(binList)
 
     binnumber = 0
@@ -45,19 +43,19 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
         unfbinname = 'bin%i'%binnumber
     else:
         if nStack<=1:
-            mess = '\n**** You have request to stack analysis bins, but have only requested %i bin, %s.'%(nStack,binList[0])
+            mess = '\n**** You have request to stack analysis bins, but have only requested %i bin, %s.'%(nStack, binList[0])
             mess += ' You need at least 2 bins to stack.\n'
             raise ValueError(mess+'\n\tPlease correct your mistake. Exiting... ***\n')
         unfbinname = 'bin0'
 
     # Unfolder Options
     unfoldHeader = 'unfolder'
-    UnfolderName = config.get(unfoldHeader,'unfolder_name',default='Unfolder',cast=str)
-    UnfMaxIter = config.get(unfoldHeader,'max_iter',default=100,cast=int)
-    UnfSmoothIter = config.get_boolean(unfoldHeader,'smooth_with_reg',default=False)
-    UnfVerbFlag = config.get_boolean(unfoldHeader,'verbose',default=False)
+    UnfolderName = config.get(unfoldHeader, 'unfolder_name',  default='Unfolder', cast=str)
+    UnfMaxIter = config.get(unfoldHeader, 'max_iter', default=100, cast=int)
+    UnfSmoothIter = config.get_boolean(unfoldHeader, 'smooth_with_reg', default=False)
+    UnfVerbFlag = config.get_boolean(unfoldHeader, 'verbose', default=False)
 
-    # # Get Prior Definition
+    # Get Prior Definition
     # priorHeader = 'prior'
     # priorString = config.get(priorHeader,'func',default='Jeffreys',cast=str)
     # priorList = [val for val in priorString.split(',')]
@@ -87,23 +85,23 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
 
     # Regularization Function, Initial Parameters, & Options
     regHeader = 'regularization'
-    RegFunc = config.get(regHeader,'reg_func',default='',cast=str)
+    RegFunc = config.get(regHeader, 'reg_func', default='', cast=str)
     #  Param Names
-    ConfigParamNames = config.get(regHeader,'param_names',default='',cast=str)
+    ConfigParamNames = config.get(regHeader, 'param_names', default='', cast=str)
     ParamNames = [x.strip() for x in ConfigParamNames.split(',')]
     #  Initial Parameters
-    IPars = config.get(regHeader,'param_init',default='',cast=str)
+    IPars = config.get(regHeader, 'param_init', default='', cast=str)
     InitParams = [float(val) for val in IPars.split(',')]
     #  Limits
-    PLow = config.get(regHeader,'param_lim_lo',default='',cast=str)
+    PLow = config.get(regHeader, 'param_lim_lo', default='', cast=str)
     PLimLo = [float(val) for val in PLow.split(',')]
-    PHigh = config.get(regHeader,'param_lim_hi',default='',cast=str)
+    PHigh = config.get(regHeader, 'param_lim_hi', default='', cast=str)
     PLimHi = [float(val) for val in PHigh.split(',')]
-    RegRangeStr = config.get(regHeader,'reg_range',cast=str)
+    RegRangeStr = config.get(regHeader, 'reg_range', cast=str)
     RegRange = [float(val) for val in RegRangeStr.split(',')]
     #  Options
-    RegPFlag = config.get_boolean(regHeader,'plot',default=False)
-    RegVFlag = config.get_boolean(regHeader,'verbose',default=False)
+    RegPFlag = config.get_boolean(regHeader, 'plot', default=False)
+    RegVFlag = config.get_boolean(regHeader, 'verbose', default=False)
 
     # Get MCInput
     mcHeader = 'mcinput'
@@ -112,7 +110,7 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
     Eff_hist_name = config.get(mcHeader, 'eff_hist', default='', cast=str)
     MM_hist_name = config.get(mcHeader, 'mm_hist', default='', cast=str)
 
-    #### Setup the Observed and MC Data Arrays ####
+    # Setup the Observed and MC Data Arrays
     # Load MC Stats (NCmc), Cause Efficiency (Eff) and Migration Matrix ( P(E|C) )
     MCStats = PyUnfold.LoadStats.MCTables(StatsFile, BinName=binList,
         RespMatrixName=MM_hist_name, EffName=Eff_hist_name, Stack=stackFlag)
@@ -125,7 +123,7 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
         Cedges.append(edge)
     Eaxis, Eedges = MCStats.GetEffectAxis()
     # Effect and Cause X and Y Labels from Respective Histograms
-    Cxlab, Cylab, Ctitle = PyUnfold.rr.get_labels(StatsFile,Eff_hist_name,binList[0],verbose=False)
+    Cxlab, Cylab, Ctitle = PyUnfold.rr.get_labels(StatsFile, Eff_hist_name, binList[0], verbose=False)
 
     # Load the Observed Data (n_eff), define total observed events (n_obs)
     # Get from ROOT input file if requested
@@ -153,7 +151,7 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
         raise TypeError('priors must be a np.ndarray, '
                         'but got {}'.format(type(priors)))
 
-    #### Setup the Tools Used in Unfolding ####
+    # Setup the Tools Used in Unfolding
     # Prepare Regularizer
     Rglzr = [PyUnfold.Utils.Regularizer('REG', FitFunc=[RegFunc], Range=RegRange,
                 InitialParams=InitParams, ParamLo=PLimLo, ParamHi=PLimHi,
@@ -161,8 +159,8 @@ def unfold(config_name=None, return_dists=False, EffDist=None, plot_local=False,
                 verbose=RegVFlag, plot=RegPFlag) for i in range(nStack)]
     # Prepare Test Statistic-er
     tsMeth = PyUnfold.Utils.GetTS(tsname)
-    tsFunc = [tsMeth(tsname, tol=tsTol, Xaxis=Caxis[i], TestRange=tsRange ,verbose=tsVerbFlag)
-                for i in range(nStack)]
+    tsFunc = [tsMeth(tsname, tol=tsTol, Xaxis=Caxis[i], TestRange=tsRange, verbose=tsVerbFlag)
+              for i in range(nStack)]
 
     # Prepare Mixer
     Mixer = PyUnfold.Mix.Mixer(MixName, ErrorType=CovError, MCTables=MCStats,
@@ -220,6 +218,7 @@ if __name__ == '__main__':
     names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
     for prior_name in pyprind.prog_bar(names):
         priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
-        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors, input_file=args.input_file)
+        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors,
+                                   input_file=args.input_file)
         # Save to hdf file
         df_unfolding_iter.to_hdf(args.output_file, prior_name)

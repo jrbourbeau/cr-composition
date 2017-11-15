@@ -5,6 +5,9 @@ import os
 from functools import wraps, partial
 import numpy as np
 import pandas as pd
+import dask
+from dask import multiprocessing
+from dask.diagnostics import ProgressBar
 import dask.dataframe as dd
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from sklearn.preprocessing import LabelEncoder
@@ -173,21 +176,26 @@ def add_convenience_variables(df, datatype='sim'):
 def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                           energy_key='reco_log_energy', columns=None,
                           verbose=False, log_energy_min=None,
-                          log_energy_max=None):
+                          log_energy_max=None, n_jobs=1):
 
     validate_datatype(datatype)
     # If df_file is not specified, use default path
     if df_file is None:
         paths = get_paths()
-        df_file = os.path.join(paths.comp_data_dir,
-                               '{}_{}'.format(config, datatype),
+        df_file = os.path.join(paths.comp_data_dir, config,
                                '{}_dataframe.hdf5'.format(datatype))
     if not os.path.exists(df_file):
         raise IOError('The DataFrame file {} doesn\'t exist'.format(df_file))
 
-    # If specified, construct energy selection string
-    with pd.HDFStore(df_file, mode='r') as store:
-        df = store.select('dataframe', columns=columns)
+    chunksize = 1000000
+    df = dd.read_hdf(df_file, 'dataframe', mode='r', columns=columns,
+                     chunksize=chunksize)
+    get = multiprocessing.get if n_jobs > 1 else dask.get
+    if verbose:
+        with ProgressBar():
+            df = df.compute(get=get, num_workers=n_jobs)
+    else:
+        df = df.compute(get=get, num_workers=n_jobs)
 
     model_dict = load_trained_model('RF_energy_{}'.format(config))
     pipeline = model_dict['pipeline']
@@ -205,7 +213,7 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
 
 def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
              columns=None, energy_key='reco_log_energy', log_energy_min=6.0,
-             log_energy_max=8.0, verbose=False):
+             log_energy_max=8.0, n_jobs=1, verbose=False):
     '''Function to load processed simulation DataFrame
 
     Parameters
@@ -247,7 +255,8 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
     df = _load_basic_dataframe(df_file=df_file, datatype='sim', config=config,
                                energy_key=energy_key, columns=columns,
                                log_energy_min=log_energy_min,
-                               log_energy_max=log_energy_max, verbose=verbose)
+                               log_energy_max=log_energy_max, n_jobs=n_jobs,
+                               verbose=verbose)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
@@ -266,7 +275,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
 
 def load_data(df_file=None, config='IC86.2012', columns=None,
               energy_key='reco_log_energy', log_energy_min=6.0,
-              log_energy_max=8.0, verbose=False):
+              log_energy_max=8.0, n_jobs=1, verbose=False):
     '''Function to load processed data DataFrame
 
     Parameters
@@ -303,7 +312,8 @@ def load_data(df_file=None, config='IC86.2012', columns=None,
     df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
                                energy_key=energy_key, columns=columns,
                                log_energy_min=log_energy_min,
-                               log_energy_max=log_energy_max, verbose=verbose)
+                               log_energy_max=log_energy_max, n_jobs=n_jobs,
+                               verbose=verbose)
 
     return df
 
