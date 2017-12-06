@@ -6,35 +6,9 @@ from .base import DataSet
 from .base import get_energybins
 from .data_functions import ratio_error
 from ..composition_encoding import composition_group_labels, get_comp_list
-from icecube.weighting.weighting import from_simprod, PDGCode, ParticleType
-from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5, Hoerandel_IT, CompiledFlux
-
-
-def get_num_particles(train, test, pipeline, comp_list, log_energy_bins=get_energybins().log_energy_bins):
-    '''Calculates the number of particles identified in each energy bin
-    for each composition in comp_list. In addition, the statisitcal error for the
-    number of events is calculated.'''
-
-    assert isinstance(train, DataSet), 'train dataset must be a DataSet'
-    assert isinstance(test, DataSet), 'test dataset must be a DataSet'
-    assert train.y is not None, 'train must have true y values'
-    assert test.log_energy is not None, 'teset must have log_energ values'
-
-    pipeline.fit(train.X, train.y)
-    test_predictions = pipeline.predict(test.X)
-
-    # Get number of identified comp in each energy bin
-    num_particles, num_particles_err = {}, {}
-    for composition in comp_list:
-        comp_mask = train.le.inverse_transform(test_predictions) == composition
-        num_particles[composition] = np.histogram(test.log_energy[comp_mask],
-            bins=log_energy_bins)[0]
-        num_particles_err[composition] = np.sqrt(num_particles[composition])
-
-    num_particles['total'] = np.histogram(test.log_energy, bins=log_energy_bins)[0]
-    num_particles_err['total'] = np.sqrt(num_particles['total'])
-
-    return num_particles, num_particles_err
+from icecube.weighting.weighting import PDGCode, ParticleType
+from icecube.weighting.fluxes import (GaisserH3a, GaisserH4a, Hoerandel5,
+                                      Hoerandel_IT, CompiledFlux)
 
 
 def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,

@@ -142,8 +142,8 @@ if __name__ == "__main__":
 
         chi2 = np.sum((efficiencies[composition][midpoints_fitmask] - eff_fit[midpoints_fitmask])**2 / (efficiencies_err[composition][midpoints_fitmask]) ** 2)
         ndof = len(eff_fit[midpoints_fitmask]) - len(p0)
-        # print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
-        #                                                ndof, chi2/ndof))
+        print('({}) chi2 / ndof = {} / {} = {}'.format(composition, chi2,
+                                                       ndof, chi2/ndof))
 
     # Perform several fits to random fluxuations of the efficiencies
     efficiencies_fit_samples = defaultdict(list)

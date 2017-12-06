@@ -11,7 +11,7 @@ import comptools as comp
 
 
 def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
-           **kwargs):
+           ts='ks', ts_stopping=0.01, **kwargs):
 
     if config_name is None:
         raise ValueError('config_name must be provided')
@@ -76,12 +76,16 @@ def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
 
     # Test Statistic - Stat Function & Options
     # Options: chi2, rmd, pf, ks
-    tsHeader = 'teststatistic'
-    tsname = config.get(tsHeader, 'ts_name', default='rmd', cast=str)
-    tsTol = config.get(tsHeader, 'ts_tolerance', cast=float)
-    tsRangeStr = config.get(tsHeader, 'ts_range', cast=str)
-    tsRange = [float(val) for val in tsRangeStr.split(',')]
-    tsVerbFlag = config.get_boolean(tsHeader, 'verbose', default=False)
+    tsname = ts
+    tsTol = ts_stopping
+    tsRange = [0, 1e2]
+    tsVerbFlag = False
+    # tsHeader = 'teststatistic'
+    # tsRangeStr = config.get(tsHeader, 'ts_range', cast=str)
+    # tsname = config.get(tsHeader, 'ts_name', default='rmd', cast=str)
+    # tsTol = config.get(tsHeader, 'ts_tolerance', cast=float)
+    # tsRange = [float(val) for val in tsRangeStr.split(',')]
+    # tsVerbFlag = config.get_boolean(tsHeader, 'verbose', default=False)
 
     # Regularization Function, Initial Parameters, & Options
     regHeader = 'regularization'
@@ -185,32 +189,40 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script to run an iterative '
                                     'Bayesian unfolding with PyUnfold')
     parser.add_argument('-c', '--config', dest='config',
-                   choices=comp.datafunctions.get_data_configs(),
+                   default='IC86.2012',
+                   choices=comp.simfunctions.get_sim_configs(),
                    help='Detector configuration')
     parser.add_argument('--num_groups', dest='num_groups', type=int,
-                   default=2, choices=[2, 3, 4], help='Detector configuration')
+                   default=4, choices=[2, 3, 4], help='Detector configuration')
     parser.add_argument('--config_file', dest='config_file',
                    help='Configuration file')
     parser.add_argument('--input_file', dest='input_file',
                    help='Input ROOT file')
     parser.add_argument('-o', '--outfile', dest='output_file',
                    help='Output DataFrame file')
+    parser.add_argument('--ts_stopping', dest='ts_stopping', type=float,
+                   default=0.01,
+                   help='Testing statistic stopping condition')
 
     args = parser.parse_args()
 
+    unfolding_dir  = os.path.join(comp.paths.comp_data_dir, args.config,
+                                  'unfolding')
     if not args.output_file:
-        args.output_file = os.path.join(args.config, 'pyunfold_output_{}-groups.hdf'.format(args.num_groups))
-        print('Writing to output file: {}'.format(args.output_file))
+        args.output_file = os.path.join(unfolding_dir, 'pyunfold_output_{}-groups.hdf'.format(args.num_groups))
     if not args.config_file:
         args.config_file = os.path.join(args.config, 'config.cfg')
-        print('Using config file: {}'.format(args.config_file))
     if not args.input_file:
-        args.input_file = os.path.join(args.config,
+        args.input_file = os.path.join(unfolding_dir,
                         'pyunfold_input_{}-groups.root'.format(args.num_groups))
-        print('Using input ROOT file: {}'.format(args.input_file))
+        if not os.path.exists(args.input_file):
+            raise IOError('PyUnfold input ROOT file {} doesn\'t exist...'.format(args.input_file))
+    print('Writing to output file: {}'.format(args.output_file))
+    print('Using config file: {}'.format(args.config_file))
+    print('Using input ROOT file: {}'.format(args.input_file))
 
     # Load DataFrame with saved prior distributions
-    df_file = os.path.join(comp.paths.comp_data_dir, args.config, 'unfolding',
+    df_file = os.path.join(unfolding_dir,
                            'unfolding-df_{}-groups.hdf'.format(args.num_groups))
     df = pd.read_hdf(df_file)
 
@@ -219,6 +231,6 @@ if __name__ == '__main__':
     for prior_name in pyprind.prog_bar(names):
         priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
         df_unfolding_iter = unfold(config_name=args.config_file, priors=priors,
-                                   input_file=args.input_file)
+                                   input_file=args.input_file, ts_stopping=args.ts_stopping)
         # Save to hdf file
         df_unfolding_iter.to_hdf(args.output_file, prior_name)

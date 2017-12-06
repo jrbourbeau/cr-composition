@@ -85,15 +85,16 @@ def response_matrix(log_true_energy_sim_test, log_reco_energy_sim_test,
     return res_normalized, res_normalized_err
 
 
-def save_pyunfold_root_file(config, num_groups):
+def save_pyunfold_root_file(config, num_groups, outfile=None, formatted_df_file=None):
 
     unfolding_dir  = os.path.join(comp.paths.comp_data_dir, config,
                                   'unfolding')
     # Bin Definitions
     binname = 'bin0'
     # ROOT Output
-    outfile  = os.path.join(unfolding_dir,
-                            'pyunfold_input_{}-groups.root'.format(num_groups))
+    if outfile is None:
+        outfile  = os.path.join(unfolding_dir,
+                                'pyunfold_input_{}-groups.root'.format(num_groups))
     comp.check_output_dir(outfile)
     if os.path.exists(outfile):
         os.remove(outfile)
@@ -112,9 +113,10 @@ def save_pyunfold_root_file(config, num_groups):
     # Go to home of ROOT file
     fout.cd(binname)
 
-    formatted_df_outfile  = os.path.join(
-            unfolding_dir, 'unfolding-df_{}-groups.hdf'.format(num_groups))
-    df_flux = pd.read_hdf(formatted_df_outfile)
+    if formatted_df_file is None:
+        formatted_df_file  = os.path.join(
+                unfolding_dir, 'unfolding-df_{}-groups.hdf'.format(num_groups))
+    df_flux = pd.read_hdf(formatted_df_file)
     counts = df_flux['counts'].values
     efficiencies = df_flux['efficiencies'].values
     efficiencies_err = df_flux['efficiencies_err'].values
@@ -213,7 +215,7 @@ if __name__ == '__main__':
                         choices=comp.simfunctions.get_sim_configs(),
                         help='Detector configuration')
     parser.add_argument('--num_groups', dest='num_groups', type=int,
-                        default=2, choices=[2, 3, 4],
+                        default=4, choices=[2, 3, 4],
                         help='Number of composition groups')
     args = parser.parse_args()
 

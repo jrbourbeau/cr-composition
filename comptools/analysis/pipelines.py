@@ -74,7 +74,7 @@ def get_pipeline(classifier_name='BDT'):
             loss='deviance', max_depth=3, n_estimators=100, random_state=2)
     elif classifier_name == 'BDT_comp_IC86.2012_4-groups':
         classifier = GradientBoostingClassifier(
-            loss='deviance', max_depth=3, n_estimators=100, random_state=2)
+            loss='deviance', max_depth=2, n_estimators=100, random_state=2)
 
     elif classifier_name == 'RF_energy_IC79.2010':
         classifier = RandomForestRegressor(

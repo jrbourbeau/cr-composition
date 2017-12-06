@@ -44,7 +44,7 @@ if __name__ == "__main__":
     energybins = comp.analysis.get_energybins(args.config)
     comp_list = comp.get_comp_list(num_groups=args.num_groups)
     feature_list, feature_labels = comp.get_training_features()
-    pipeline_str = 'BDT_comp_{}'.format(args.config)
+    pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
 
     df_sim_train, df_sim_test = comp.load_sim(
                 config=args.config, log_energy_min=energybins.log_energy_min,
@@ -88,7 +88,12 @@ if __name__ == "__main__":
     ax.set_xlabel(args.param_label)
     ax.set_ylabel('Classification error')
     ax.grid()
-    ax.legend(title='True compositions')
+    ax.legend()
+    # ax.legend(title='True compositions')
+    leg = ax.legend(loc='upper center', frameon=False,
+                    bbox_to_anchor=(0.5,  # horizontal
+                                    1.2),# vertical
+                    ncol=len(comp_list)//2, fancybox=False)
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
                            'validation-curves',
                            '{}_{}_num_groups-{}_zoomed.png'.format(
@@ -96,6 +101,7 @@ if __name__ == "__main__":
     comp.check_output_dir(outfile)
     plt.savefig(outfile)
 
+    ax.set_xlim(min(params), max(params))
     ax.set_ylim(-0.05, 1.05)
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
                            'validation-curves',

@@ -7,13 +7,10 @@ def export(defn):
     return defn
 
 from .pipelines import *
-# from .preprocessing import *
 from .features import *
 from .data_functions import *
-# from .SBS import SBS
 from .base import get_energybins, get_color_dict
-# from .effective_area import calculate_effective_area_vs_energy, get_effective_area_fit
 from .subsample import get_random_subsample
 from .modelevaluation import get_CV_frac_correct
-from .spectrumfunctions import get_num_particles, get_flux
+from .spectrumfunctions import get_flux, get_model_flux
 from .LDFfunctions import fit_DLP_params, DLP
