@@ -8,7 +8,8 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from .base import get_paths, check_output_dir, file_batches
+from .base import (get_paths, check_output_dir, file_batches,
+                   ComputingEnvironemtError)
 from . import simfunctions
 from . import datafunctions
 from .dataframe_functions import (load_data, load_sim, apply_quality_cuts,

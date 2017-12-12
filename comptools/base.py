@@ -117,3 +117,11 @@ def file_batches(files, n_files, n_batches=None):
             raise StopIteration
         batch = list(files[i:i+n_files])
         yield batch
+
+
+class ComputingEnvironemtError(Exception):
+    """
+    Custom exception that should be raised when a problem related to the
+    computing environment is found
+    """
+    pass

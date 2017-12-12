@@ -54,7 +54,7 @@ Python environment (e.g. using `virtualenv`).
    This will install `comptools` along with all of the required dependencies
    (`pandas`, `numpy`, `scikit-learn`, etc.).
 
-3. Install version 05-01-00 of the icerec IceCube metaproject.
+3. Install version `05-01-00` of the icerec IceCube metaproject.
 
 
 ## Quickstart
@@ -64,19 +64,20 @@ run from inside the `cr-composition` directory)
 
 1. Ensure that you have the appropriate computing environment (i.e. you've run the `env-shell.sh` script for your icerec metaproject and activated the virtual environment in which the `comptools` package has been installed).
 
-2. Process simulation and data by running `make simulation` and `make data`. These commands will submit jobs to [HTCondor](https://research.cs.wisc.edu/htcondor/), so make sure to run them on a machine that has `condor_submit_dag`. In order to obey the best practices for submitting condor jobs, you should run `make data` only after the simulation jobs have completed (this avoids having too many DAGs running at the same time).
+2. Process simulation and data by running `make processing` (for a list of available commands see below). This will submit jobs to [HTCondor](https://research.cs.wisc.edu/htcondor/), so make sure to run them on a machine that has `condor_submit_dag`.
 
 3. (*in progress*) Run `make analysis` to run the full analysis chain.
 
 
 ## Analysis steps
 
-The workflow for this analysis is managed using GNU `make`. The workflow commands are stored in `Makefile` and can be executed using the syntax `make -s <command>`. The available commands in `Makefile` are shown below
+The workflow for this analysis is managed using GNU `make`. Various commands are stored in `Makefile` and can be executed using the syntax `make -s <command>`. The available commands in `Makefile` are shown below
 
 | Name        | Command           | Description  |
-|:-------------:|:-------------:| :-----:|
+|:-------------:|:-------------:| :-----|
 | `sim`      | `make -s sim` | Processes and saves simulation data |
 | `data`      | `make -s data` | Processes and saves data |
+| `processing`      | `make -s processing` | Processes and saves both simulation and data |
 | `livetimes`      | `make -s livetimes` | Calculates and saves detector livetimes |
 | `efficiencies`      | `make -s efficiencies` | Calculates and saves detection efficiencies |
 | `energy-reco`      | `make -s energy-reco` | Saves energy reconstruction models |

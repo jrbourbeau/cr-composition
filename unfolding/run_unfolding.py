@@ -189,20 +189,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script to run an iterative '
                                     'Bayesian unfolding with PyUnfold')
     parser.add_argument('-c', '--config', dest='config',
-                   default='IC86.2012',
-                   choices=comp.simfunctions.get_sim_configs(),
-                   help='Detector configuration')
+                        default='IC86.2012',
+                        choices=comp.simfunctions.get_sim_configs(),
+                        help='Detector configuration')
     parser.add_argument('--num_groups', dest='num_groups', type=int,
-                   default=4, choices=[2, 3, 4], help='Detector configuration')
+                        default=4, choices=[2, 3, 4], help='Detector configuration')
     parser.add_argument('--config_file', dest='config_file',
-                   help='Configuration file')
+                        help='Configuration file')
     parser.add_argument('--input_file', dest='input_file',
-                   help='Input ROOT file')
+                        help='Input ROOT file')
     parser.add_argument('-o', '--outfile', dest='output_file',
-                   help='Output DataFrame file')
+                        help='Output DataFrame file')
     parser.add_argument('--ts_stopping', dest='ts_stopping', type=float,
-                   default=0.01,
-                   help='Testing statistic stopping condition')
+                        default=0.01,
+                        help='Testing statistic stopping condition')
 
     args = parser.parse_args()
 

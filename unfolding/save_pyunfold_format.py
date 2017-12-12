@@ -17,11 +17,14 @@ from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
 
 import comptools as comp
 
+if 'cvmfs' in os.getenv('ROOTSYS'):
+    raise ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
+
 color_dict = comp.analysis.get_color_dict()
 
 
 def response_matrix(log_true_energy_sim_test, log_reco_energy_sim_test,
-                    true_comp, pred_comp, comp_list):
+                    true_comp, pred_comp, comp_list, efficiencies, efficiencies_err):
 
     true_ebin_idxs = np.digitize(log_true_energy_sim_test,
                                  energybins.log_energy_bins) - 1
@@ -231,7 +234,8 @@ if __name__ == '__main__':
     print('Loading simulation training/testing DataFrames...')
     df_sim_train, df_sim_test = comp.load_sim(config=config,
                                               log_energy_min=log_energy_min,
-                                              log_energy_max=log_energy_max)
+                                              log_energy_max=log_energy_max,
+                                              test_size=0.5)
 
     log_reco_energy_sim_test = df_sim_test['reco_log_energy']
     log_true_energy_sim_test = df_sim_test['MC_log_energy']
@@ -308,10 +312,11 @@ if __name__ == '__main__':
     pred_comp = np.array(comp.composition_encoding.decode_composition_groups(
                             test_predictions, num_groups=num_groups))
     res_normalized, res_normalized_err = response_matrix(
-                                                     log_true_energy_sim_test,
-                                                     log_reco_energy_sim_test,
-                                                     true_comp, pred_comp,
-                                                     comp_list)
+                                            log_true_energy_sim_test,
+                                            log_reco_energy_sim_test,
+                                            true_comp, pred_comp,
+                                            comp_list,
+                                            efficiencies, efficiencies_err)
 
     res_mat_outfile = os.path.join(
                             comp.paths.comp_data_dir, config, 'unfolding',

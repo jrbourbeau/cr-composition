@@ -1,33 +1,78 @@
 #!/usr/bin/env python
+"""
+Script to process data and simulation .i3 files and save pandas.DataFrame
+objects used for this analysis.
+
+Example usages:
+    python process.py  --config IC86.2012
+    python process.py  --config IC86.2012 --sim
+    python process.py  --config IC86.2012 --data
+"""
 
 import os
-import glob
+from itertools import chain
 import argparse
-import numpy as np
 import pyprind
 import pycondor
 
 import comptools as comp
+from comptools import ComputingEnvironemtError
 
 
-def add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
+if os.getenv('I3_BUILD') is None:
+    raise ComputingEnvironemtError(
+            'Did not detect an active icecube software environment. '
+            'Make sure source the env-shell.sh script in your '
+            'icecube metaproject build directory before running '
+            'process.py')
+if 'cvmfs' not in os.getenv('ROOTSYS'):
+    raise ComputingEnvironemtError(
+            'CVMFS ROOT must be used for i3 file processing')
 
-    save_df_name = 'save_df_sim_{}'.format(args['config'])
-    save_df_job = pycondor.Job(save_df_name, save_df_ex,
-                               error=error, output=output,
-                               log=log, submit=submit,
-                               request_memory='3GB',
+
+def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
+    """Yields pycondor Jobs for simulation processing
+
+    Parameters
+    ----------
+    save_hdf5_ex : str
+        Path to icetray script.
+    save_df_ex : str
+        Path to script to save dataframe.
+    config : str
+        Detector configuration.
+    sims : array_like
+        Iterable of detector configurations.
+    n : int, optional
+        Batch size (default is 1000).
+    test : bool, optional
+        Option to run in testing mode (default is False).
+
+    Yields
+    ------
+    job : pycondor.Job
+        Simulation Job to be included in processing Dagman.
+    """
+    save_df_name = 'save_df_sim_{}'.format(config.replace('.', '-'))
+    save_df_job = pycondor.Job(name=save_df_name,
+                               executable=save_df_ex,
+                               error=error,
+                               output=output,
+                               log=log,
+                               submit=submit,
+                               request_memory='3GB' if test else None,
                                verbose=1)
-    # Add save_df_job to dagman
-    dagman.add_job(save_df_job)
 
     save_df_input_files = []
-    for sim in args['sim']:
+    for sim in sims:
         # Create a save and merge pycondor Job for each simulation set
         save_hdf5_name = 'save_hdf5_sim_{}'.format(sim)
-        save_hdf5_job = pycondor.Job(save_hdf5_name, save_hdf5_ex,
-                                     error=error, output=output,
-                                     log=log, submit=submit,
+        save_hdf5_job = pycondor.Job(name=save_hdf5_name,
+                                     executable=save_hdf5_ex,
+                                     error=error,
+                                     output=output,
+                                     log=log,
+                                     submit=submit,
                                      verbose=1)
         # Ensure that save_hdf5_job completes before save_df_job
         save_df_job.add_parent(save_hdf5_job)
@@ -39,13 +84,13 @@ def add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
         outdir = os.path.join(comp.paths.comp_data_dir, config,
                               'i3_hdf_sim')
         # Split file list into smaller batches for submission
-        if args['test']:
-            args['n'] = 10
+        if test:
+            n = 10
             n_batches = 2
         else:
             n_batches = None
 
-        for files in comp.file_batches(i3_files, args['n'], n_batches):
+        for files in comp.file_batches(i3_files, n, n_batches):
             # Name output hdf5 file
             start_index = files[0].find('Run') + 3
             end_index = files[0].find('.i3.gz')
@@ -60,51 +105,69 @@ def add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
 
             arg = '--type sim --files {} -o {}'.format(files_str, out)
             save_hdf5_job.add_arg(arg, retry=3)
-
             save_df_input_files.append(out)
-        # Add job for this sim to the dagmanager
-        dagman.add_job(save_hdf5_job)
 
-    df_outfile = os.path.join(comp.paths.comp_data_dir, args['config'],
+        yield save_hdf5_job
+
+    df_outfile = os.path.join(comp.paths.comp_data_dir, config,
                               'sim_dataframe.hdf5')
     df_input_files_str = ' '.join(save_df_input_files)
     df_arg = '--input {} --output {} --type sim --config {}'.format(
-        df_input_files_str, df_outfile, args['config'])
+        df_input_files_str, df_outfile, config)
     save_df_job.add_arg(df_arg)
 
-    return dagman
+    yield save_df_job
 
 
-def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
+def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
+    """Yields pycondor Jobs for data processing
 
-    config = args['config']
+    Parameters
+    ----------
+    save_hdf5_ex : str
+        Path to icetray script.
+    save_df_ex : str
+        Path to script to save dataframe.
+    config : str
+        Detector configuration.
+    n : int, optional
+        Batch size (default is 50).
+    test : bool, optional
+        Option to run in testing mode (default is False).
 
+    Yields
+    ------
+    job : pycondor.Job
+        Data Job to be included in processing Dagman.
+    """
     # Set up output directory (also, make sure directory exists)
     outdir = os.path.join(comp.paths.comp_data_dir, config,
                           'i3_hdf_data')
 
     # Create a save and merge CondorJobs
-    save_hdf5_name = 'save_hdf5_data_{}'.format(config)
-    save_hdf5_job = pycondor.Job(save_hdf5_name, save_hdf5_ex,
-                                 error=error, output=output,
-                                 log=log, submit=submit,
+    save_hdf5_name = 'save_hdf5_data_{}'.format(config.replace('.', '-'))
+    save_hdf5_job = pycondor.Job(name=save_hdf5_name,
+                                 executable=save_hdf5_ex,
+                                 error=error,
+                                 output=output,
+                                 log=log,
+                                 submit=submit,
                                  verbose=1)
-    # Add save_hdf5_job to dagman
-    dagman.add_job(save_hdf5_job)
 
-    save_df_name = 'save_df_data_{}'.format(config)
-    save_df_job = pycondor.Job(save_df_name, save_df_ex,
-                               error=error, output=output,
-                               log=log, submit=submit,
-                               request_memory='5GB',
+    save_df_name = 'save_df_data_{}'.format(config.replace('.', '-'))
+    save_df_job = pycondor.Job(name=save_df_name,
+                               executable=save_df_ex,
+                               error=error,
+                               output=output,
+                               log=log,
+                               submit=submit,
+                               request_memory='5GB' if test else None,
                                verbose=1)
     # Ensure that save_df_job completes before save_df_job
     save_df_job.add_parent(save_hdf5_job)
-    # Add save_df_job to dagman
-    dagman.add_job(save_df_job)
 
     run_list = comp.datafunctions.get_run_list(config)
-    if args['test']:
+    if test:
         run_list = run_list[:2]
         n_batches = 2
     else:
@@ -115,8 +178,10 @@ def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
                           title='Adding {} data jobs'.format(config))
     for run in run_list:
         # Get files associated with this run
-        gcd, run_files = comp.datafunctions.get_level3_run_i3_files(config=config, run=run)
-        for idx, files in enumerate(comp.file_batches(run_files, args['n'], n_batches)):
+        gcd, run_files = comp.datafunctions.get_level3_run_i3_files(
+                                                        config=config, run=run)
+        data_file_batches = comp.file_batches(run_files, n, n_batches)
+        for idx, files in enumerate(data_file_batches):
             # Name output hdf5 file
             out = '{}/data_{}_part_{:02d}.hdf5'.format(outdir, run, idx)
             # Don't forget to insert GCD file at beginning of FileNameList
@@ -127,8 +192,8 @@ def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
             save_df_input_files.append(out)
         bar.update()
     print(bar)
+    yield save_hdf5_job
 
-    # Add save save_df to dagman
     df_outfile = os.path.join(comp.paths.comp_data_dir, config,
                               'data_dataframe.hdf5')
     df_input_files_str = ' '.join(save_df_input_files)
@@ -136,88 +201,94 @@ def add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **args):
         df_input_files_str, df_outfile, config)
     save_df_job.add_arg(df_arg)
 
-    return dagman
+    yield save_df_job
 
 
 if __name__ == "__main__":
 
-    p = argparse.ArgumentParser(
-        description='Extracts and saves desired information from simulation/data .i3 files')
-    p.add_argument('--type', dest='type',
-                   choices=['data', 'sim'],
-                   default='sim',
-                   help='Option to process simulation or data')
-    p.add_argument('-d', '--date', dest='date',
-                   help='Date to run over (mmyyyy)')
-    p.add_argument('-c', '--config', dest='config',
-                   default='IC86.2012',
-                   help='Detector configuration')
-    p.add_argument('-s', '--sim', dest='sim', nargs='*', type=int,
-                   help='Simulation to run over')
-    p.add_argument('-n', '--n', dest='n', type=int,
-                   help='Number of files to run per batch')
-    p.add_argument('--test', dest='test', action='store_true',
-                   default=False,
-                   help='Option for running test off cluster')
-    p.add_argument('--overwrite', dest='overwrite', action='store_true',
-                   default=False,
-                   help='Option for overwriting existing files.')
-    p.add_argument('--maxjobs', dest='maxjobs', type=int,
-                   default=3000,
-                   help='Maximum number of jobs to run at a given time.')
-    args = p.parse_args()
+    description = 'Processes simulation and data .i3 files'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--type', dest='type',
+                        choices=['data', 'sim'],
+                        help=('Option to restring process to simulation only '
+                              'or data only'))
+    parser.add_argument('-d', '--date', dest='date',
+                        help='Date to run over (mmyyyy)')
+    parser.add_argument('-c', '--config', dest='config',
+                        default='IC86.2012',
+                        help='Detector configuration')
+    parser.add_argument('-s', '--sim', dest='sim',
+                        nargs='*', type=int,
+                        help='Simulation to run over')
+    parser.add_argument('--n_sim', dest='n_sim',
+                        type=int, default=1000,
+                        help=('Number of files to run per batch for '
+                              'simulation processing'))
+    parser.add_argument('--n_data', dest='n_data',
+                        type=int, default=50,
+                        help=('Number of files to run per batch for '
+                              'data processing'))
+    parser.add_argument('--test', dest='test',
+                        action='store_true',
+                        default=False,
+                        help='Option for running test off cluster')
+    parser.add_argument('--overwrite', dest='overwrite',
+                        action='store_true',
+                        default=False,
+                        help='Option for overwriting existing files.')
+    parser.add_argument('--maxjobs', dest='maxjobs',
+                        type=int, default=3000,
+                        help='Maximum number of jobs to run at a given time.')
+    args = parser.parse_args()
 
-    # Validate input config
-    if (args.type == 'sim' and
-            args.config not in comp.simfunctions.get_sim_configs()):
-        raise ValueError(
-            'Invalid simulation config {} entered'.format(args.config))
-    elif (args.type == 'data' and
-            args.config not in comp.datafunctions.get_data_configs()):
+    # Validate user inputs
+    if args.type not in ['sim', 'data', None]:
+        raise ValueError("Invalid processing type entered. Must be either "
+                         "'sim', 'data', or None.")
+    process_types = ['sim', 'data'] if args.type is None else args.type
+
+    sim_configs = comp.simfunctions.get_sim_configs()
+    data_configs = comp.datafunctions.get_data_configs()
+    if 'sim' in process_types and args.config not in sim_configs:
+        raise ValueError('Invalid sim config {} entered'.format(args.config))
+    if 'data' in process_types and args.config not in data_configs:
         raise ValueError('Invalid data config {} entered'.format(args.config))
 
-    if not args.n:
-        if args.type == 'sim':
-            args.n = 1000
-        else:
-            args.n = 50
-
-    if args.type == 'sim' and not args.sim:
+    if 'sim' in process_types and not args.sim:
         args.sim = comp.simfunctions.config_to_sim(args.config)
 
-    # Define output directories
+    # Define pycondor Job/Dagman directories
     error = os.path.join(comp.paths.condor_data_dir, 'error')
     output = os.path.join(comp.paths.condor_data_dir, 'output')
     log = os.path.join(comp.paths.condor_scratch_dir, 'log')
     submit = os.path.join(comp.paths.condor_scratch_dir, 'submit')
 
     # Create Dagman to manage processing workflow
-    name = 'processing_{}_{}'.format(args.config, args.type)
-    dagman = pycondor.Dagman(name, submit=submit, verbose=1)
+    name = 'processing_{}'.format(args.config.replace('.', '-'))
+    dag = pycondor.Dagman(name, submit=submit, verbose=1)
 
-    # Define path to executables
-    save_hdf5_ex = os.path.join(comp.paths.project_root, 'processing',
-                                'save_hdf5.py')
-    save_df_ex = os.path.join(comp.paths.project_root, 'processing',
-                              'save_dataframe.py')
+    # Define path to executables used in processing
+    processing_dir = os.path.join(comp.paths.project_root, 'processing')
+    save_hdf5_ex = os.path.join(processing_dir, 'save_hdf5.py')
+    save_df_ex = os.path.join(processing_dir, 'save_dataframe.py')
 
-    if args.type == 'sim':
-        dagman = add_sim_jobs(dagman, save_hdf5_ex, save_df_ex, **vars(args))
-    else:
-        dagman = add_data_jobs(dagman, save_hdf5_ex, save_df_ex, **vars(args))
+    # Add Jobs to processing Dagman
+    jobs = []
+    if 'sim' in process_types:
+        sim_gen = gen_sim_jobs(save_hdf5_ex, save_df_ex,
+                               config=args.config,
+                               sims=args.sim,
+                               n=args.n_sim,
+                               test=args.test)
+        jobs.append(sim_gen)
+    if 'data' in process_types:
+        data_gen = gen_data_jobs(save_hdf5_ex, save_df_ex,
+                                 config=args.config,
+                                 n=args.n_data,
+                                 test=args.test)
+        jobs.append(data_gen)
+    for job in chain.from_iterable(jobs):
+        dag.add_job(job)
 
-    # # Add job for training and saving energy reconstruction model
-    # if args.type == 'sim':
-    #     energy_reco_ex = os.path.join(comp.paths.project_root, 'models',
-    #                                   'save_energy_reco_model.py')
-    #     energy_reco_job = pycondor.Job('energy_reco', energy_reco_ex,
-    #                                    error=error, output=output,
-    #                                    log=log, submit=submit,
-    #                                    verbose=1)
-    #
-    #     energy_reco_job.add_arg('--config {}'.format(args.config))
-    #     energy_reco_job.add_parent(merge_df_job)
-    #     dagman.add_job(energy_reco_job)
-
-    # Build and submit dagman
-    dagman.build_submit(maxjobs=args.maxjobs, fancyname=True)
+    # Build and submit processing dagman
+    dag.build_submit(maxjobs=args.maxjobs, fancyname=True)
