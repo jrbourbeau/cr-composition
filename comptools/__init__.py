@@ -14,7 +14,8 @@ from . import simfunctions
 from . import datafunctions
 from .dataframe_functions import (load_data, load_sim, apply_quality_cuts,
                                   dataframe_to_X_y)
-from .composition_encoding import get_comp_list, comp_to_label, label_to_comp
+from .composition_encoding import (get_comp_list, comp_to_label, label_to_comp,
+                                   decode_composition_groups)
 from . import anisotropy
 from .livetime import get_livetime_file, get_detector_livetime
 

@@ -4,6 +4,7 @@ from __future__ import division, print_function
 import os
 import argparse
 from collections import defaultdict
+from itertools import product
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,55 +19,46 @@ from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
 import comptools as comp
 
 if 'cvmfs' in os.getenv('ROOTSYS'):
-    raise ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
+    raise comp.ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
 
 color_dict = comp.analysis.get_color_dict()
 
 
-def response_matrix(log_true_energy_sim_test, log_reco_energy_sim_test,
-                    true_comp, pred_comp, comp_list, efficiencies, efficiencies_err):
+def response_matrix(log_true_energy, log_reco_energy, true_comp, pred_comp,
+                    comp_list, efficiencies, efficiencies_err):
 
-    true_ebin_idxs = np.digitize(log_true_energy_sim_test,
+    true_ebin_idxs = np.digitize(log_true_energy,
                                  energybins.log_energy_bins) - 1
-    reco_ebin_idxs = np.digitize(log_reco_energy_sim_test,
+    reco_ebin_idxs = np.digitize(log_reco_energy,
                                  energybins.log_energy_bins) - 1
 
-    hstack_list = []
-    for true_ebin_idx in range(-1, len(energybins.log_energy_midpoints)+1):
-        is_underflow = true_ebin_idx == -1
-        is_overflow = true_ebin_idx == energybins.energy_midpoints.shape[0]
-        if is_underflow or is_overflow:
-            continue
+    num_groups = len(comp_list)
+    num_ebins = len(energybins.log_energy_midpoints)
+
+    e_bin_iter = product(range(num_ebins), range(num_ebins))
+    res = np.zeros((num_ebins * num_groups, num_ebins * num_groups), dtype=int)
+    for true_ebin_idx, reco_ebin_idx in e_bin_iter:
         true_ebin_mask = true_ebin_idxs == true_ebin_idx
-
-        vstack_list = []
-        for reco_ebin_idx in range(-1, len(energybins.log_energy_midpoints)+1):
-            is_underflow = reco_ebin_idx == -1
-            is_overflow = reco_ebin_idx == energybins.energy_midpoints.shape[0]
-            if is_underflow or is_overflow:
-                continue
-            reco_ebin_mask = reco_ebin_idxs == reco_ebin_idx
-
-            combined_mask = true_ebin_mask & reco_ebin_mask
-            if combined_mask.sum() == 0:
-                response_mat = np.zeros((num_groups, num_groups), dtype=int)
-            else:
-                response_mat = confusion_matrix(
-                                    true_comp[true_ebin_mask & reco_ebin_mask],
-                                    pred_comp[true_ebin_mask & reco_ebin_mask],
-                                    labels=comp_list)
+        reco_ebin_mask = reco_ebin_idxs == reco_ebin_idx
+        ebin_mask = true_ebin_mask & reco_ebin_mask
+        if ebin_mask.sum() == 0:
+            continue
+        else:
+            response_mat = confusion_matrix(true_comp[ebin_mask],
+                                            pred_comp[ebin_mask],
+                                            labels=comp_list)
             # Transpose response matrix to get MC comp on x-axis
             # and reco comp on y-axis
             response_mat = response_mat.T
-            vstack_list.append(response_mat)
-        hstack_list.append(np.vstack(vstack_list))
 
-    res = np.hstack(hstack_list)
+        res[num_groups * reco_ebin_idx : num_groups * (reco_ebin_idx + 1),
+            num_groups * true_ebin_idx : num_groups * (true_ebin_idx + 1)] = response_mat
+
+    # Calculate statistical error on response matrix
     res_err = np.sqrt(res)
-
     # Normalize response matrix column-wise (i.e. $P(E|C)$)
     res_col_sum = res.sum(axis=0)
-    res_col_sum_err = np.array([np.sqrt(np.nansum(res_err[:, i]**2))
+    res_col_sum_err = np.array([np.sqrt(np.sum(res_err[:, i]**2))
                                 for i in range(res_err.shape[1])])
 
     normalizations, normalizations_err = comp.analysis.ratio_error(
@@ -88,7 +80,8 @@ def response_matrix(log_true_energy_sim_test, log_reco_energy_sim_test,
     return res_normalized, res_normalized_err
 
 
-def save_pyunfold_root_file(config, num_groups, outfile=None, formatted_df_file=None):
+def save_pyunfold_root_file(config, num_groups, outfile=None,
+                            formatted_df_file=None):
 
     unfolding_dir  = os.path.join(comp.paths.comp_data_dir, config,
                                   'unfolding')
@@ -124,16 +117,16 @@ def save_pyunfold_root_file(config, num_groups, outfile=None, formatted_df_file=
     efficiencies = df_flux['efficiencies'].values
     efficiencies_err = df_flux['efficiencies_err'].values
 
-    print('counts = {}'.format(counts))
-    print('efficiencies = {}'.format(efficiencies))
+    # print('counts = {}'.format(counts))
+    # print('efficiencies = {}'.format(efficiencies))
 
     cbins = len(counts)+1
     carray = np.arange(cbins, dtype=float)
-    print('carray = {}'.format(carray))
+    # print('carray = {}'.format(carray))
 
     ebins = len(counts)+1
     earray = np.arange(ebins, dtype=float)
-    print('earray = {}'.format(earray))
+    # print('earray = {}'.format(earray))
     cbins -= 1
     ebins -= 1
 
@@ -173,6 +166,7 @@ def save_pyunfold_root_file(config, num_groups, outfile=None, formatted_df_file=
         # Fill measured effects histogram
         ne_meas.SetBinContent(ci+1, counts[ci])
         ne_meas.SetBinError(ci+1, np.sqrt(counts[ci]))
+        # print('ne_meas[{}] = {}'.format(ci+1, counts[ci]))
 
         for ek in range(0, ebins):
             # Fill response matrix entries
@@ -187,7 +181,8 @@ def save_pyunfold_root_file(config, num_groups, outfile=None, formatted_df_file=
         eff.SetBinError(ci+1, efficiencies_err[ci])
 
     # Write measured effects histogram to file
-    eff.Write()
+    ne_meas.Write()
+    # eff.Write()
     # Write the cause and effect arrays to file
     CARRAY = TH1F('CARRAY','Cause Array', cbins, carray)
     CARRAY.GetXaxis().SetTitle('Causes')
@@ -418,7 +413,8 @@ if __name__ == '__main__':
                             comp.paths.comp_data_dir, config, 'unfolding',
                             'unfolding-df_{}-groups.hdf'.format(num_groups))
     comp.check_output_dir(formatted_df_outfile)
-    formatted_df.to_hdf(formatted_df_outfile, 'dataframe', format='table')
+    formatted_df.to_hdf(formatted_df_outfile, 'dataframe',
+                        format='table', mode='w')
 
     print('Saving PyUnfold input ROOT file...')
     save_pyunfold_root_file(config, num_groups)
