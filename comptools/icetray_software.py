@@ -262,6 +262,7 @@ class AddIceTopNNCharges(icetray.I3ConditionalModule):
 
         del frame[union_key]
         frame['NNcharges'] = dataclasses.I3MapKeyVectorDouble(tank_charges)
+        print(frame['NNcharges'])
         # frame['tank_x'] = dataclasses.I3MapKeyVectorDouble(tank_x)
         # frame['tank_y'] = dataclasses.I3MapKeyVectorDouble(tank_y)
 
@@ -352,6 +353,60 @@ class AddIceTopChargeDistance(icetray.I3ConditionalModule):
         self.PushFrame(frame)
 
     def Finish(self):
+        return
+
+
+class AddIceTopLogQLogR(icetray.I3ConditionalModule):
+
+    def __init__(self, context):
+        icetray.I3ConditionalModule.__init__(self, context)
+        self.AddParameter('track', 'Track to calculate distances from', 'Laputop')
+        self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        self.AddOutBox('OutBox')
+
+    def Configure(self):
+        self.track = self.GetParameter('track')
+        self.pulses = self.GetParameter('pulses')
+        self.get_dist = phys_services.I3Calculator.closest_approach_distance
+        # self.charge_vs_dist = {}
+        pass
+
+    def Geometry(self, frame):
+        self.geometry = frame['I3Geometry']
+        self.geomap = self.geometry.omgeo
+        self.PushFrame(frame)
+
+    def Physics(self, frame):
+        track = frame[self.track]
+        frame['I3RecoPulseSeriesMap_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
+        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'I3RecoPulseSeriesMap_union')
+
+        tanks_dist, tanks_charge = [], []
+        for omkey, pulses in pulse_map:
+            # Get distance of clostest approach to DOM from track
+            dist = self.get_dist(track, self.geomap[omkey].position)
+            tanks_dist.append(dist)
+            # Get charge recorded in DOM
+            charge = sum([pulse.charge for pulse in pulses])
+            tanks_charge.append(charge)
+
+        # dist_bins = np.linspace(10, 1000, 100)
+        dist_bins = np.logspace(2, 3, 25)
+        if tanks_dist and tanks_charge:
+            # ldf, _ = np.histogram(np.log10(tanks_dist), bins=dist_bins,
+            #                       weights=tanks_charge)
+            ldf, _ = np.histogram(tanks_dist, bins=dist_bins,
+                                  weights=tanks_charge)
+        else:
+            ldf = np.zeros(len(dist_bins) - 1, dtype=float)
+
+        frame['tank_charge_v_dist'] = dataclasses.I3VectorDouble(ldf)
+        del frame['I3RecoPulseSeriesMap_union']
+        self.PushFrame(frame)
+
+    def Finish(self):
+        # df = pd.DataFrame.from_dict(self.charge_vs_dist, orient='index')
+        # print('df = {}'.format(df))
         return
 
 

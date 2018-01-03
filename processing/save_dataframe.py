@@ -65,8 +65,8 @@ def extract_dataframe(input_file, config, datatype):
         laputop = store['Laputop']
         laputop_params = store['LaputopParams']
         lap_keys = ['zenith', 'azimuth', 'x', 'y']
-        if datatype == 'data':
-            lap_keys += ['ra', 'dec']
+        # if datatype == 'data':
+        #     lap_keys += ['ra', 'dec']
         for key in lap_keys:
             series_dict['lap_{}'.format(key)] = laputop[key]
         lap_param_keys = ['s50', 's80', 's125', 's180', 's250', 's500',
@@ -104,21 +104,23 @@ def extract_dataframe(input_file, config, datatype):
                      for run, event, sub_event in zip(runs, events, sub_events)]
 
         # Extract measured charge for each DOM
-        # grouped = store['NNcharges'].groupby(['Run', 'Event', 'SubEvent'])
-        # charges_list, columns, tank_charges_index = [], [], []
-        # for name, group in store['NNcharges'].groupby(['Run', 'Event', 'SubEvent']):
-        #     if not columns:
-        #         col_info = zip(group['string'].values, group['om'].values,
-        #                        group['pmt'].values)
-        #         columns = ['IT_{}_{}_{}'.format(*info) for info in col_info]
-        #     charges_list.append(group['item'].values)
-        #     tank_charges_index.append('{}_{}_{}_{}'.format(sim_num, *name))
-
-        # df_tank_charges = pd.DataFrame(charges_list, columns=columns)
-        # df_tank_charges.index = tank_charges_index
+        charges_list, columns, tank_charges_index = [], [], []
+        grouped = store['tank_charge_v_dist'].groupby(['Run', 'Event', 'SubEvent'])
+        for name, group in grouped:
+            # if not columns:
+            #     columns = ['ldf_{}'.format(i) for i in range(len(group['item']))]
+            charges_list.append(group['item'].values)
+            if datatype == 'sim':
+                tank_charges_index.append('{}_{}_{}_{}'.format(sim_num, *name))
+            else:
+                tank_charges_index.append('{}_{}_{}_{}'.format(config, *name))
+        df_tank_charges = pd.DataFrame(charges_list)
+        df_tank_charges.index = tank_charges_index
 
     df = pd.DataFrame(series_dict)
     df.index = index
+    for col in df_tank_charges:
+        df['ldf_{}'.format(col)] = df_tank_charges[col]
 
     return df
 

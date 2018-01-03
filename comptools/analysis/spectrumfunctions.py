@@ -6,9 +6,17 @@ from .base import DataSet
 from .base import get_energybins
 from .data_functions import ratio_error
 from ..composition_encoding import composition_group_labels, get_comp_list
-from icecube.weighting.weighting import PDGCode, ParticleType
-from icecube.weighting.fluxes import (GaisserH3a, GaisserH4a, Hoerandel5,
-                                      Hoerandel_IT, CompiledFlux)
+
+try:
+    import icecube
+    _has_icecube = True
+except ImportError as e:
+    _has_icecube = False
+
+if _has_icecube:
+    from icecube.weighting.weighting import PDGCode, ParticleType
+    from icecube.weighting.fluxes import (GaisserH3a, GaisserH4a, Hoerandel5,
+                                          Hoerandel_IT, CompiledFlux)
 
 
 def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,

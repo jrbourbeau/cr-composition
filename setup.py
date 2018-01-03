@@ -1,7 +1,3 @@
-'''
-comptools
-Author: James Bourbeau
-'''
 
 from setuptools import setup
 

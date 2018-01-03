@@ -26,8 +26,8 @@ except ImportError as e:
     _has_icecube = False
     print('Couldn\'t find IceCube software. Importing comptools without it.')
 
-if _has_icecube:
-    from .analysis import *
+# if _has_icecube:
+from .analysis import *
 if _has_icecube and 'py2-v3' in os.getenv('ROOTSYS'):
     from . import icetray_software
 

@@ -99,9 +99,13 @@ if __name__ == "__main__":
     # Calculate efficiencies and effective areas for each composition group
     efficiencies, efficiencies_err = {}, {}
     effective_area, effective_area_err = {}, {}
-    for composition in comp_list:
+    for composition in comp_list+['total']:
         # Get list of simulation sets for composition
-        comp_mask = df_sim['comp_group_{}'.format(num_groups)] == composition
+        if composition == 'total':
+            comp_mask = np.ones_like(df_sim['comp_group_{}'.format(num_groups)],
+                                     dtype=bool)
+        else:
+            comp_mask = df_sim['comp_group_{}'.format(num_groups)] == composition
         sim_list = df_sim.loc[comp_mask, 'sim'].unique()
         # Get number of thrown showers and number of showers that pass cuts
         # for energy bins for sim_list
@@ -132,7 +136,7 @@ if __name__ == "__main__":
     energy_min_fit, energy_max_fit = 5.8, energybins.log_energy_max
     midpoints_fitmask = np.logical_and(bin_midpoints > energy_min_fit,
                                        bin_midpoints < energy_max_fit)
-    for composition in comp_list:
+    for composition in comp_list+['total']:
         popt, pcov = curve_fit(
             fit_func, bin_midpoints[midpoints_fitmask],
             efficiencies[composition][midpoints_fitmask],
@@ -148,7 +152,7 @@ if __name__ == "__main__":
     # Perform several fits to random fluxuations of the efficiencies
     efficiencies_fit_samples = defaultdict(list)
     for _ in range(args.n_samples):
-        for composition in comp_list:
+        for composition in comp_list+['total']:
             # Get new random sample to fit
             eff_sample = np.random.normal(efficiencies_fit[composition][midpoints_fitmask],
                                           efficiencies_err[composition][midpoints_fitmask])
@@ -162,7 +166,7 @@ if __name__ == "__main__":
 
     # Calculate median and error of efficiency fits
     eff_fit = pd.DataFrame()
-    for composition in comp_list:
+    for composition in comp_list+['total']:
         fit_median, fit_err_low, fit_err_high = np.percentile(
             efficiencies_fit_samples[composition], (50, 16, 84), axis=0)
         fit_err_low = np.abs(fit_err_low - fit_median)
