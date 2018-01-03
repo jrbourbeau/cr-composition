@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 from __future__ import division
 import collections
@@ -10,14 +9,17 @@ import matplotlib.gridspec as gridspec
 from matplotlib.colors import ListedColormap
 import seaborn.apionly as sns
 
-from . import export
-from .data_functions import ratio_error
-from .base import cast_to_ndarray
+
+def get_color_dict():
+    color_dict = {'light': 'C0', 'heavy': 'C1', 'intermediate': 'C3',
+                  'total': 'C2',
+                  'PPlus': 'C0', 'He4Nucleus': 'C4', 'O16Nucleus': 'C3',
+                  'Fe56Nucleus':'C1',
+                  'data': 'k'}
+
+    return color_dict
 
 
-# def plot_decision_region_slice(xkey, ykey, training_features, data, clf,
-#         filler_feature_dict=None, xres=0.1, yres=0.1, xlim=None, ylim=None,
-#         colors=('C0', 'C1'), ax=None):
 def plot_decision_slice(xkey, ykey, data, clf, filler_feature_dict=None,
         xres=0.1, yres=0.1, xlim=None, ylim=None, colors=('C0','C1','C2','C3','C4'), ax=None):
     '''Function to plot 2D decision region of a scikit-learn classifier
@@ -145,15 +147,15 @@ def plot_decision_regions(X, y, classifier, resolution=0.02, scatter_fraction=0.
                         marker=markers[idx], label=cl)
     plt.legend()
 
-@export
+
 def histogram_2D(x, y, bins, weights=None, log_counts=False, make_prob=False,
                  colorbar=True, logx=False, logy=False, vmin=None, vmax=None,
                  cmap='viridis', ax=None, **opts):
     # Validate inputs
-    x = cast_to_ndarray(x)
-    y = cast_to_ndarray(y)
-    bins = cast_to_ndarray(bins)
-    if weights is not None: weights = cast_to_ndarray(weights)
+    x = np.asarray(x)
+    y = np.asarray(y)
+    bins = np.asarray(bins)
+    if weights is not None: weights = np.asarray(weights)
 
     h, xedges, yedges = np.histogram2d(x, y, bins=bins, weights=weights, normed=False)
     h = np.rot90(h)
@@ -187,7 +189,7 @@ def histogram_2D(x, y, bins, weights=None, log_counts=False, make_prob=False,
 
     return im
 
-@export
+
 def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     # charge_bins = np.linspace(0, 7, 50)
     # energy_bins = np.linspace(6.2, 9.51, 50)
@@ -219,15 +221,14 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     return im
 
 
-@export
 def plot_steps(edges, y, yerr=None, color='C0', lw=1, ls='-', alpha=1.0,
                fillalpha=0.2, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects
-    edges = cast_to_ndarray(edges)
-    y = cast_to_ndarray(y)
+    edges = np.asarray(edges)
+    y = np.asarray(y)
     if yerr is not None:
-        yerr = cast_to_ndarray(yerr)
+        yerr = np.asarray(yerr)
 
     if ax is None:
         ax = plt.gca()

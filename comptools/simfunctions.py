@@ -9,6 +9,8 @@ try:
     from icecube.weighting.weighting import from_simprod
 except ImportError as e:
     pass
+    
+from .base import requires_icecube
 
 
 def comp2mass(composition):
@@ -73,6 +75,7 @@ def config_to_sim(config):
     return sim_list
 
 
+@requires_icecube
 def sim_to_comp(sim):
     # Will utilize the weighting project found here
     # http://software.icecube.wisc.edu/documentation/projects/weighting

@@ -2,21 +2,17 @@
 from __future__ import division
 import numpy as np
 import pandas as pd
-from .base import DataSet
-from .base import get_energybins
-from .data_functions import ratio_error
-from ..composition_encoding import composition_group_labels, get_comp_list
 
 try:
-    import icecube
-    _has_icecube = True
+    from icecube.weighting.weighting import PDGCode
+    from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
 except ImportError as e:
-    _has_icecube = False
+    pass
 
-if _has_icecube:
-    from icecube.weighting.weighting import PDGCode, ParticleType
-    from icecube.weighting.fluxes import (GaisserH3a, GaisserH4a, Hoerandel5,
-                                          Hoerandel_IT, CompiledFlux)
+from .base import get_energybins, requires_icecube
+from .data_functions import ratio_error
+from .composition_encoding import composition_group_labels, get_comp_list
+
 
 
 def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
@@ -53,7 +49,8 @@ def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
     return scaled_flux, scaled_flux_err
 
 
-def get_model_flux(model='H3a', energy=None, num_groups=2):
+@requires_icecube
+def model_flux(model='H3a', energy=None, num_groups=2):
 
     comp_list = get_comp_list(num_groups=num_groups)
 

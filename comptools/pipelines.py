@@ -10,39 +10,12 @@ from sklearn.base import TransformerMixin
 from mlxtend.preprocessing import standardize
 from xgboost import XGBClassifier
 
-from . import export
-from ..simfunctions import get_sim_configs
-from ..base import get_paths
+from .base import get_paths
 
 
-class ColumnSelector(TransformerMixin):
-    '''Select columns from X
-
-    Parameters
-    ----------
-    columns : array-like
-        Names of columns to select from X.
-
-
-    '''
-    def __init__(self, columns):
-        self.columns = columns
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X, y=None):
-        return X[self.columns]
-
-
-# Use get_pipeline to ensure that same hyperparameters are used each time a
-# classifier is needed, and that the proper scaling is always done before
-# fitting
-@export
 def get_pipeline(classifier_name='BDT'):
     """ Function to get classifier pipeline.
     """
-
     if classifier_name == 'RF':
         classifier = RandomForestClassifier(
             n_estimators=100, max_depth=6, n_jobs=20,
@@ -95,7 +68,6 @@ def get_pipeline(classifier_name='BDT'):
     return pipeline
 
 
-@export
 def load_trained_model(pipeline_str='BDT'):
     """Function to load pre-trained model to avoid re-training
 
@@ -119,15 +91,3 @@ def load_trained_model(pipeline_str='BDT'):
     model_dict = joblib.load(model_file)
 
     return model_dict
-
-
-@export
-def fit_pipeline(pipeline, train_df):
-
-    assert isinstance(pipeline, (str, sklearn.pipeline.Pipeline))
-    if isinstance(pipeline, str):
-        pipeline = get_pipeline(pipeline)
-
-    pipeline.fit(X, y)
-
-    return pipeline
