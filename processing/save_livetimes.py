@@ -17,7 +17,6 @@ from dask import delayed, multiprocessing
 from dask.diagnostics import ProgressBar
 
 import comptools as comp
-import comptools.analysis.plotting as plotting
 
 
 def livetime_fit_func(t, I0, T):
@@ -62,7 +61,7 @@ def save_livetime_plot(df, config, time_bins):
         livetime_str = 'Livetime [s]:\n{:0.2e} +/- {:0.1f}'.format(livetime, livetime_err)
 
         # Plot time difference histogram and corresponding fit
-        plotting.plot_steps(time_bins, counts, ax=ax)
+        comp.plot_steps(time_bins, counts, ax=ax)
         time_midpoints = (time_bins[1:] + time_bins[:-1]) / 2
         ax.plot(time_midpoints, livetime_fit_func(time_midpoints, I0_fit, T_fit),
                 marker='None', ls='-', c='C1')

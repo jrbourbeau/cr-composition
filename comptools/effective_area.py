@@ -4,7 +4,10 @@ import collections
 import numpy as np
 from scipy.optimize import curve_fit
 
-from icecube.weighting.weighting import from_simprod
+try:
+    from icecube.weighting.weighting import from_simprod
+except ImportError as e:
+    pass
 
 from .base import requires_icecube
 from .simfunctions import get_level3_sim_files, sim_to_comp

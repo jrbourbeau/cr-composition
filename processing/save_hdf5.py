@@ -13,8 +13,8 @@ from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
 
-import comptools
-import comptools.icetray_software as icetray_software
+import comptools as comp
+import icetray_software
 
 
 def get_good_file_list(files):
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     # Starting parameters
-    IT_pulses, inice_pulses = comptools.datafunctions.reco_pulses()
+    IT_pulses, inice_pulses = comp.datafunctions.reco_pulses()
     # Keys to write to frame
     keys = []
     if args.type == 'sim':
@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
     #====================================================================
     # Finish
-    comptools.check_output_dir(args.outfile)
+    comp.check_output_dir(args.outfile)
 
     hdf = I3HDFTableService(args.outfile)
     keys = {key: tableio.default for key in keys}

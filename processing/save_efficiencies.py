@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 import comptools as comp
-from comptools.analysis import plotting
-color_dict = comp.analysis.get_color_dict()
+
+color_dict = comp.get_color_dict()
 
 
 def thrown_showers_per_ebin(sim_list, log_energy_bins=None):
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     num_groups = args.num_groups
     comp_list = comp.get_comp_list(num_groups=num_groups)
 
-    energybins = comp.analysis.get_energybins(config=args.config)
+    energybins = comp.get_energybins(config=args.config)
     bins = np.concatenate((np.arange(5.0, energybins.log_energy_min, 0.1),
                            energybins.log_energy_bins))
     bin_midpoints = (bins[1:] + bins[:-1]) / 2
@@ -187,10 +187,11 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     for composition in comp_list:
         # Plot raw binned effective area
-        plotting.plot_steps(bins, effective_area[composition],
-                            yerr=effective_area_err[composition],
-                            color=color_dict[composition], label=composition,
-                            ax=ax)
+        comp.plot_steps(bins, effective_area[composition],
+                        yerr=effective_area_err[composition],
+                        color=color_dict[composition],
+                        label=composition,
+                        ax=ax)
     ax.axvline(6.4, marker='None', ls='-.', color='k')
     ax.set_xlabel('$\mathrm{\log_{10}(E_{true}/GeV)}$')
     ax.set_ylabel('Effective area [$\mathrm{m^2}$]')
@@ -210,10 +211,10 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     for composition in comp_list:
         # Plot raw binned effective area
-        plotting.plot_steps(bins, efficiencies[composition],
-                            yerr=efficiencies_err[composition],
-                            color=color_dict[composition], label=composition,
-                            ax=ax)
+        comp.plot_steps(bins, efficiencies[composition],
+                        yerr=efficiencies_err[composition],
+                        color=color_dict[composition], label=composition,
+                        ax=ax)
         # Plot fit effective area
         ax.errorbar(bin_midpoints, eff_fit['eff_median_{}'.format(composition)],
                     yerr=[eff_fit['eff_err_low_{}'.format(composition)],
