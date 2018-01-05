@@ -165,7 +165,7 @@ def add_extra_columns(df, datatype='sim'):
 def process_i3_hdf(files, config, datatype):
     for input_file in files:
         df = extract_dataframe(input_file, config, datatype)
-        df = comp.dataframe_functions.apply_quality_cuts(
+        df = comp.io.apply_quality_cuts(
                 df, datatype=datatype, log_energy_min=None,
                 log_energy_max=None, verbose=False)
         df = add_extra_columns(df, datatype=datatype)

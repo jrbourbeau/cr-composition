@@ -9,7 +9,7 @@ from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclas
 from icecube.icetop_Level3_scripts import icetop_globals
 from icecube.icetop_Level3_scripts.functions import count_stations
 
-from .analysis import fit_DLP_params
+from comptools.LDFfunctions import fit_DLP_params
 
 
 def add_opening_angle(frame, particle1='MCPrimary', particle2='Laputop', key='angle'):

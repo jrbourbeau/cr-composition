@@ -10,14 +10,12 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import (mean_squared_error, r2_score, accuracy_score,
                              get_scorer, make_scorer)
 import pyprind
-from ..dataframe_functions import label_to_comp, load_sim, dataframe_to_X_y
-from ..composition_encoding import get_comp_list
-from .base import get_energybins
+
+from .base import get_energybins, get_training_features
+from .io import label_to_comp, load_sim, dataframe_to_X_y
+from .composition_encoding import get_comp_list
 from .data_functions import ratio_error
 from .pipelines import get_pipeline
-from .features import get_training_features
-
-from . import export
 
 
 def _get_frac_correct(df_train, df_test, feature_columns, num_groups,
@@ -194,7 +192,6 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
     return data_dict
 
 
-@export
 def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
                         param_values, feature_list=None,
                         target='comp_target_2', scoring='accuracy',

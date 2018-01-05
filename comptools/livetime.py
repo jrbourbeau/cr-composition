@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 import datetime
+
 from .base import get_paths
 
 def get_livetime_file():
@@ -10,6 +11,7 @@ def get_livetime_file():
     livetime_file = os.path.join(paths.comp_data_dir, 'data_livetimes.csv')
 
     return livetime_file
+
 
 def get_detector_livetime(config=None, months=None):
 
