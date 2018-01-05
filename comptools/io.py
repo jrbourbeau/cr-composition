@@ -9,7 +9,7 @@ import dask
 from dask import multiprocessing
 from dask.diagnostics import ProgressBar
 import dask.dataframe as dd
-from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
+from sklearn.model_selection import ShuffleSplit
 from sklearn.preprocessing import LabelEncoder
 from sklearn.externals import joblib
 
@@ -174,9 +174,9 @@ def add_convenience_variables(df, datatype='sim'):
 
 
 def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
-                          energy_key='reco_log_energy', columns=None,
-                          verbose=False, log_energy_min=None,
-                          log_energy_max=None, n_jobs=1):
+                          energy_reco=True, energy_cut_key='reco_log_energy',
+                          log_energy_min=None, log_energy_max=None,
+                          columns=None, n_jobs=1, verbose=False):
 
     validate_datatype(datatype)
     # If df_file is not specified, use default path
@@ -197,23 +197,25 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
     else:
         df = df.compute(get=get, num_workers=n_jobs)
 
-    model_dict = load_trained_model('RF_energy_{}'.format(config))
-    pipeline = model_dict['pipeline']
-    feature_list = list(model_dict['training_features'])
-    df['reco_log_energy'] = pipeline.predict(df[feature_list])
+    if energy_reco:
+        model_dict = load_trained_model('RF_energy_{}'.format(config))
+        pipeline = model_dict['pipeline']
+        feature_list = list(model_dict['training_features'])
+        df['reco_log_energy'] = pipeline.predict(df[feature_list])
 
-    energy_mask = np.ones_like(df[energy_key].values, dtype=bool)
+    energy_mask = np.ones(df.shape[0], dtype=bool)
     if log_energy_min is not None:
-        energy_mask = energy_mask & (df[energy_key] > log_energy_min)
+        energy_mask = energy_mask & (df[energy_cut_key] > log_energy_min)
     if log_energy_max is not None:
-        energy_mask = energy_mask & (df[energy_key] < log_energy_max)
+        energy_mask = energy_mask & (df[energy_cut_key] < log_energy_max)
 
     return df.loc[energy_mask, :]
 
 
-def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
-             columns=None, energy_key='reco_log_energy', log_energy_min=6.0,
-             log_energy_max=8.0, n_jobs=1, verbose=False):
+def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
+             energy_reco=True, energy_cut_key='reco_log_energy',
+             log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
+             verbose=False):
     '''Function to load processed simulation DataFrame
 
     Parameters
@@ -227,17 +229,25 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
     test_size : int, float, optional
         Fraction or number of events to be split off into a seperate testing
         set (default is 0.3). test_size will be passed to
-        sklearn.model_selection.StratifiedShuffleSplit.
-    energy_key : str, optional
-        Energy key to apply cuts to (default is 'lap_log_energy').
+        sklearn.model_selection.ShuffleSplit.
+    energy_reco : bool, optional
+        Option to perform energy reconstruction for each event
+        (default is True).
+    energy_cut_key : str, optional
+        Energy key to apply energy range cuts to (default is 'lap_log_energy').
     log_energy_min : int, float, optional
         Option to set a lower limit on the reconstructed log energy in GeV
         (default is 6.0).
     log_energy_max : int, float, optional
         Option to set a upper limit on the reconstructed log energy in GeV
         (default is 8.0).
+    columns : array_like, optional
+        Option to specify the columns that should be in the returned
+        DataFrame(s) (default is None, all columns are returned).
+    n_jobs : int, optional
+        Number of chunks to load in parallel (default is 1).
     verbose : bool, optional
-        Option for verbose output (default is True).
+        Option for verbose progress bar output (default is True).
 
     Returns
     -------
@@ -253,17 +263,17 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
         raise TypeError('test_size must be a floating-point number')
 
     df = _load_basic_dataframe(df_file=df_file, datatype='sim', config=config,
-                               energy_key=energy_key, columns=columns,
+                               energy_reco=energy_reco,
+                               energy_cut_key=energy_cut_key, columns=columns,
                                log_energy_min=log_energy_min,
                                log_energy_max=log_energy_max, n_jobs=n_jobs,
                                verbose=verbose)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
-        splitter = StratifiedShuffleSplit(n_splits=1, test_size=test_size,
-                                          random_state=2)
-        split_gen = splitter.split(df, df['comp_target_{}'.format(num_groups)])
-        train_mask, test_mask = next(split_gen)
+        splitter = ShuffleSplit(n_splits=1, test_size=test_size,
+                                random_state=2)
+        train_mask, test_mask = next(splitter.split(df.values))
         train_df = df.iloc[train_mask]
         test_df = df.iloc[test_mask]
         output = train_df, test_df
@@ -273,9 +283,9 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3, num_groups=2,
     return output
 
 
-def load_data(df_file=None, config='IC86.2012', columns=None,
-              energy_key='reco_log_energy', log_energy_min=6.0,
-              log_energy_max=8.0, n_jobs=1, verbose=False):
+def load_data(df_file=None, config='IC86.2012', energy_reco=True,
+              energy_cut_key='reco_log_energy', log_energy_min=6.0,
+              log_energy_max=8.0, columns=None, n_jobs=1, verbose=False):
     '''Function to load processed data DataFrame
 
     Parameters
@@ -286,18 +296,24 @@ def load_data(df_file=None, config='IC86.2012', columns=None,
         datatype and config).
     config : str, optional
         Detector configuration (default is 'IC86.2012').
-    comp_key : {'MC_comp_class', 'MC_comp'}
-        Option to use the true composition, or composition classes
-        (light and heavy) as the target variable (default is
-        'MC_comp_class').
+    energy_reco : bool, optional
+        Option to perform energy reconstruction for each event
+        (default is True).
+    energy_cut_key : str, optional
+        Energy key to apply energy range cuts to (default is 'lap_log_energy').
     log_energy_min : int, float, optional
         Option to set a lower limit on the reconstructed log energy in GeV
         (default is 6.0).
     log_energy_max : int, float, optional
         Option to set a upper limit on the reconstructed log energy in GeV
         (default is 8.0).
+    columns : array_like, optional
+        Option to specify the columns that should be in the returned
+        DataFrame(s) (default is None, all columns are returned).
+    n_jobs : int, optional
+        Number of chunks to load in parallel (default is 1).
     verbose : bool, optional
-        Option for verbose output (default is True).
+        Option for verbose progress bar output (default is True).
 
     Returns
     -------
@@ -310,7 +326,8 @@ def load_data(df_file=None, config='IC86.2012', columns=None,
         raise ValueError('config must be in {}'.format(get_data_configs()))
 
     df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
-                               energy_key=energy_key, columns=columns,
+                               energy_reco=energy_reco,
+                               energy_cut_key=energy_cut_key, columns=columns,
                                log_energy_min=log_energy_min,
                                log_energy_max=log_energy_max, n_jobs=n_jobs,
                                verbose=verbose)
