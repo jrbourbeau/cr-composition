@@ -1,0 +1,28 @@
+name: composition
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - six
+  - numpy
+  - pandas
+  - pytables
+  - matplotlib
+  - dask
+  - keras
+  - scikit-learn
+  - h5py
+  - ipython
+  - matplotlib
+  - seaborn
+  - tensorflow-gpu
+  - jupyter
+  - pytest
+  - xgboost
+  - scipy
+  - healpy
+  - mlxtend
+  - pyprind
+  - pymysql
+  - pip:
+      - pycondor
