@@ -7,4 +7,4 @@ install:
   - pip install -e .
 # command to run tests
 script:
-    - make tests
+    - pytest -m "not needs_data" comptools
