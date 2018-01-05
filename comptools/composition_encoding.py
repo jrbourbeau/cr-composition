@@ -67,7 +67,7 @@ def encode_composition_groups(groups, num_groups=2):
 
 def decode_composition_groups(labels, num_groups=2):
     group_to_label = _get_group_encoding_dict(num_groups=num_groups)
-    label_to_group = {value: key for key, value in group_to_label.iteritems()}
+    label_to_group = {value: key for key, value in group_to_label.items()}
     try:
         return [label_to_group[l] for l in labels]
     except KeyError:
@@ -90,7 +90,7 @@ def comp_to_label(composition):
 
 
 def label_to_comp(label):
-    label_to_comp_dict = {value: key for key, value in comp_to_label_dict.iteritems()}
+    label_to_comp_dict = {value: key for key, value in comp_to_label_dict.items()}
     try:
         return label_to_comp_dict[label]
     except KeyError:

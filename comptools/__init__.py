@@ -1,6 +1,6 @@
 
 __version__ = '0.0.1'
-
+    
 import os
 from .base import (get_paths, check_output_dir, file_batches,
                    ComputingEnvironemtError, get_energybins,
@@ -20,4 +20,3 @@ from .data_functions import ratio_error
 
 paths = get_paths()
 color_dict = get_color_dict()
-energybins = get_energybins()

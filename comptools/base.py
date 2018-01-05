@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 from collections import namedtuple
 import os

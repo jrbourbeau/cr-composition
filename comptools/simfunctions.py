@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 import os
 import glob
@@ -9,7 +8,7 @@ try:
     from icecube.weighting.weighting import from_simprod
 except ImportError as e:
     pass
-    
+
 from .base import requires_icecube
 
 
@@ -69,7 +68,7 @@ def config_to_sim(config):
 
     sim_dict = get_sim_dict()
     sim_list = []
-    for sim, sim_config in sim_dict.iteritems():
+    for sim, sim_config in sim_dict.items():
         if sim_config == config: sim_list.append(sim)
 
     return sim_list

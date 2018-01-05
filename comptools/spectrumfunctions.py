@@ -75,7 +75,7 @@ def model_flux(model='H3a', energy=None, num_groups=2):
                         for composition in comp_list}
 
     # Replace O16Nucleus with N14Nucleus + Al27Nucleus
-    for composition, pdg_list in comp_to_pdg_list.iteritems():
+    for composition, pdg_list in comp_to_pdg_list.items():
         if 1000080160 in pdg_list:
             pdg_list = pdg_list[pdg_list != 1000080160]
             comp_to_pdg_list[composition] = np.append(pdg_list, [1000070140, 1000130270])
