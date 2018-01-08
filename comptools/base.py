@@ -34,7 +34,6 @@ def get_paths(username=None):
     condor_data_dir - Path to where HTCondor error and output files are stored
     condor_scratch_dir - Path to where HTCondor log and submit files are stored
     figures_dir - Path to where figures are saved
-    project_home - Path to where cr-composition project is located
     project_root - Path to where cr-composition project is located
 
     Parameters
@@ -55,16 +54,20 @@ def get_paths(username=None):
         username = getpass.getuser()
 
     # Create path namedtuple object
-    PathObject = namedtuple('PathType', ['metaproject', 'comp_data_dir',
-        'condor_data_dir', 'condor_scratch_dir', 'figures_dir',
-        'project_home', 'project_root'])
+    path_names = ['metaproject',
+                  'comp_data_dir',
+                  'condor_data_dir',
+                  'condor_scratch_dir',
+                  'figures_dir',
+                  'project_root',
+                  ]
+    PathObject = namedtuple('PathType', path_names)
 
     metaproject = '/data/user/{}/metaprojects/icerec/V05-01-00'.format(username)
     comp_data_dir = '/data/user/{}/composition'.format(username)
     condor_data_dir = '/data/user/{}/composition/condor'.format(username)
     condor_scratch_dir = '/scratch/{}/composition/condor'.format(username)
     figures_dir = '/home/{}/public_html/figures/composition'.format(username)
-    project_home = '/home/{}/cr-composition'.format(username)
     project_root = '/home/{}/cr-composition'.format(username)
 
     # Create instance of PathObject with appropriate path information
@@ -73,7 +76,6 @@ def get_paths(username=None):
                        condor_data_dir=condor_data_dir,
                        condor_scratch_dir=condor_scratch_dir,
                        figures_dir=figures_dir,
-                       project_home=project_home,
                        project_root=project_root)
 
     return paths
@@ -160,10 +162,18 @@ def get_energybins(config='IC86.2012'):
         Namedtuple containing analysis energy bin information.
     """
     # Create EnergyBin namedtuple
-    EnergyBin = namedtuple('EnergyBins', ['energy_min', 'energy_max',
-        'energy_bins', 'energy_midpoints', 'energy_bin_widths',
-        'log_energy_min', 'log_energy_max', 'log_energy_bin_width',
-        'log_energy_bins', 'log_energy_midpoints'])
+    energy_field_names = ['energy_min',
+                          'energy_max',
+                          'energy_bins',
+                          'energy_midpoints',
+                          'energy_bin_widths',
+                          'log_energy_min',
+                          'log_energy_max',
+                          'log_energy_bin_width',
+                          'log_energy_bins',
+                          'log_energy_midpoints',
+                          ]
+    EnergyBin = namedtuple('EnergyBins', energy_field_names)
 
     # Define energy range for this analysis
     if 'IC79' in config:

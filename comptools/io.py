@@ -1,8 +1,6 @@
 
 from __future__ import print_function, division
-from collections import OrderedDict
 import os
-from functools import wraps, partial
 import numpy as np
 import pandas as pd
 import dask
@@ -10,15 +8,11 @@ from dask import multiprocessing
 from dask.diagnostics import ProgressBar
 import dask.dataframe as dd
 from sklearn.model_selection import ShuffleSplit
-from sklearn.preprocessing import LabelEncoder
 from sklearn.externals import joblib
 
 from .base import get_paths
-from .simfunctions import sim_to_thinned, get_sim_configs
+from .simfunctions import get_sim_configs
 from .datafunctions import get_data_configs
-from .composition_encoding import (composition_group_labels,
-                                   encode_composition_groups, comp_to_label,
-                                   label_to_comp)
 
 
 def validate_dataframe(df):
@@ -74,7 +68,6 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
     #     cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)
     for i in ['1_60']:
-    # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         cut_dict['NChannels_' + i] = df['NChannels_' + i] >= 8
         cut_dict['max_qfrac_' + i] = df['max_qfrac_' + i] < 0.3
     cut_dict['FractionContainment_Laputop_InIce'] = df['FractionContainment_Laputop_InIce'] < 1.0
@@ -88,7 +81,6 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     # cut_dict['lap_reco_success'] = cut_dict['lap_fitstatus_ok'] & cut_dict['lap_beta'] & cut_dict['lap_rlogl']
     # cut_dict['num_hits_1_60'] = cut_dict['NChannels_1_60'] & cut_dict['NStations']
     for i in ['1_60']:
-    # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         cut_dict['num_hits_'+i] = cut_dict['NChannels_'+i] & cut_dict['NStations']
     # cut_dict['lap_containment'] = cut_dict[
     #     'FractionContainment_Laputop_IceTop'] & cut_dict['FractionContainment_Laputop_InIce']
@@ -106,20 +98,25 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     else:
         selection_mask = np.array([True] * len(df))
         if dataprocessing:
-            standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
-                # 'num_hits_1_60', 'max_qfrac_1_60']
-                'reco_energy_range', 'num_hits_1_60', 'max_qfrac_1_60']
+            standard_cut_keys = ['passed_IceTopQualityCuts',
+                                 'FractionContainment_Laputop_InIce',
+                                 'reco_energy_range',
+                                 'num_hits_1_60',
+                                 'max_qfrac_1_60',
+                                 ]
         else:
-            standard_cut_keys = ['passed_IceTopQualityCuts', 'FractionContainment_Laputop_InIce',
-                # 'passed_InIceQualityCuts', 'num_hits_1_60']
-                'passed_InIceQualityCuts', 'num_hits_1_60', 'reco_energy_range']
+            standard_cut_keys = ['passed_IceTopQualityCuts',
+                                 'FractionContainment_Laputop_InIce',
+                                 'passed_InIceQualityCuts',
+                                 'num_hits_1_60',
+                                 'reco_energy_range',
+                                 ]
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]
         # Print cut event flow
         if verbose:
             n_total = len(df)
             print('Starting out with {} {} events'.format(n_total, datatype))
-            cut_eff = {}
             cumulative_cut_mask = np.array([True] * n_total)
             print('{} quality cut event flow:'.format(datatype))
             for key in standard_cut_keys:
@@ -143,7 +140,6 @@ def add_convenience_variables(df, datatype='sim'):
     df['lap_log_energy'] = np.nan_to_num(np.log10(df['lap_energy']))
     # df['InIce_log_charge_1_60'] = np.nan_to_num(np.log10(df['InIce_charge_1_60']))
     for i in ['1_60']:
-    # for i in ['1_60', '1_45', '1_30', '1_15', '1_6', '45_60']:
         # df['InIce_log_charge_'+i] = np.nan_to_num(np.log10(df['InIce_charge_'+i]))
         df['InIce_log_charge_'+i] = np.log10(df['InIce_charge_'+i])
         df['log_NChannels_'+i] = np.log10(df['NChannels_'+i])
@@ -257,7 +253,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
 
     '''
 
-    if not config in get_sim_configs():
+    if config not in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
     if not isinstance(test_size, (int, float)):
         raise TypeError('test_size must be a floating-point number')
@@ -274,9 +270,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
         splitter = ShuffleSplit(n_splits=1, test_size=test_size,
                                 random_state=2)
         train_mask, test_mask = next(splitter.split(df.values))
-        train_df = df.iloc[train_mask]
-        test_df = df.iloc[test_mask]
-        output = train_df, test_df
+        output = df.iloc[train_mask], df.iloc[test_mask]
     else:
         output = df
 
@@ -322,7 +316,7 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
 
     '''
 
-    if not config in get_data_configs():
+    if config not in get_data_configs():
         raise ValueError('config must be in {}'.format(get_data_configs()))
 
     df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
@@ -338,9 +332,9 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
 def load_tank_charges(config='IC79.2010', datatype='sim', return_dask=False):
     paths = get_paths()
     file_pattern = os.path.join(paths.comp_data_dir,
-                           '{}_{}'.format(config, datatype),
-                           'dataframe_files',
-                           'dataframe_*.hdf5')
+                                '{}_{}'.format(config, datatype),
+                                'dataframe_files',
+                                'dataframe_*.hdf5')
     tank_charges = dd.read_hdf(file_pattern, 'tank_charges')
 
     if return_dask:

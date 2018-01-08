@@ -10,18 +10,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn.apionly as sns
 from sklearn.metrics import confusion_matrix
-import ROOT
-from ROOT import TH1F, TH2F, TNamed
+from ROOT import TH1F, TH2F, TFile
 
 from icecube.weighting.weighting import PDGCode
 from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
 
 import comptools as comp
 
+
 if 'cvmfs' in os.getenv('ROOTSYS'):
     raise comp.ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
-
-color_dict = comp.analysis.get_color_dict()
 
 
 def response_matrix(log_true_energy, log_reco_energy, true_comp, pred_comp,
@@ -61,12 +59,12 @@ def response_matrix(log_true_energy, log_reco_energy, true_comp, pred_comp,
     res_col_sum_err = np.array([np.sqrt(np.sum(res_err[:, i]**2))
                                 for i in range(res_err.shape[1])])
 
-    normalizations, normalizations_err = comp.analysis.ratio_error(
+    normalizations, normalizations_err = comp.ratio_error(
                                             res_col_sum, res_col_sum_err,
                                             efficiencies, efficiencies_err,
                                             nan_to_num=True)
 
-    res_normalized, res_normalized_err = comp.analysis.ratio_error(
+    res_normalized, res_normalized_err = comp.ratio_error(
                                             res, res_err,
                                             normalizations, normalizations_err,
                                             nan_to_num=True)
@@ -95,7 +93,7 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
     if os.path.exists(outfile):
         os.remove(outfile)
 
-    fout = ROOT.TFile(outfile , 'UPDATE')
+    fout = TFile(outfile , 'UPDATE')
     # Check if bin directory exists, quit if so, otherwise create it!
     if not fout.GetDirectory(binname):
         pdir = fout.mkdir(binname, 'Bin number 0')
@@ -117,16 +115,11 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
     efficiencies = df_flux['efficiencies'].values
     efficiencies_err = df_flux['efficiencies_err'].values
 
-    # print('counts = {}'.format(counts))
-    # print('efficiencies = {}'.format(efficiencies))
-
     cbins = len(counts)+1
     carray = np.arange(cbins, dtype=float)
-    # print('carray = {}'.format(carray))
 
     ebins = len(counts)+1
     earray = np.arange(ebins, dtype=float)
-    # print('earray = {}'.format(earray))
     cbins -= 1
     ebins -= 1
 
@@ -135,7 +128,8 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
                                 'response_{}-groups.txt'.format(num_groups))
     response_array = np.loadtxt(res_mat_file)
     res_mat_err_file = os.path.join(
-                unfolding_dir, 'response_err_{}-groups.txt'.format(num_groups))
+                            unfolding_dir,
+                            'response_err_{}-groups.txt'.format(num_groups))
     response_err_array = np.loadtxt(res_mat_err_file)
 
     # Measured effects distribution
@@ -221,7 +215,7 @@ if __name__ == '__main__':
     num_groups = args.num_groups
 
     comp_list = comp.get_comp_list(num_groups=num_groups)
-    energybins = comp.analysis.get_energybins(config=config)
+    energybins = comp.get_energybins(config=config)
     log_energy_min = energybins.log_energy_min
     log_energy_max = energybins.log_energy_max
 
@@ -235,7 +229,7 @@ if __name__ == '__main__':
     log_reco_energy_sim_test = df_sim_test['reco_log_energy']
     log_true_energy_sim_test = df_sim_test['MC_log_energy']
 
-    feature_list, feature_labels = comp.analysis.get_training_features()
+    feature_list, feature_labels = comp.get_training_features()
     pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
     pipeline = comp.get_pipeline(pipeline_str)
 
@@ -266,7 +260,7 @@ if __name__ == '__main__':
                              log_energy_max=log_energy_max,
                              n_jobs=15, verbose=True)
 
-    X_data = comp.dataframe_functions.dataframe_to_array(
+    X_data = comp.io.dataframe_to_array(
                         df_data, feature_list + ['reco_log_energy'])
     log_energy_data = X_data[:, -1]
     X_data = X_data[:, :-1]
@@ -348,6 +342,7 @@ if __name__ == '__main__':
     priors_list = ['H3a', 'H4a', 'Polygonato']
 
     print('Making priors flux plot...')
+    color_dict = comp.get_color_dict()
     fig, ax = plt.subplots()
     for flux, name, marker in zip([GaisserH3a(), GaisserH4a(), Hoerandel5()],
                                   priors_list,

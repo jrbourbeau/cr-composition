@@ -1,6 +1,6 @@
 
 __version__ = '0.0.1'
-    
+
 import os
 from .base import (get_paths, check_output_dir, file_batches,
                    ComputingEnvironemtError, get_energybins,
@@ -15,8 +15,10 @@ from .livetime import get_livetime_file, get_detector_livetime
 from .plotting import get_color_dict, plot_steps
 from .pipelines import get_pipeline, load_trained_model
 from .model_selection import get_CV_frac_correct, cross_validate_comp
-from .spectrumfunctions import get_flux, model_flux
+from .spectrumfunctions import (get_flux, model_flux, counts_to_flux,
+                                broken_power_law_flux)
 from .data_functions import ratio_error
+from .unfolding import unfolded_counts_dist
 
 paths = get_paths()
 color_dict = get_color_dict()

@@ -63,13 +63,14 @@ def sim_to_config(sim):
 
 def config_to_sim(config):
 
-    if not config in get_sim_configs():
+    if config not in get_sim_configs():
         raise ValueError('Invalid config entered')
 
     sim_dict = get_sim_dict()
     sim_list = []
     for sim, sim_config in sim_dict.items():
-        if sim_config == config: sim_list.append(sim)
+        if sim_config == config:
+            sim_list.append(sim)
 
     return sim_list
 
@@ -81,7 +82,8 @@ def sim_to_comp(sim):
 
     # Query database to extract composition from simulation set
     generator = from_simprod(int(sim))
-    assert len(generator.spectra) == 1 # Ensure that there is only one composition
+    # Ensure that there is only one composition
+    assert len(generator.spectra) == 1
     composition = generator.spectra.keys()[0].name
 
     return composition
@@ -139,7 +141,7 @@ def get_level3_sim_files(sim, just_gcd=False):
     if config == 'IC79.2010':
         config = 'IC79'
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
-    gcd_file = os.path.join(prefix,'GCD/Level3_{}_GCD.i3.gz'.format(sim))
+    gcd_file = os.path.join(prefix, 'GCD/Level3_{}_GCD.i3.gz'.format(sim))
     if just_gcd:
         return gcd_file
 
@@ -191,7 +193,7 @@ def run_to_energy_bin(run, sim):
     ebin_first, ebin_last = sim_to_energy_bins(sim)
     # Taken from simulation production webpage:
     # http://simprod.icecube.wisc.edu/cgi-bin/simulation/cgi/cfg?dataset=12360
-    return (ebin_first*10+(run-1)%(ebin_last*10-ebin_first*10+1))/10
+    return (ebin_first * 10 + (run - 1) % (ebin_last * 10 - ebin_first * 10 + 1)) / 10
 
 
 @np.vectorize
@@ -210,13 +212,13 @@ def get_sim_thrown_radius(log_energy):
     '''
     if log_energy <= 6:
         thrown_radius = 800.0
-    elif (log_energy > 6) & (log_energy <=7):
+    elif (log_energy > 6) & (log_energy <= 7):
         thrown_radius = 1100.0
-    elif (log_energy > 7) & (log_energy <=8):
+    elif (log_energy > 7) & (log_energy <= 8):
         thrown_radius = 1700.0
-    elif (log_energy > 8) & (log_energy <=9):
+    elif (log_energy > 8) & (log_energy <= 9):
         thrown_radius = 2600.0
-    elif (log_energy > 9) & (log_energy <=10):
+    elif (log_energy > 9) & (log_energy <= 10):
         thrown_radius = 2900.0
     else:
         raise ValueError('Invalid energy entered')

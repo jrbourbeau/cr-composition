@@ -1,6 +1,7 @@
 
 import os
 
+
 def check_output_dir(outfile, makedirs=True):
 
     outdir, basename = os.path.split(outfile)

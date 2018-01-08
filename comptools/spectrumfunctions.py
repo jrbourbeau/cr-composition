@@ -14,6 +14,45 @@ from .data_functions import ratio_error
 from .composition_encoding import composition_group_labels, get_comp_list
 
 
+def broken_power_law_flux(energy, gamma_before=-2.7, gamma_after=-3.1,
+                          energy_break=3e6):
+    """Broken power law flux
+
+    This is a "realistic" flux (simple broken power law with a knee @ 3PeV)
+    to weight simulation to. More information can be found on the
+    IT73-IC79 data-MC comparison wiki page
+    https://wiki.icecube.wisc.edu/index.php/IT73-IC79_Data-MC_Comparison
+
+    Parameters
+    ----------
+    energy : array_like
+        Energy values (in GeV) to calculate the flux for.
+    gamma_before : float, optional
+        Spectral index before break point (default is -2.7).
+    gamma_after : float, optional
+        Spectral index after break point (default is -3.1).
+    energy_break : float, optional
+        Energy (in GeV) at which the spectral index break occurs
+        (default is 3e6, or 3 PeV).
+
+    Returns
+    -------
+    flux : array_like
+        Broken power law evaluated at energy points.
+    """
+    phi_0 = 3.6e-6
+    # phi_0 = 3.1e-6
+    # phi_0 = 2.95e-6
+    eps = 100
+    if isinstance(energy, (int, float)):
+        energy = [energy]
+    energy = np.asarray(energy) * 1e-6
+    energy_break = energy_break * 1e-6
+
+    flux = (1e-6) * phi_0 * energy**gamma_before * (1+(energy/energy_break)**eps)**((gamma_after-gamma_before)/eps)
+
+    return flux
+
 
 def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
              eff_area=156390.673059, eff_area_err=None, livetime=27114012.0,
@@ -47,6 +86,9 @@ def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
     scaled_flux_err = energy_midpoints**scalingindex * flux_err
 
     return scaled_flux, scaled_flux_err
+
+
+counts_to_flux = get_flux
 
 
 @requires_icecube

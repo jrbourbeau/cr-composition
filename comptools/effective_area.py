@@ -1,6 +1,5 @@
 
 from __future__ import division
-import collections
 import numpy as np
 from scipy.optimize import curve_fit
 
@@ -10,7 +9,7 @@ except ImportError as e:
     pass
 
 from .base import requires_icecube
-from .simfunctions import get_level3_sim_files, sim_to_comp
+from .simfunctions import get_level3_sim_files
 from .io import load_sim
 
 
@@ -37,7 +36,8 @@ def effective_area(df, log_energy_bins):
     weights = []
     resamples = 100
     for energy_bin_idx, sim in zip(event_energy_bins, sim_id):
-        if energy_bin_idx < 0 or energy_bin_idx > len(energy_range_to_radii): continue
+        if energy_bin_idx < 0 or energy_bin_idx > len(energy_range_to_radii):
+            continue
         weight = np.pi * energy_range_to_radii[energy_bin_idx]**2
         if sim in ['7579', '7791', '7851', '7784']:
             num_thrown = 480*resamples
@@ -55,9 +55,10 @@ def effective_area(df, log_energy_bins):
         weights.append(weight)
     print(np.array(weights))
 
-    energy_hist = np.histogram(log_MC_energy, bins=log_energy_bins, weights=weights)[0]
+    energy_hist, _ = np.histogram(log_MC_energy, bins=log_energy_bins,
+                                  weights=weights)
     error_hist = np.sqrt(np.histogram(log_MC_energy, bins=log_energy_bins,
-                                weights=np.array(weights)**2)[0])
+                                      weights=np.array(weights)**2)[0])
 
     eff_area = energy_hist/num_ptype
     eff_area_error = error_hist/num_ptype
@@ -106,7 +107,6 @@ def calculate_effective_area_vs_energy(df_sim, energy_bins, verbose=True):
         num_files = len(sim_files)
         if verbose:
             print('Simulation set {}: {} files'.format(sim, num_files))
-        composition = sim_to_comp(sim)
         if i == 0:
             generator = num_files*from_simprod(int(sim))
         else:
@@ -163,7 +163,6 @@ def get_effective_area_fit(config='IC86.2012', fit_func=sigmoid_slant, energy_po
     midpoints_fitmask = np.logical_and(energy_midpoints > 10**energy_min_fit,
                                        energy_midpoints < 10**energy_max_fit)
 
-
     # Calculate the effective areas
     eff_area, eff_area_error, _ = calculate_effective_area_vs_energy(
                                 df_sim, energy_bins, verbose=False)
@@ -178,40 +177,42 @@ def get_effective_area_fit(config='IC86.2012', fit_func=sigmoid_slant, energy_po
         p0 = [1.5e5, 8.0, 50.0]
     elif fit_func.__name__ == 'sigmoid_slant':
         p0 = [1.4e5, 8.5, 50.0, 800]
-    popt_light, pcov_light = curve_fit(fit_func,
+    popt_light, pcov_light = curve_fit(
+                                fit_func,
                                 energy_midpoints[midpoints_fitmask],
                                 eff_area_light[midpoints_fitmask], p0=p0,
                                 sigma=eff_area_error_light[midpoints_fitmask])
-    perr_light = np.sqrt(np.diag(pcov_light))
+    # perr_light = np.sqrt(np.diag(pcov_light))
 
-    popt_heavy, pcov_heavy = curve_fit(fit_func,
+    popt_heavy, pcov_heavy = curve_fit(
+                                fit_func,
                                 energy_midpoints[midpoints_fitmask],
                                 eff_area_heavy[midpoints_fitmask], p0=p0,
                                 sigma=eff_area_error_heavy[midpoints_fitmask])
-    perr_heavy = np.sqrt(np.diag(pcov_heavy))
+    # perr_heavy = np.sqrt(np.diag(pcov_heavy))
     popt_avg = (popt_light + popt_heavy) / 2
 
     return fit_func(energy_points, *popt_avg)
 
 
-def get_sigmoid_params(df_sim, energy_bins):
-
-    eff_area, eff_area_error, energy_midpoints = get_effective_area(df_sim, energy_bins, verbose=True)
-
-    p_init = [1.4e5, 8.0, 50.0]
-    print(energy_midpoints)
-    eff_area_init = sigmoid(energy_midpoints, *p_init)
-    print(eff_area)
-    print(eff_area_init)
-
-    # Fit with error bars
-    # popt, pcov = optimize.curve_fit(sigmoid, np.log10(energy_midpoints), eff_area)
-    popt, pcov = optimize.curve_fit(sigmoid, energy_midpoints, eff_area, sigma=eff_area_error)
-    # popt, pcov = optimize.curve_fit(sigmoid, energy_midpoints, eff_area, p0=p_init, sigma=eff_area_error)
-    eff_area_fit = sigmoid(energy_midpoints, *popt)
-    print(eff_area_fit)
-    chi = np.sum(((eff_area_fit - eff_area)/eff_area_error) ** 2) / len(energy_midpoints)
-    print('ppot = {}'.format(popt))
-    print('chi2 = {}'.format(chi))
-
-    return popt, pcov
+# def get_sigmoid_params(df_sim, energy_bins):
+#
+#     eff_area, eff_area_error, energy_midpoints = get_effective_area(df_sim, energy_bins, verbose=True)
+#
+#     p_init = [1.4e5, 8.0, 50.0]
+#     print(energy_midpoints)
+#     eff_area_init = sigmoid(energy_midpoints, *p_init)
+#     print(eff_area)
+#     print(eff_area_init)
+#
+#     # Fit with error bars
+#     # popt, pcov = optimize.curve_fit(sigmoid, np.log10(energy_midpoints), eff_area)
+#     popt, pcov = optimize.curve_fit(sigmoid, energy_midpoints, eff_area, sigma=eff_area_error)
+#     # popt, pcov = optimize.curve_fit(sigmoid, energy_midpoints, eff_area, p0=p_init, sigma=eff_area_error)
+#     eff_area_fit = sigmoid(energy_midpoints, *popt)
+#     print(eff_area_fit)
+#     chi = np.sum(((eff_area_fit - eff_area)/eff_area_error) ** 2) / len(energy_midpoints)
+#     print('ppot = {}'.format(popt))
+#     print('chi2 = {}'.format(chi))
+#
+#     return popt, pcov

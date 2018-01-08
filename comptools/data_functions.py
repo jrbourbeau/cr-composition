@@ -47,7 +47,7 @@ def averaging_error(values, errors):
 
 def get_bin_mids(bins, infvalue=None):
     abins = np.asarray(bins)
-    if infvalue != None:
+    if infvalue is not None:
         abins[abins == infvalue] *= np.inf
     steps = (abins[1:] - abins[:-1])
     mids = abins[:-1] + steps / 2.
@@ -59,15 +59,12 @@ def get_bin_mids(bins, infvalue=None):
 
 
 def get_medians(x, y, bins):
-    lower_error = lambda x: np.percentile(x, 16)
-    upper_error = lambda x: np.percentile(x, 84)
-
     bin_medians, bin_edges, binnumber = stats.binned_statistic(
         x, y, statistic='median', bins=bins)
     err_up, err_up_edges, err_up_binnum = stats.binned_statistic(
-        x, y, statistic=upper_error, bins=bins)
+        x, y, statistic=lambda x: np.percentile(x, 84), bins=bins)
     err_down, err_down_edges, err_down_binnum = stats.binned_statistic(
-        x, y, statistic=lower_error, bins=bins)
+        x, y, statistic=lambda x: np.percentile(x, 16), bins=bins)
     error = [bin_medians - err_down, err_up - bin_medians]
     # bin_centers = bin_edges[:-1] + (bin_edges[1]-bin_edges[0])/2.
     bin_centers = get_bin_mids(bin_edges)
@@ -78,18 +75,14 @@ def get_medians(x, y, bins):
 def get_median_std(x, y, bins):
     '''Function that returns the median and standard deviation stats.binned_statistic
     '''
-    lower_error = lambda x: np.percentile(x, 16)
-    upper_error = lambda x: np.percentile(x, 84)
-
-    averages, bin_edges, bin_edges = stats.binned_statistic(x, y,
-        statistic='median', bins=bins)
-        # statistic='mean', bins=bins)
-    standard_devs, bin_edges, bin_edges = stats.binned_statistic(x, y,
-        statistic=np.std, bins=bins)
+    averages, bin_edges, bin_edges = stats.binned_statistic(
+        x, y, statistic='median', bins=bins)
+    standard_devs, bin_edges, bin_edges = stats.binned_statistic(
+        x, y, statistic=np.std, bins=bins)
     err_up, err_up_edges, err_up_binnum = stats.binned_statistic(
-        x, y, statistic=upper_error, bins=bins)
+        x, y, statistic=lambda x: np.percentile(x, 84), bins=bins)
     err_down, err_down_edges, err_down_binnum = stats.binned_statistic(
-        x, y, statistic=lower_error, bins=bins)
+        x, y, statistic=lambda x: np.percentile(x, 16), bins=bins)
 
     return averages, standard_devs, bin_edges
     # return averages, err_up-err_down, bin_edges
@@ -108,7 +101,7 @@ def get_cumprob_sigma(values):
 
 
 def get_resolution(x, y, bins):
-    binned_statistic, bin_edges, binnumber = stats.binned_statistic(x, y,
-            statistic=get_cumprob_sigma, bins=bins)
+    binned_statistic, bin_edges, binnumber = stats.binned_statistic(
+        x, y, statistic=get_cumprob_sigma, bins=bins)
 
     return binned_statistic
