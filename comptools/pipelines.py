@@ -3,11 +3,8 @@ import os
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor,
                               AdaBoostClassifier, GradientBoostingClassifier)
-from sklearn.pipeline import make_pipeline
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.externals import joblib
-from sklearn.decomposition import PCA
-from sklearn.base import TransformerMixin
-from mlxtend.preprocessing import standardize
 from xgboost import XGBClassifier
 
 from .base import get_paths
@@ -22,9 +19,12 @@ def get_pipeline(classifier_name='BDT'):
             # n_estimators=100, max_depth=7, min_samples_leaf=150, n_jobs=20,
             random_state=2)
     elif classifier_name == 'xgboost':
-        classifier = XGBClassifier(n_estimators=125, nthread=10, silent=True, seed=2)
+        classifier = XGBClassifier(n_estimators=125, nthread=10, silent=True,
+                                   seed=2)
     elif classifier_name == 'Ada':
-        classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5), n_estimators=100, learning_rate=0.1, random_state=2)
+        classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=5),
+                                        n_estimators=100, learning_rate=0.1,
+                                        random_state=2)
         # classifier = AdaBoostClassifier(n_estimators=50, learning_rate=0.1, random_state=2)
     # elif classifier_name in ['GBDT', 'BDT']:
     #     classifier = GradientBoostingClassifier(

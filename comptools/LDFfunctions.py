@@ -5,7 +5,7 @@ from scipy import optimize
 
 
 def top_ldf_sigma(r, logq):
-    a = [-.5519,-.078]
+    a = [-.5519, -.078]
     b = [-.373, -.658, .158]
     trans = [.340, 2.077]
 
@@ -18,23 +18,27 @@ def top_ldf_sigma(r, logq):
 
 
 def DLP(dists, log_s125, beta):
-    '''Double Logarithmic Parabola (DLP) function used to parameterize air shower events
+    '''Double Logarithmic Parabola (DLP) function to parameterize air showers
 
-    For a reference see IceCube internal report 200702001, 'A Lateral Distribution Function and Fluctuation Parametrisation for IceTop' by Stefan Klepser.
+    For a reference see IceCube internal report 200702001, 'A Lateral
+    Distribution Function and Fluctuation Parametrisation for IceTop'
+    by Stefan Klepser.
 
     Parameters
     ----------
     dists : float, array-like
         Tank distance(s), in meters, from the shower core.
     log_s125 : float
-        Base-10 logarithm of the signal deposited 125m away from the shower core.
+        Base-10 logarithm of the signal deposited 125m away from the shower
+        core.
     beta : float
         Slope of the DLP function. Related to the air shower age.
 
     Returns
     -------
     float, numpy.array
-        Returns the base-10 logarithm of the signal deposited at a distance, dists, away from the shower core.
+        Returns the base-10 logarithm of the signal deposited at a distance,
+        dists, away from the shower core.
 
     '''
 

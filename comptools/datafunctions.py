@@ -33,12 +33,13 @@ def get_run_list(config=None):
 
 def get_level3_run_i3_files(config=None, run=None):
 
-    if not config in get_data_configs():
+    if config not in get_data_configs():
         raise ValueError('Invalid configuration, {}'.format(config))
 
     prefix = _get_data_path_prefix(config=config)
-    data_file_pattern = os.path.join(prefix,
-        '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
+    data_file_pattern = os.path.join(
+                            prefix,
+                            '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
     run_files = glob.glob(data_file_pattern)
 
     # Extract (and validate) the GCD file for this run

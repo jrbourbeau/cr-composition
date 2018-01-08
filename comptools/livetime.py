@@ -5,6 +5,7 @@ import datetime
 
 from .base import get_paths
 
+
 def get_livetime_file():
 
     paths = get_paths()

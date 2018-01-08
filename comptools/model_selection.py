@@ -2,17 +2,15 @@
 from __future__ import division
 from collections import defaultdict
 import dask
-from dask import delayed, multiprocessing, compute, threaded
+from dask import delayed, multiprocessing, threaded
 from dask.diagnostics import ProgressBar
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.metrics import (mean_squared_error, r2_score, accuracy_score,
-                             get_scorer, make_scorer)
-import pyprind
+from sklearn.metrics import get_scorer
 
-from .base import get_energybins, get_training_features
-from .io import label_to_comp, load_sim, dataframe_to_X_y
+from .base import get_training_features
+from .io import dataframe_to_X_y
 from .composition_encoding import get_comp_list
 from .data_functions import ratio_error
 from .pipelines import get_pipeline
@@ -63,7 +61,6 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
                         log_energy_bins, n_splits=10, n_jobs=1):
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
-    frac_correct_folds = defaultdict(list)
 
     comp_list = get_comp_list(num_groups=num_groups)
     comp_target = 'comp_target_{}'.format(num_groups)
@@ -73,9 +70,9 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
     for train_index, test_index in skf.split(df_train, df_train[comp_target]):
         df_train_fold = df_train.iloc[train_index]
         df_test_fold = df_train.iloc[test_index]
-        frac_correct = delayed(_get_frac_correct)(df_train_fold, df_test_fold,
-                    train_columns, num_groups, pipeline_str, comp_list,
-                    log_energy_bins)
+        frac_correct = delayed(_get_frac_correct)(
+                    df_train_fold, df_test_fold, train_columns, num_groups,
+                    pipeline_str, comp_list, log_energy_bins)
         folds.append(frac_correct)
 
     df_cv = delayed(pd.DataFrame.from_records)(folds)
@@ -145,7 +142,6 @@ def _cross_validate_comp(df_train, df_test, pipeline_str, param_name,
 
     train_scores = defaultdict(list)
     test_scores = defaultdict(list)
-    ks_pval = defaultdict(list)
 
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=2)
     scorer = get_scorer(scoring)
