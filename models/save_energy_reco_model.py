@@ -11,9 +11,11 @@ import comptools as comp
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Saves trained model for later use')
+    description='Saves trained energy reconstruction model for later use'
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--config', dest='config',
                    choices=comp.simfunctions.get_sim_configs(),
+                   default='IC86.2012',
                    help='Detector configuration')
     args = parser.parse_args()
 
@@ -24,15 +26,18 @@ if __name__ == '__main__':
     feature_list, feature_labels = comp.get_training_features()
     columns = feature_list + ['MC_log_energy']
 
-    energybins = comp.analysis.get_energybins(config=args.config)
+    energybins = comp.get_energybins(config=args.config)
     log_energy_min = 5.0
     log_energy_max = None
 
-    df_sim = comp.load_sim(config=args.config, columns=columns,
-                           energy_key='MC_log_energy',
-                           log_energy_min=log_energy_min,
-                           log_energy_max=log_energy_max, test_size=0)
-    pipeline.fit(df_sim[feature_list], df_sim['MC_log_energy'])
+    df_sim_train, df_sim_test = comp.load_sim(config=args.config,
+                                              energy_reco=False,
+                                              energy_cut_key='MC_log_energy',
+                                              log_energy_min=log_energy_min,
+                                              log_energy_max=log_energy_max,
+                                              test_size=0.5)
+    pipeline.fit(df_sim_train[feature_list], df_sim_train['MC_log_energy'])
+    
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:
     # http://scikit-learn.org/stable/modules/model_persistence.html#security-maintainability-limitations

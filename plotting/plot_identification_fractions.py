@@ -2,6 +2,7 @@
 
 from __future__ import division, print_function
 import os
+from itertools import product
 import argparse
 import numpy as np
 import pandas as pd
@@ -16,8 +17,8 @@ color_dict = comp.get_color_dict()
 
 
 @delayed
-def get_frac_correct(df_train, df_test, pipeline_str=None, num_groups=4,
-                     energy_key='MC_log_energy'):
+def get_classified_fractions(df_train, df_test, pipeline_str=None, num_groups=4,
+                             energy_key='MC_log_energy'):
     '''Calculates the fraction of correctly identified samples in each energy bin
     for each composition in comp_list. In addition, the statisitcal error for the
     fraction correctly identified is calculated.'''
@@ -38,28 +39,31 @@ def get_frac_correct(df_train, df_test, pipeline_str=None, num_groups=4,
                  df_train[comp_target_str])
 
     test_predictions = pipeline.predict(df_test[feature_list])
-    correctly_identified_mask = (test_predictions == df_test[comp_target_str])
+    pred_comp = np.array(comp.decode_composition_groups(test_predictions,
+                                                        num_groups=num_groups))
 
     data = {}
-    for composition in comp_list + ['total']:
-        comp_mask = df_test['comp_group_{}'.format(num_groups)] == composition
+    for true_composition, identified_composition in product(comp_list, comp_list):
+        true_comp_mask = df_test['comp_group_{}'.format(num_groups)] == true_composition
+        ident_comp_mask = pred_comp == identified_composition
+
         # Get number of MC comp in each energy bin
-        num_MC_energy, _ = np.histogram(df_test.loc[comp_mask, energy_key],
+        num_true_comp, _ = np.histogram(df_test.loc[true_comp_mask, energy_key],
                                         bins=energybins.log_energy_bins)
-        num_MC_energy_err = np.sqrt(num_MC_energy)
+        num_true_comp_err = np.sqrt(num_true_comp)
 
         # Get number of correctly identified comp in each energy bin
-        combined_mask = comp_mask & correctly_identified_mask
-        num_reco_energy, _ = np.histogram(df_test.loc[combined_mask, energy_key],
-                                          bins=energybins.log_energy_bins)
-        num_reco_energy_err = np.sqrt(num_reco_energy)
+        combined_mask = true_comp_mask & ident_comp_mask
+        num_identified_comp, _ = np.histogram(df_test.loc[combined_mask, energy_key],
+                                              bins=energybins.log_energy_bins)
+        num_identified_comp_err = np.sqrt(num_identified_comp)
 
         # Calculate correctly identified fractions as a function of energy
-        frac_correct, frac_correct_err = comp.ratio_error(
-            num_reco_energy, num_reco_energy_err,
-            num_MC_energy, num_MC_energy_err)
-        data['frac_correct_{}'.format(composition)] = frac_correct
-        data['frac_correct_err_{}'.format(composition)] = frac_correct_err
+        frac_identified, frac_identified_err = comp.ratio_error(
+            num_identified_comp, num_identified_comp_err,
+            num_true_comp, num_true_comp_err)
+        data['true_{}_identified_{}'.format(true_composition, identified_composition)] = frac_identified
+        data['true_{}_identified_{}_err'.format(true_composition, identified_composition)] = frac_identified_err
 
     return data
 
@@ -95,7 +99,12 @@ if __name__ == '__main__':
     energybins = comp.get_energybins(config)
     comp_list = comp.get_comp_list(num_groups=num_groups)
     feature_list, feature_labels = comp.get_training_features()
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'RF_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'voting_comp_{}_{}-groups'.format(config, num_groups)
 
     df_train, df_test = comp.load_sim(config=config,
                                       log_energy_min=energybins.log_energy_min,
@@ -105,10 +114,11 @@ if __name__ == '__main__':
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
     folds = []
-    for train_index, test_index in skf.split(df_train, df_train['comp_target_{}'.format(num_groups)]):
+    splitter = skf.split(df_train, df_train['comp_target_{}'.format(num_groups)])
+    for fold_idx, (train_index, test_index) in enumerate(splitter):
         df_train_fold = df_train.iloc[train_index]
         df_test_fold = df_train.iloc[test_index]
-        frac_correct = get_frac_correct(df_train_fold, df_test_fold,
+        frac_correct = get_classified_fractions(df_train_fold, df_test_fold,
                                         pipeline_str=pipeline_str,
                                         num_groups=num_groups,
                                         energy_key=energy_key)
@@ -123,40 +133,36 @@ if __name__ == '__main__':
         df_cv = df_cv.compute(get=get, num_works=n_jobs)
 
     # Plot correctly identified vs. energy for each composition
-    fig, ax = plt.subplots()
-    for composition in comp_list:
-        key = 'frac_correct_{}'.format(composition)
-        performance_mean = np.mean(df_cv[key].values)
-        performance_std = np.std(df_cv[key].values)
-        comp.plot_steps(energybins.log_energy_bins, performance_mean, yerr=performance_std,
-                        ax=ax, color=color_dict[composition], label=composition)
-    if energy_key == 'MC_log_energy':
-        xlabel = '$\mathrm{\log_{10}(E_{MC}/GeV)}$'
-    else:
-        xlabel = '$\mathrm{\log_{10}(E_{reco}/GeV)}$'
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel('Classification accuracy [{:d}-fold CV]'.format(n_splits))
-    ax.set_ylim([0.0, 1.0])
-    ax.set_xlim(6.4, energybins.log_energy_max)
-    # ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
-    ax.grid()
-    leg = plt.legend(loc='upper center', frameon=False,
-                     bbox_to_anchor=(0.5, 1.1), ncol=len(comp_list)+1,
-                     fancybox=False)
-    # set the linewidth of each legend object
-    for legobj in leg.legendHandles:
-        legobj.set_linewidth(3.0)
-
-    # acc = np.nanmean(frac_correct_folds['total'])*100
-    # acc_err = np.nanstd(frac_correct_folds['total'])*100
-    # cv_str = 'Total accuracy:\n{}\% (+/- {}\%)'.format(int(acc)+1,
-    #                                                    int(acc_err)+1)
-    # ax.text(7.4, 0.2, cv_str,
-    #         ha="center", va="center", size=14,
-    #         bbox=dict(boxstyle='round', fc="white", ec="gray", lw=0.8))
+    fig, axarr = plt.subplots(1, len(comp_list), figsize=(12, 5), sharex=True, sharey=True)
+    for idx, true_composition in enumerate(comp_list):
+        ax = axarr[idx]
+        for identified_composition in comp_list:
+            key = 'true_{}_identified_{}'.format(true_composition, identified_composition)
+            performance_mean = np.mean(df_cv[key].values)
+            performance_std = np.std(df_cv[key].values)
+            comp.plot_steps(energybins.log_energy_bins, performance_mean, yerr=performance_std,
+                            ax=ax, color=color_dict[identified_composition], label=identified_composition)
+        if energy_key == 'MC_log_energy':
+            xlabel = '$\mathrm{\log_{10}(E_{MC}/GeV)}$'
+        else:
+            xlabel = '$\mathrm{\log_{10}(E_{reco}/GeV)}$'
+        ax.set_xlabel(xlabel)
+        if idx == 0:
+            ax.set_ylabel('Classification composition fractions')
+        ax.set_title('MC {}'.format(true_composition))
+        ax.set_ylim([0.0, 1.0])
+        ax.set_xlim(6.4, energybins.log_energy_max)
+        # ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
+        ax.grid()
+        leg = ax.legend(title='Classified composition', fontsize=8)
+        # Set fontsize for legend title
+        plt.setp(leg.get_title(),fontsize=10)
 
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
-                           'frac-correct_{}_{}_{}-groups.png'.format(
-                                energy_key.replace('_', '-'), config, num_groups))
+                           '{}_identification-frac_{}_{}_{}-groups.png'.format(
+                                pipeline_str,
+                                energy_key.replace('_', '-'),
+                                config,
+                                num_groups))
     comp.check_output_dir(outfile)
     plt.savefig(outfile)

@@ -8,9 +8,8 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import learning_curve
 
 import comptools as comp
-import comptools.analysis.plotting as plotting
 
-color_dict = comp.analysis.get_color_dict()
+color_dict = comp.get_color_dict()
 
 
 if __name__ == '__main__':
@@ -32,16 +31,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     comp_list = comp.get_comp_list(num_groups=args.num_groups)
-    energybins = comp.analysis.get_energybins(args.config)
+    energybins = comp.get_energybins(args.config)
 
     # Load simulation data and pipeline
     df_sim_train, df_sim_test = comp.load_sim(
                                     config=args.config,
                                     log_energy_min=energybins.log_energy_min,
                                     log_energy_max=energybins.log_energy_max)
-    feature_list, feature_labels = comp.analysis.get_training_features()
+    feature_list, feature_labels = comp.get_training_features()
 
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
     pipeline = comp.get_pipeline(pipeline_str)
 
     # Get learning curve scores
@@ -89,7 +89,9 @@ if __name__ == '__main__':
     ax.legend()
     plt.tight_layout()
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
-                           'learning_curve_{}_{}-groups.png'.format(args.config,
-                                                                    args.num_groups))
+                           'learning_curve_{}.png'.format(pipeline_str))
+    # outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',
+    #                        'learning_curve_{}_{}-groups.png'.format(args.config,
+    #                                                                 args.num_groups))
     comp.check_output_dir(outfile)
     plt.savefig(outfile)

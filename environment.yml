@@ -1,6 +1,5 @@
-name: composition
+name: cr-composition
 channels:
-  - defaults
   - conda-forge
 dependencies:
   - six
@@ -10,7 +9,6 @@ dependencies:
   - matplotlib
   - dask
   - keras
-  - Theano
   - scikit-learn
   - h5py
   - ipython
@@ -25,5 +23,6 @@ dependencies:
   - mlxtend
   - pyprind
   - pymysql
+  - root5
   - pip:
       - pycondor

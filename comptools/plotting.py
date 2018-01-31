@@ -14,6 +14,21 @@ def get_color_dict():
     return color_dict
 
 
+def get_color(composition):
+    color_dict = get_color_dict()
+    return color_dict[composition]
+
+
+def get_colormap(composition):
+    cmaps = {'light': 'Blues', 'heavy': 'Oranges', 'intermediate': 'Reds',
+                  'total': 'Greens',
+                  'PPlus': 'Blues', 'He4Nucleus': 'Purples', 'O16Nucleus': 'Reds',
+                  'Fe56Nucleus': 'Oranges',
+                  'data': 'Blacks'}
+
+    return cmaps[composition]
+
+
 def histogram_2D(x, y, bins, weights=None, log_counts=False, make_prob=False,
                  colorbar=True, logx=False, logy=False, vmin=None, vmax=None,
                  cmap='viridis', ax=None, **opts):

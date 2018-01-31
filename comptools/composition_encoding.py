@@ -1,6 +1,7 @@
 
 from __future__ import print_function, division
 from collections import OrderedDict
+import numpy as np
 
 
 _two_group_labels = OrderedDict()
@@ -69,7 +70,11 @@ def decode_composition_groups(labels, num_groups=2):
     group_to_label = _get_group_encoding_dict(num_groups=num_groups)
     label_to_group = {value: key for key, value in group_to_label.items()}
     try:
-        return [label_to_group[l] for l in labels]
+        groups = np.empty_like(labels, dtype=object)
+        for idx, label in enumerate(labels):
+            groups[idx] = label_to_group[label]
+        return groups
+        # return np.array([label_to_group[l] for l in labels], dtype=str)
     except KeyError:
         raise KeyError('Incorrect label entered')
 

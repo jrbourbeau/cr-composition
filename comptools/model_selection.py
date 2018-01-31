@@ -57,13 +57,13 @@ def _get_frac_correct(df_train, df_test, feature_columns, num_groups,
     return data
 
 
-def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
+def get_CV_frac_correct(df_train, feature_list, target, pipeline_str, num_groups,
                         log_energy_bins, n_splits=10, n_jobs=1):
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=2)
 
     comp_list = get_comp_list(num_groups=num_groups)
-    comp_target = 'comp_target_{}'.format(num_groups)
+    comp_target = target
 
     # Set up get_frac_correct to run on each CV fold
     folds = []
@@ -71,7 +71,7 @@ def get_CV_frac_correct(df_train, train_columns, pipeline_str, num_groups,
         df_train_fold = df_train.iloc[train_index]
         df_test_fold = df_train.iloc[test_index]
         frac_correct = delayed(_get_frac_correct)(
-                    df_train_fold, df_test_fold, train_columns, num_groups,
+                    df_train_fold, df_test_fold, feature_list, num_groups,
                     pipeline_str, comp_list, log_energy_bins)
         folds.append(frac_correct)
 

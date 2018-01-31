@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import seaborn.apionly as sns
 from sklearn.metrics import confusion_matrix
 from ROOT import TH1F, TH2F, TFile
+import dask.array as da
+from dask.diagnostics import ProgressBar
 
 from icecube.weighting.weighting import PDGCode
 from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
@@ -22,39 +24,7 @@ if 'cvmfs' in os.getenv('ROOTSYS'):
     raise comp.ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
 
 
-def response_matrix(log_true_energy, log_reco_energy, true_comp, pred_comp,
-                    comp_list, efficiencies, efficiencies_err):
-
-    true_ebin_idxs = np.digitize(log_true_energy,
-                                 energybins.log_energy_bins) - 1
-    reco_ebin_idxs = np.digitize(log_reco_energy,
-                                 energybins.log_energy_bins) - 1
-
-    num_groups = len(comp_list)
-    num_ebins = len(energybins.log_energy_midpoints)
-
-    e_bin_iter = product(range(num_ebins), range(num_ebins))
-    res = np.zeros((num_ebins * num_groups, num_ebins * num_groups), dtype=int)
-    for true_ebin_idx, reco_ebin_idx in e_bin_iter:
-        true_ebin_mask = true_ebin_idxs == true_ebin_idx
-        reco_ebin_mask = reco_ebin_idxs == reco_ebin_idx
-        ebin_mask = true_ebin_mask & reco_ebin_mask
-        if ebin_mask.sum() == 0:
-            continue
-        else:
-            response_mat = confusion_matrix(true_comp[ebin_mask],
-                                            pred_comp[ebin_mask],
-                                            labels=comp_list)
-            # Transpose response matrix to get MC comp on x-axis
-            # and reco comp on y-axis
-            response_mat = response_mat.T
-
-        res[num_groups * reco_ebin_idx : num_groups * (reco_ebin_idx + 1),
-            num_groups * true_ebin_idx : num_groups * (true_ebin_idx + 1)] = response_mat
-
-    # Calculate statistical error on response matrix
-    res_err = np.sqrt(res)
-    # Normalize response matrix column-wise (i.e. $P(E|C)$)
+def column_normalize(res, res_err, efficiencies, efficiencies_err):
     res_col_sum = res.sum(axis=0)
     res_col_sum_err = np.array([np.sqrt(np.sum(res_err[:, i]**2))
                                 for i in range(res_err.shape[1])])
@@ -78,8 +48,45 @@ def response_matrix(log_true_energy, log_reco_energy, true_comp, pred_comp,
     return res_normalized, res_normalized_err
 
 
+def response_matrix(true_energy, reco_energy, true_target, pred_target,
+                    efficiencies, efficiencies_err, energy_bins=None):
+
+    # Check that the input array shapes
+    inputs = [true_energy, reco_energy, true_target, pred_target]
+    assert len(set(map(np.ndim, inputs))) == 1
+    assert len(set(map(np.shape, inputs))) == 1
+
+    num_ebins = len(energy_bins) - 1
+    num_groups = len(np.unique([true_target, pred_target]))
+
+    true_ebin_indices = np.digitize(true_energy, energy_bins) - 1
+    reco_ebin_indices = np.digitize(reco_energy, energy_bins) - 1
+
+    res = np.zeros((num_ebins * num_groups, num_ebins * num_groups))
+    bin_iter = product(range(num_ebins), range(num_ebins),
+                       range(num_groups), range(num_groups))
+    for true_ebin, reco_ebin, true_target_bin, pred_target_bin in bin_iter:
+        # Get mask for events in true/reco energy and true/reco composition bin
+        mask = np.logical_and.reduce((true_ebin_indices == true_ebin,
+                                      reco_ebin_indices == reco_ebin,
+                                      true_target == true_target_bin,
+                                      pred_target == pred_target_bin))
+        res[num_groups * reco_ebin + pred_target_bin,
+            num_groups * true_ebin + true_target_bin] = mask.sum()
+    # Calculate statistical error on response matrix
+    res_err = np.sqrt(res)
+
+    # Normalize response matrix column-wise (i.e. $P(E|C)$)
+    res_normalized, res_normalized_err = column_normalize(res, res_err,
+                                                          efficiencies,
+                                                          efficiencies_err)
+
+    return res_normalized, res_normalized_err
+
+
 def save_pyunfold_root_file(config, num_groups, outfile=None,
-                            formatted_df_file=None):
+                            formatted_df_file=None, res_mat_file=None,
+                            res_mat_err_file=None):
 
     unfolding_dir  = os.path.join(comp.paths.comp_data_dir, config,
                                   'unfolding')
@@ -112,6 +119,10 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
                 unfolding_dir, 'unfolding-df_{}-groups.hdf'.format(num_groups))
     df_flux = pd.read_hdf(formatted_df_file)
     counts = df_flux['counts'].values
+    if 'counts_err' in df_flux:
+        counts_err = df_flux['counts_err'].values
+    else:
+        counts_err = None
     efficiencies = df_flux['efficiencies'].values
     efficiencies_err = df_flux['efficiencies_err'].values
 
@@ -124,12 +135,14 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
     ebins -= 1
 
     # Load response matrix array
-    res_mat_file = os.path.join(unfolding_dir,
-                                'response_{}-groups.txt'.format(num_groups))
+    if res_mat_file is None:
+        res_mat_file = os.path.join(unfolding_dir,
+                                    'response_{}-groups.txt'.format(num_groups))
     response_array = np.loadtxt(res_mat_file)
-    res_mat_err_file = os.path.join(
-                            unfolding_dir,
-                            'response_err_{}-groups.txt'.format(num_groups))
+    if res_mat_err_file is None:
+        res_mat_err_file = os.path.join(
+                                unfolding_dir,
+                                'response_err_{}-groups.txt'.format(num_groups))
     response_err_array = np.loadtxt(res_mat_err_file)
 
     # Measured effects distribution
@@ -159,7 +172,10 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
 
         # Fill measured effects histogram
         ne_meas.SetBinContent(ci+1, counts[ci])
-        ne_meas.SetBinError(ci+1, np.sqrt(counts[ci]))
+        if counts_err is None:
+            ne_meas.SetBinError(ci+1, np.sqrt(counts[ci]))
+        else:
+            ne_meas.SetBinError(ci+1, counts_err[ci])
         # print('ne_meas[{}] = {}'.format(ci+1, counts[ci]))
 
         for ek in range(0, ebins):
@@ -196,7 +212,7 @@ def save_pyunfold_root_file(config, num_groups, outfile=None,
     fout.Write()
     fout.Close()
 
-    print('Saving output file {}'.format(outfile))
+    # print('Saving output file {}'.format(outfile))
 
 if __name__ == '__main__':
 
@@ -230,13 +246,19 @@ if __name__ == '__main__':
     log_true_energy_sim_test = df_sim_test['MC_log_energy']
 
     feature_list, feature_labels = comp.get_training_features()
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
+    pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
     pipeline = comp.get_pipeline(pipeline_str)
 
     # Fit composition classifier
     print('Fitting composition classifier...')
-    pipeline = pipeline.fit(df_sim_train[feature_list],
-                            df_sim_train['comp_target_{}'.format(num_groups)])
+    X_train = df_sim_train[feature_list].values
+    y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
+    pipeline = pipeline.fit(X_train, y_train)
 
     # Load fitted effective area
     print('Loading detection efficiencies...')
@@ -258,17 +280,23 @@ if __name__ == '__main__':
     df_data = comp.load_data(config=config, columns=feature_list,
                              log_energy_min=log_energy_min,
                              log_energy_max=log_energy_max,
-                             n_jobs=15, verbose=True)
+                             n_jobs=15,
+                             verbose=True)
 
-    X_data = comp.io.dataframe_to_array(
-                        df_data, feature_list + ['reco_log_energy'])
+    X_data = comp.io.dataframe_to_array(df_data, feature_list + ['reco_log_energy'])
     log_energy_data = X_data[:, -1]
     X_data = X_data[:, :-1]
 
-    print('Making data predictions...')
-    data_predictions = pipeline.predict(X_data)
-    data_labels = np.array(comp.composition_encoding.decode_composition_groups(
-                           data_predictions, num_groups=num_groups))
+    print('Making composition predictions on data...')
+    # Apply pipeline.predict method in chunks
+    X_da = da.from_array(X_data, chunks=(len(X_data) // 100, X_data.shape[1]))
+    data_predictions = da.map_blocks(pipeline.predict, X_da,
+                                     dtype=int, drop_axis=1)
+    # Convert from target to composition labels
+    data_labels = da.map_blocks(comp.decode_composition_groups, data_predictions,
+                                dtype=str, num_groups=num_groups)
+    with ProgressBar():
+        data_labels = data_labels.compute(num_workers=20)
 
     # Get number of identified comp in each energy bin
     print('Formatting observed counts...')
@@ -296,17 +324,17 @@ if __name__ == '__main__':
 
     # Response matrix
     print('Making response matrix...')
-    test_predictions = pipeline.predict(df_sim_test[feature_list])
-    true_comp = df_sim_test['comp_group_{}'.format(num_groups)].values
-    pred_comp = np.array(comp.composition_encoding.decode_composition_groups(
-                            test_predictions, num_groups=num_groups))
+    pred_target = pipeline.predict(df_sim_test[feature_list].values)
+    true_target = df_sim_test['comp_target_{}'.format(num_groups)].values
+    # true_comp = df_sim_test['comp_group_{}'.format(num_groups)].values
+    # pred_comp = np.array(comp.composition_encoding.decode_composition_groups(
+    #                         test_predictions, num_groups=num_groups))
     res_normalized, res_normalized_err = response_matrix(
                                             log_true_energy_sim_test,
                                             log_reco_energy_sim_test,
-                                            true_comp, pred_comp,
-                                            comp_list,
-                                            efficiencies, efficiencies_err)
-
+                                            true_target, pred_target,
+                                            efficiencies, efficiencies_err,
+                                            energy_bins=energybins.log_energy_bins)
     res_mat_outfile = os.path.join(
                             comp.paths.comp_data_dir, config, 'unfolding',
                             'response_{}-groups.txt'.format(num_groups))

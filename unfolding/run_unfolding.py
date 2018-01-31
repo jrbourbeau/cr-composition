@@ -230,7 +230,9 @@ if __name__ == '__main__':
     names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
     for prior_name in pyprind.prog_bar(names):
         priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
-        df_unfolding_iter = unfold(config_name=args.config_file, priors=priors,
-                                   input_file=args.input_file, ts_stopping=args.ts_stopping)
+        df_unfolding_iter = unfold(config_name=args.config_file,
+                                   priors=priors,
+                                   input_file=args.input_file,
+                                   ts_stopping=args.ts_stopping)
         # Save to hdf file
         df_unfolding_iter.to_hdf(args.output_file, prior_name)

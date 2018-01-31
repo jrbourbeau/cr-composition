@@ -39,16 +39,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    color_dict = comp.analysis.get_color_dict()
+    color_dict = comp.get_color_dict()
 
-    energybins = comp.analysis.get_energybins(args.config)
+    energybins = comp.get_energybins(args.config)
     comp_list = comp.get_comp_list(num_groups=args.num_groups)
     feature_list, feature_labels = comp.get_training_features()
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'RF_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    pipeline_str = 'xgboost_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
 
-    df_sim_train, df_sim_test = comp.load_sim(
-                config=args.config, log_energy_min=energybins.log_energy_min,
-                log_energy_max=energybins.log_energy_max)
+    df_sim_train, df_sim_test = comp.load_sim(config=args.config,
+                                              log_energy_min=energybins.log_energy_min,
+                                              log_energy_max=energybins.log_energy_max,
+                                              test_size=0.5,
+                                              verbose=True)
 
     # Calculate CV scores for each composition
     params = np.asarray(args.param_values).astype(args.param_type)

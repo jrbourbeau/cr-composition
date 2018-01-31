@@ -198,6 +198,7 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
         pipeline = model_dict['pipeline']
         feature_list = list(model_dict['training_features'])
         df['reco_log_energy'] = pipeline.predict(df[feature_list])
+        df['reco_energy'] = 10**df['reco_log_energy']
 
     energy_mask = np.ones(df.shape[0], dtype=bool)
     if log_energy_min is not None:

@@ -101,14 +101,12 @@ def check_output_dir(outfile, makedirs=True):
     -------
     None
     '''
-    # Ensure that outfile gives an absolute path
+    # Ensure that outfile is an absolute path
     outfile = os.path.abspath(outfile)
-    outdir, basename = os.path.split(outfile)
-
+    outdir = os.path.dirname(outfile)
     if not os.path.exists(outdir):
         if makedirs:
-            print('The directory {} doesn\'t exist. '
-                  'Creating it...'.format(outdir))
+            print('The directory {} doesn\'t exist. Creating it...'.format(outdir))
             os.makedirs(outdir)
         else:
             raise IOError('The directory {} doesn\'t exist'.format(outdir))

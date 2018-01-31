@@ -92,7 +92,7 @@ counts_to_flux = get_flux
 
 
 @requires_icecube
-def model_flux(model='H3a', energy=None, num_groups=2):
+def model_flux(model='H3a', energy=None, num_groups=4):
 
     comp_list = get_comp_list(num_groups=num_groups)
 
@@ -104,7 +104,7 @@ def model_flux(model='H3a', energy=None, num_groups=2):
     flux = model_dict[model]
 
     if energy is None:
-        energy = get_energybins()
+        energy = get_energybins().energy_midpoints
 
     p = PDGCode().values
     pdg_codes = np.array([2212, 1000020040, 1000080160, 1000260560])
