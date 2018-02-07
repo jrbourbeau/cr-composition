@@ -33,24 +33,28 @@ if __name__ == '__main__':
     log_energy_min = energybins.log_energy_min
     log_energy_max = energybins.log_energy_max
 
-    # Load untrained model
     if args.pipeline:
         pipeline_str = args.pipeline
     else:
         pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # Load untrained model
     pipeline = comp.get_pipeline(pipeline_str)
     # Load training data and fit model
     df_sim_train, df_sim_test = comp.load_sim(config=config,
-                                              log_energy_min=log_energy_min,
-                                              log_energy_max=log_energy_max,
+                                              energy_reco=False,
+                                              log_energy_min=None,
+                                              log_energy_max=None,
+                                              # log_energy_min=log_energy_min,
+                                              # log_energy_max=log_energy_max,
                                               test_size=0.5)
     feature_list, feature_labels = comp.get_training_features()
 
-    if 'classifier__n_jobs' in pipeline.get_params():
-        pipeline.named_steps['classifier'].set_params(n_jobs=1)
+    # if 'classifier__n_jobs' in pipeline.get_params():
+    #     pipeline.named_steps['classifier'].set_params(n_jobs=1)
 
-    pipeline.fit(df_sim_train[feature_list],
-                 df_sim_train['comp_target_{}'.format(num_groups)])
+    X_train = df_sim_train[feature_list].values
+    y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
+    pipeline.fit(X_train, y_train)
 
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:

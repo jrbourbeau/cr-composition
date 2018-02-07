@@ -7,6 +7,7 @@ import itertools
 from functools import partial
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import seaborn as sns
@@ -77,67 +78,7 @@ def calculate_ratio(flux, flux_err_stat, flux_err_sys,
     return frac_diff, frac_diff_stat, frac_diff_sys
 
 
-@delayed
 def main(config, num_groups, prior, ts_stopping, case):
-    comp_list = comp.get_comp_list(num_groups=num_groups)
-    energybins = comp.get_energybins(config)
-
-    # Load simulation and train composition classifier
-    df_sim_train, df_sim_test = comp.load_sim(config=config,
-                                              log_energy_min=energybins.log_energy_min,
-                                              log_energy_max=energybins.log_energy_max,
-                                              test_size=0.5,
-                                              verbose=False)
-
-    feature_list, feature_labels = comp.get_training_features()
-    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline = comp.get_pipeline(pipeline_str)
-    pipeline = pipeline.fit(df_sim_train[feature_list].values,
-                            df_sim_train['comp_target_{}'.format(num_groups)].values)
-
-    # Solid angle
-    theta_max = 40 if config == 'IC79.2010' else 65
-    solid_angle = np.pi*np.sin(np.deg2rad(theta_max))**2
-    livetime, livetime_err = comp.get_detector_livetime(config=config)
-
-    # Get simulation thrown areas for each energy bin
-    thrown_radii = comp.simfunctions.get_sim_thrown_radius(energybins.log_energy_midpoints)
-    thrown_area = np.max(np.pi * thrown_radii**2)
-
-    # Load fitted efficiencies and calculate effective areas
-    eff_path = os.path.join(
-                    comp.paths.comp_data_dir, config, 'efficiencies',
-                    'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
-    df_eff = pd.read_hdf(eff_path)
-
-    eff_area, eff_area_err = {}, {}
-    for composition in comp_list+['total']:
-        eff_area[composition] = df_eff['eff_median_{}'.format(composition)].values * thrown_area
-        eff_area_err[composition] = df_eff['eff_err_low_{}'.format(composition)].values * thrown_area
-
-    # Define convenience functions that will convert counts to flux
-    unfolded_counts_to_flux = partial(comp.get_flux,
-                                      energybins=energybins.energy_bins,
-                                      eff_area=thrown_area,
-                                      livetime=livetime,
-                                      livetime_err=livetime_err,
-                                      solid_angle=solid_angle,
-                                      scalingindex=2.7)
-
-    def counts_to_flux(counts, counts_err=None, composition=None):
-        return comp.get_flux(counts, counts_err,
-                             energybins=energybins.energy_bins,
-                             eff_area=eff_area[composition],
-                             eff_area_err=eff_area_err[composition],
-                             livetime=livetime,
-                             livetime_err=livetime_err,
-                             solid_angle=solid_angle,
-                             scalingindex=2.7)
 
     figures_dir = os.path.join(comp.paths.figures_dir, 'unfolding', config,
                                'datachallenge', '{}_case'.format(case),
@@ -145,7 +86,8 @@ def main(config, num_groups, prior, ts_stopping, case):
                                'ts_stopping_{}'.format(ts_stopping))
 
     # Calculate desired counts distribution for test case
-    counts_true = pd.DataFrame(index=energybins.log_energy_midpoints,
+    counts_true = pd.DataFrame(index=range(num_ebins),
+    # counts_true = pd.DataFrame(index=energybins.log_energy_midpoints,
                                columns=comp_list)
     for composition in comp_list:
         flux_to_counts_scaling = eff_area[composition] * livetime * solid_angle * energybins.energy_bin_widths
@@ -195,14 +137,14 @@ def main(config, num_groups, prior, ts_stopping, case):
     plt.savefig(true_flux_outfile)
 
     # Run analysis pipeline on simulation
-    counts_observed = pd.DataFrame(0, index=energybins.log_energy_midpoints,
+    counts_observed = pd.DataFrame(0, index=range(num_ebins),
                                    columns=comp_list)
-    counts_observed_err = pd.DataFrame(0, index=energybins.log_energy_midpoints,
+    counts_observed_err = pd.DataFrame(0, index=range(num_ebins),
                                        columns=comp_list)
-    weights = pd.DataFrame(0, index=energybins.log_energy_midpoints,
+    weights = pd.DataFrame(0, index=range(num_ebins),
                            columns=comp_list)
     # Construct mask for energy bin
-    energy_bins = np.digitize(df_sim_test['MC_log_energy'],
+    energy_bins = np.digitize(df_sim_data['MC_log_energy'],
                               bins=energybins.log_energy_bins) - 1
     for idx_log_energy, composition in itertools.product(
                                 range(len(energybins.log_energy_midpoints)),
@@ -210,13 +152,14 @@ def main(config, num_groups, prior, ts_stopping, case):
 
         log_energy = energybins.log_energy_midpoints[idx_log_energy]
         # Filter out events that don't pass composition & energy mask
-        comp_mask = df_sim_test['comp_group_{}'.format(num_groups)] == composition
+        comp_mask = df_sim_data['comp_group_{}'.format(num_groups)] == composition
         energy_mask = energy_bins == idx_log_energy
-        df_sim_bin = df_sim_test.loc[comp_mask & energy_mask, :]
+        df_sim_bin = df_sim_data.loc[comp_mask & energy_mask, :]
 
         # Reweight simulation events to get desired number of events
-        weight = counts_true.loc[log_energy, composition] / df_sim_bin.shape[0]
-        weights.loc[log_energy, composition] = weight
+        weight = counts_true[composition][idx_log_energy] / df_sim_bin.shape[0]
+        # weight = counts_true.loc[log_energy, composition] / df_sim_bin.shape[0]
+        weights.loc[idx_log_energy, composition] = weight
 
         # Get predicted composition
         pred_target = pipeline.predict(df_sim_bin[feature_list].values)
@@ -293,29 +236,14 @@ def main(config, num_groups, prior, ts_stopping, case):
     os.remove(root_file)
     os.remove(formatted_file)
 
-    # Get plotting axis
-    fig = plt.figure(figsize=(12, 5))
-    gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1,
-                           hspace=0.075)
-    axs_flux, axs_ratio = {}, {}
-    for idx, composition in enumerate(comp_list + ['total']):
-        if idx == 0:
-            axs_flux[composition] = fig.add_subplot(gs[0, idx])
-        else:
-            axs_flux[composition] = fig.add_subplot(gs[0, idx], sharey=axs_flux[comp_list[0]])
-        axs_ratio[composition] = fig.add_subplot(gs[1, idx], sharex=axs_flux[composition])
-
-    # print('{}: {} iterations'.format(model_name, df_unfolding_iter.shape[0]))
+    # print('\n{} case (prior {}): {} iterations'.format(case, prior, df_unfolding_iter.shape[0]))
 
     output = {'prior': prior, 'ts_stopping': ts_stopping, 'case': case}
     counts, counts_sys_err, counts_stat_err = comp.unfolded_counts_dist(
                                                     df_unfolding_iter,
+                                                    iteration=-1,
                                                     num_groups=num_groups)
     for idx, composition in enumerate(comp_list + ['total']):
-
-        ax_flux = axs_flux[composition]
-        ax_ratio = axs_ratio[composition]
-
         # Pre-unfolding flux plot
         initial_counts = counts_observed[composition].values
         initial_counts_err = counts_observed_err[composition].values
@@ -333,13 +261,6 @@ def main(config, num_groups, prior, ts_stopping, case):
         flux, flux_err_stat = unfolded_counts_to_flux(
                                             counts[composition],
                                             counts_stat_err[composition])
-
-        comp.plot_steps(energybins.log_energy_bins, flux, yerr=flux_err_sys,
-                        ax=ax_flux, alpha=0.4, fillalpha=0.4,
-                        color=color_dict[composition])
-        ax_flux.errorbar(energybins.log_energy_midpoints, flux, yerr=flux_err_stat,
-                         color=color_dict[composition], ls='None', marker='.',
-                         label='Unfolded flux', alpha=0.8)
 
         # True flux
         true_counts = counts_true[composition].values
@@ -360,68 +281,6 @@ def main(config, num_groups, prior, ts_stopping, case):
         output['initial_flux_err_stat_{}'.format(composition)] = initial_flux_err_stat
         output['initial_flux_err_sys_{}'.format(composition)] = initial_flux_err_sys
 
-        ax_flux.errorbar(energybins.log_energy_midpoints, true_flux, yerr=true_flux_err_stat,
-                         color=color_dict[composition], ls='None', marker='*',
-                         label='True flux', alpha=0.8)
-
-        ax_flux.set_yscale("log", nonposy='clip')
-        ax_flux.set_xlim(6.4, 7.8)
-        ax_flux.grid(linestyle='dotted', which="both", lw=1)
-        ax_flux.legend(fontsize=8)
-        ax_flux.set_title(composition, fontsize=10)
-        if idx == 0:
-            ax_flux.set_ylabel('$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$',
-                               fontsize=10)
-        else:
-            plt.setp(ax_flux.get_yticklabels(), visible=False)
-        plt.setp(ax_flux.get_xticklabels(), visible=False)
-        ax_flux.tick_params(axis='both', which='major', labelsize=10)
-
-
-        # Ratio plot
-        frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
-                            flux, flux_err_stat, flux_err_sys,
-                            true_flux, true_flux_err_stat, true_flux_err_sys)
-
-        comp.plot_steps(energybins.log_energy_bins, frac_diff, yerr=frac_diff_sys,
-                        ax=ax_ratio, alpha=0.4, fillalpha=0.4,
-                        color=color_dict[composition])
-        ax_ratio.errorbar(energybins.log_energy_midpoints, frac_diff, yerr=frac_diff_stat,
-                          color=color_dict[composition], ls='None', marker='.',
-                          label='Unfolded flux', alpha=0.8)
-        ax_ratio.axhline(0, ls='-.', lw=1, marker='None', color='k')
-
-
-        # #---------
-        # frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
-        #                     initial_flux, initial_flux_err_stat, initial_flux_err_sys,
-        #                     true_flux, true_flux_err_stat, true_flux_err_sys)
-        #
-        # # comp.plot_steps(energybins.log_energy_bins, frac_diff, yerr=frac_diff_sys,
-        # #                 ax=ax_ratio, alpha=0.4, fillalpha=0.4,
-        # #                 color=color_dict[composition])
-        # ax_ratio.errorbar(energybins.log_energy_midpoints, frac_diff, yerr=frac_diff_stat,
-        #                   color=color_dict[composition], ls='None', marker='X',
-        #                   label='Initial flux', alpha=0.8)
-        # #---------
-
-        ax_ratio.grid(linestyle='dotted', which="both", lw=1)
-        ax_ratio.set_yticks(np.arange(-1, 1.5, 0.25))
-        ax_ratio.set_ylim(-1, 1)
-        if idx == 0:
-            ax_ratio.set_ylabel('$\mathrm{(J - J_{true}) / J_{true}}$',
-                                fontsize=10)
-        else:
-            plt.setp(ax_ratio.get_yticklabels(), visible=False)
-        ax_ratio.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$', fontsize=10)
-        ax_ratio.tick_params(axis='both', which='major', labelsize=10)
-        ax_ratio.legend(fontsize=8)
-
-    plt.tight_layout()
-    flux_outfile = os.path.join(figures_dir,
-                                'flux_ratio_{}-groups_{}-case.png'.format(num_groups, case))
-    comp.check_output_dir(flux_outfile)
-    plt.savefig(flux_outfile)
     # Don't want to consume too much memory by keeping too many figures open
     plt.close('all')
 
@@ -453,12 +312,114 @@ if __name__ == '__main__':
 
     comp_list = comp.get_comp_list(num_groups=num_groups)
     energybins = comp.get_energybins(config)
+    num_ebins = len(energybins.log_energy_midpoints)
+
+    # Load simulation and train composition classifier
+    df_sim = comp.load_sim(config=config,
+                           energy_reco=False,
+                           log_energy_min=None,
+                           log_energy_max=None,
+                           test_size=0.0,
+                           verbose=True)
+    df_sim_train = df_sim
+    df_sim_test = df_sim
+    # df_sim_train, df_sim_test = comp.load_sim(config=config,
+    #                                           energy_reco=False,
+    #                                           # log_energy_min=energybins.log_energy_min,
+    #                                           # log_energy_max=energybins.log_energy_max,
+    #                                           log_energy_min=None,
+    #                                           log_energy_max=None,
+    #                                           test_size=0.5,
+    #                                           verbose=True)
+
+    feature_list, feature_labels = comp.get_training_features()
+
+    # Energy reconstruction
+    print('Loading energy regressor...')
+    model_dict = comp.load_trained_model('RF_energy_{}'.format(config))
+    energy_pipeline = model_dict['pipeline']
+    # energy_pipeline = comp.get_pipeline('RF_energy_{}'.format(config))
+    # energy_pipeline.fit(df_sim_train[feature_list].values,
+    #                     df_sim_train['MC_log_energy'].values)
+    for df in [df_sim_train, df_sim_test]:
+        df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
+        df['reco_energy'] = 10**df['reco_log_energy']
+
+    # Composition classification
+    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
+
+    # pipeline = comp.get_pipeline(pipeline_str)
+    # pipeline = pipeline.fit(df_sim_train[feature_list].values,
+    #                         df_sim_train['comp_target_{}'.format(num_groups)].values)
+    model_dict = comp.load_trained_model(pipeline_str)
+    pipeline = model_dict['pipeline']
+
+    df_sim_response = df_sim
+    df_sim_data = df_sim
+    # df_sim_response, df_sim_data = train_test_split(df_sim_test,
+    #                                                 test_size=0.5,
+    #                                                 shuffle=True,
+    #                                                 random_state=2)
+
+    # Solid angle
+    theta_max = 40 if config == 'IC79.2010' else 65
+    solid_angle = np.pi*np.sin(np.deg2rad(theta_max))**2
+    livetime, livetime_err = comp.get_detector_livetime(config=config)
+
+    # Get simulation thrown areas for each energy bin
+    thrown_radii = comp.simfunctions.get_sim_thrown_radius(energybins.log_energy_midpoints)
+    thrown_area = np.max(np.pi * thrown_radii**2)
+
+    # Load fitted efficiencies and calculate effective areas
+    eff_path = os.path.join(comp.paths.comp_data_dir, config, 'efficiencies',
+                            'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
+    df_eff = pd.read_hdf(eff_path)
+
+    eff_area, eff_area_err = {}, {}
+    for composition in comp_list+['total']:
+        eff_area[composition] = df_eff['eff_median_{}'.format(composition)].values * thrown_area
+        eff_area_err[composition] = df_eff['eff_err_low_{}'.format(composition)].values * thrown_area
+
+    # Define convenience functions that will convert counts to flux
+    unfolded_counts_to_flux = partial(comp.get_flux,
+                                      energybins=energybins.energy_bins,
+                                      eff_area=thrown_area,
+                                      livetime=livetime,
+                                      livetime_err=livetime_err,
+                                      solid_angle=solid_angle,
+                                      scalingindex=2.7)
+
+    def counts_to_flux(counts, counts_err=None, composition=None):
+        return comp.get_flux(counts, counts_err,
+                             energybins=energybins.energy_bins,
+                             eff_area=eff_area[composition],
+                             eff_area_err=eff_area_err[composition],
+                             livetime=livetime,
+                             livetime_err=livetime_err,
+                             solid_angle=solid_angle,
+                             scalingindex=2.7)
+
 
     priors = [
               'Jeffreys',
               'H4a',
-              'H3a',
+              # 'H3a',
+              'simple_power_law',
+              'broken_power_law',
               ]
+
+    priors_labels = [
+                      'Jeffreys',
+                      'H4a',
+                      # 'H3a',
+                      'Simple PL',
+                      'Broken PL',
+                      ]
 
     cases = [
              # 'constant',
@@ -476,15 +437,22 @@ if __name__ == '__main__':
                  # 0.001,
                  ]
 
+    plot_initial_flux = False
+
     calculations = []
     for case, ts_stopping, prior in itertools.product(cases, ts_values, priors):
-        calc = main(config, num_groups, prior, ts_stopping=ts_stopping,
-                    case=case)
+        calc = delayed(main)(config, num_groups, prior, ts_stopping=ts_stopping,
+                             case=case)
+        # calc = main(config, num_groups, prior, ts_stopping=ts_stopping,
+        #             case=case)
         calculations.append(calc)
 
     df = delayed(pd.DataFrame.from_records)(calculations)
     with ProgressBar():
+        num_workers = min(len(calculations), 10)
+        # df = df.compute(num_workers=num_workers, get=multiprocessing.get)
         df = df.compute(num_workers=1, get=get)
+    # df = pd.DataFrame.from_records(calculations)
 
     # Plotting
     for (case, ts_stopping), group in df.groupby(['case', 'ts_stopping']):
@@ -505,10 +473,12 @@ if __name__ == '__main__':
             axs_ratio[composition] = fig.add_subplot(gs[1, idx], sharex=axs_flux[composition])
         prior_groupby = group.groupby('prior')
         marker_iter = iter('.^x*')
-        ls_iter = iter(['-', ':', '-.'])
+        ls_iter = iter(['-', ':', '-.', '--'])
+        initial_flux_test, initial_flux_err_stat_test, initial_flux_err_sys_test = {}, {}, {}
         for prior_idx, (prior, df_group) in enumerate(prior_groupby):
             marker = next(marker_iter)
             ls = next(ls_iter)
+            label = priors_labels[priors.index(prior)]
             for idx, composition in enumerate(comp_list + ['total']):
                 ax_flux = axs_flux[composition]
                 ax_ratio = axs_ratio[composition]
@@ -520,36 +490,50 @@ if __name__ == '__main__':
                 true_flux = df_group['true_flux_{}'.format(composition)].values[0]
                 true_flux_err_stat = df_group['true_flux_err_stat_{}'.format(composition)].values[0]
                 true_flux_err_sys = df_group['true_flux_err_sys_{}'.format(composition)].values[0]
-
-                ax_flux.errorbar(energybins.log_energy_midpoints, true_flux, yerr=true_flux_err_stat,
-                                 color=true_color, ls='None', marker='*',
-                                 label='True flux', alpha=0.8)
+                if prior_idx == 0:
+                    ax_flux.errorbar(energybins.log_energy_midpoints, true_flux, yerr=true_flux_err_stat,
+                                     color=true_color, ls='None', marker='*',
+                                     label='True flux', alpha=0.8)
 
                 # Unfolded flux
                 flux = df_group['flux_{}'.format(composition)].values[0]
                 flux_err_stat = df_group['flux_err_stat_{}'.format(composition)].values[0]
                 flux_err_sys = df_group['flux_err_sys_{}'.format(composition)].values[0]
-                comp.plot_steps(energybins.log_energy_bins, flux, yerr=flux_err_sys,
-                                ax=ax_flux, alpha=0.4, fillalpha=0.4,
-                                color=color, ls=ls)
-                ax_flux.errorbar(energybins.log_energy_midpoints, flux, yerr=flux_err_stat,
-                                 color=color, ls='None', marker=marker,
-                                 label='Unfolded flux ({})'.format(prior), alpha=0.8)
+                if not plot_initial_flux:
+                    comp.plot_steps(energybins.log_energy_bins, flux, yerr=flux_err_sys,
+                                    ax=ax_flux, alpha=0.4, fillalpha=0.4,
+                                    color=color, ls=ls)
+                    ax_flux.errorbar(energybins.log_energy_midpoints, flux, yerr=flux_err_stat,
+                                     color=color, ls='None', marker=marker,
+                                     label='Unfolded flux ({})'.format(label), alpha=0.8)
 
-                # # Initial (pre-unfolding) flux
-                # flux = df_group['initial_flux_{}'.format(composition)].values[0]
-                # flux_err_stat = df_group['initial_flux_err_stat_{}'.format(composition)].values[0]
-                # flux_err_sys = df_group['initial_flux_err_sys_{}'.format(composition)].values[0]
-                # comp.plot_steps(energybins.log_energy_bins, flux, yerr=flux_err_sys,
-                #                 ax=ax_flux, alpha=0.4, fillalpha=0.4,
-                #                 color=color, ls=ls)
-                # ax_flux.errorbar(energybins.log_energy_midpoints, flux, yerr=flux_err_stat,
-                #                  color=color, ls='None', marker=marker,
-                #                  label='Initial flux ({})'.format(prior), alpha=0.8)
+                # Initial (pre-unfolding) flux
+                initial_flux = df_group['initial_flux_{}'.format(composition)].values[0]
+                initial_flux_err_stat = df_group['initial_flux_err_stat_{}'.format(composition)].values[0]
+                initial_flux_err_sys = df_group['initial_flux_err_sys_{}'.format(composition)].values[0]
 
+                # Sanity check that all the initial_flux (what goes into the unfolding)
+                # are the same for each prior.
+                if prior_idx == 0:
+                    initial_flux_test[composition] = initial_flux
+                    initial_flux_err_stat_test[composition] = initial_flux_err_stat
+                    initial_flux_err_sys_test[composition] = initial_flux_err_sys
+                else:
+                    np.testing.assert_allclose(initial_flux_test[composition], initial_flux)
+                    np.testing.assert_allclose(initial_flux_err_stat_test[composition], initial_flux_err_stat)
+                    np.testing.assert_allclose(initial_flux_err_sys_test[composition], initial_flux_err_sys)
+
+                if plot_initial_flux:
+                    comp.plot_steps(energybins.log_energy_bins, initial_flux, yerr=initial_flux_err_sys,
+                                    ax=ax_flux, alpha=0.4, fillalpha=0.4,
+                                    color=color, ls=ls)
+                    ax_flux.errorbar(energybins.log_energy_midpoints, initial_flux, yerr=initial_flux_err_stat,
+                                     color=color, ls='None', marker=marker,
+                                     label='Initial flux ({})'.format(label), alpha=0.8)
 
                 ax_flux.set_yscale("log", nonposy='clip')
                 ax_flux.set_xlim(6.4, 7.8)
+                ax_flux.set_ylim(1e3, 1e5)
                 ax_flux.grid(linestyle='dotted', which="both", lw=1)
                 ax_flux.legend(fontsize=8)
                 ax_flux.set_title(composition, fontsize=10)
@@ -561,16 +545,21 @@ if __name__ == '__main__':
                 plt.setp(ax_flux.get_xticklabels(), visible=False)
                 ax_flux.tick_params(axis='both', which='major', labelsize=10)
 
-                frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
-                                    flux, flux_err_stat, flux_err_sys,
-                                    true_flux, true_flux_err_stat, true_flux_err_sys)
+                if plot_initial_flux:
+                    frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
+                                        initial_flux, initial_flux_err_stat, initial_flux_err_sys,
+                                        true_flux, true_flux_err_stat, true_flux_err_sys)
+                else:
+                    frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
+                                        flux, flux_err_stat, flux_err_sys,
+                                        true_flux, true_flux_err_stat, true_flux_err_sys)
 
                 comp.plot_steps(energybins.log_energy_bins, frac_diff, yerr=frac_diff_sys,
                                 ax=ax_ratio, alpha=0.4, fillalpha=0.4,
                                 color=color, ls=ls)
                 ax_ratio.errorbar(energybins.log_energy_midpoints, frac_diff, yerr=frac_diff_stat,
                                   color=color, ls='None', marker=marker,
-                                  label='Unfolded flux ({})'.format(prior), alpha=0.8)
+                                  label='Flux ratio ({})'.format(label), alpha=0.8)
                 ax_ratio.axhline(0, ls='-.', lw=1, marker='None', color='k')
 
                 ax_ratio.grid(linestyle='dotted', which="both", lw=1)

@@ -13,6 +13,8 @@ import comptools as comp
 def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
            ts='ks', ts_stopping=0.01, **kwargs):
 
+    np.random.seed(2)
+
     if config_name is None:
         raise ValueError('config_name must be provided')
 

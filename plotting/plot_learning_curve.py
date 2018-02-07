@@ -22,6 +22,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_groups', dest='num_groups', type=int,
                         default=4, choices=[2, 3, 4],
                         help='Number of composition groups')
+    parser.add_argument('--pipeline', dest='pipeline',
+                        default='BDT',
+                        help='Type of composition classifier to use.')
     parser.add_argument('--cv', dest='cv',
                         default=10, type=int,
                         help='Number CV folds to run')
@@ -40,8 +43,10 @@ if __name__ == '__main__':
                                     log_energy_max=energybins.log_energy_max)
     feature_list, feature_labels = comp.get_training_features()
 
-    pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(args.config, args.num_groups)
     # pipeline_str = 'BDT_comp_{}_{}-groups'.format(args.config, args.num_groups)
+    pipeline_str = '{}_comp_{}_{}-groups'.format(args.pipeline, args.config,
+                                                 args.num_groups)
     pipeline = comp.get_pipeline(pipeline_str)
 
     # Get learning curve scores

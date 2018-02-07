@@ -7,6 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import zero_one_loss
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 import comptools as comp
 
 

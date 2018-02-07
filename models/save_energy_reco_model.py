@@ -27,17 +27,20 @@ if __name__ == '__main__':
     columns = feature_list + ['MC_log_energy']
 
     energybins = comp.get_energybins(config=args.config)
-    log_energy_min = 5.0
-    log_energy_max = None
+    # log_energy_min = 5.0
+    # log_energy_max = None
 
     df_sim_train, df_sim_test = comp.load_sim(config=args.config,
                                               energy_reco=False,
-                                              energy_cut_key='MC_log_energy',
-                                              log_energy_min=log_energy_min,
-                                              log_energy_max=log_energy_max,
+                                              # energy_cut_key='MC_log_energy',
+                                              log_energy_min=None,
+                                              log_energy_max=None,
                                               test_size=0.5)
-    pipeline.fit(df_sim_train[feature_list], df_sim_train['MC_log_energy'])
-    
+    X_train = df_sim_train[feature_list].values
+    y_train = df_sim_train['MC_log_energy'].values
+    pipeline.fit(X_train, y_train)
+
+
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:
     # http://scikit-learn.org/stable/modules/model_persistence.html#security-maintainability-limitations

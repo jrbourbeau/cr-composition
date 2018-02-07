@@ -1,7 +1,9 @@
 
 from __future__ import division
+import sys
 import pytest
 import numpy as np
+import pandas as pd
 from comptools.io import load_sim, load_data
 
 
@@ -47,3 +49,24 @@ def test_load_sim_energy_reco(energy_reco):
                   log_energy_min=None, log_energy_max=None)
 
     assert ('reco_log_energy' in df.columns) == energy_reco
+
+
+@pytest.mark.needs_data
+def test_load_sim_split():
+    df_train_0, df_test_0 = load_sim(config='IC86.2012',
+                                     energy_reco=False,
+                                     log_energy_min=None,
+                                     log_energy_max=None,
+                                     test_size=0.5)
+    n = 10
+    sys.stdout.write('\n')
+    for i in range(n):
+        sys.stdout.write('\rTesting load_sim {} of {}'.format(i+1, n))
+        sys.stdout.flush()
+        df_train, df_test = load_sim(config='IC86.2012',
+                                     energy_reco=False,
+                                     log_energy_min=None,
+                                     log_energy_max=None,
+                                     test_size=0.5)
+        pd.testing.assert_frame_equal(df_train_0, df_train)
+        pd.testing.assert_frame_equal(df_test_0, df_test)

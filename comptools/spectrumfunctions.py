@@ -92,19 +92,18 @@ counts_to_flux = get_flux
 
 
 @requires_icecube
-def model_flux(model='H3a', energy=None, num_groups=4):
+def _model_flux_weighting(model='H3a', energy=None, num_groups=4):
 
     comp_list = get_comp_list(num_groups=num_groups)
+
+    if energy is None:
+        energy = get_energybins().energy_midpoints
 
     model_names = ['H3a', 'H4a', 'Polygonato']
     assert model in model_names
     flux_models = [GaisserH3a(), GaisserH4a(), Hoerandel5()]
     model_dict = dict(zip(model_names, flux_models))
-
     flux = model_dict[model]
-
-    if energy is None:
-        energy = get_energybins().energy_midpoints
 
     p = PDGCode().values
     pdg_codes = np.array([2212, 1000020040, 1000080160, 1000260560])
@@ -135,3 +134,82 @@ def model_flux(model='H3a', energy=None, num_groups=4):
     flux_df['flux_total'] = flux_df.sum(axis=1)
 
     return flux_df
+
+
+def _model_flux_power_law(model='simple_power_law', energy=None, num_groups=4):
+
+    comp_list = get_comp_list(num_groups=num_groups)
+
+    if energy is None:
+        energy = get_energybins().energy_midpoints
+
+    if model == 'simple_power_law':
+        comp_flux = broken_power_law_flux(energy, energy_break=3e12)
+    else:
+        comp_flux = broken_power_law_flux(energy, energy_break=10**7.0)
+
+    flux_df = pd.DataFrame()
+    for composition in comp_list:
+        flux_df['flux_{}'.format(composition)] = comp_flux
+    flux_df['flux_total'] = flux_df.sum(axis=1)
+
+    return flux_df
+
+
+@requires_icecube
+def model_flux(model='H3a', energy=None, num_groups=4):
+
+    comp_list = get_comp_list(num_groups=num_groups)
+
+    weighting_models = ['H3a', 'H4a', 'Polygonato']
+    power_law_models = ['simple_power_law', 'broken_power_law']
+
+    if model in weighting_models:
+        flux_df = _model_flux_weighting(model=model, energy=energy,
+                                        num_groups=num_groups)
+    elif model in power_law_models:
+        flux_df = _model_flux_power_law(model=model, energy=energy,
+                                        num_groups=num_groups)
+    else:
+        raise ValueError('Invalid model name, {}, entered'.format(model))
+
+    return flux_df
+    #
+    # assert model in model_names
+    # flux_models = [GaisserH3a(), GaisserH4a(), Hoerandel5()]
+    # model_dict = dict(zip(model_names, flux_models))
+    #
+    # flux = model_dict[model]
+    #
+    # if energy is None:
+    #     energy = get_energybins().energy_midpoints
+    #
+    # p = PDGCode().values
+    # pdg_codes = np.array([2212, 1000020040, 1000080160, 1000260560])
+    # particle_names = [p[pdg_code].name for pdg_code in pdg_codes]
+    #
+    # group_names = np.array(composition_group_labels(particle_names,
+    #                                                 num_groups=num_groups))
+    #
+    # comp_to_pdg_list = {composition: pdg_codes[group_names == composition]
+    #                     for composition in comp_list}
+    #
+    # # Replace O16Nucleus with N14Nucleus + Al27Nucleus
+    # for composition, pdg_list in comp_to_pdg_list.items():
+    #     if 1000080160 in pdg_list:
+    #         pdg_list = pdg_list[pdg_list != 1000080160]
+    #         comp_to_pdg_list[composition] = np.append(pdg_list, [1000070140, 1000130270])
+    #     else:
+    #         continue
+    #
+    # flux_df = pd.DataFrame()
+    # for composition in comp_list:
+    #     comp_flux = []
+    #     for energy_mid in energy:
+    #         flux_energy_mid = flux(energy_mid, comp_to_pdg_list[composition]).sum()
+    #         comp_flux.append(flux_energy_mid)
+    #     flux_df['flux_{}'.format(composition)] = comp_flux
+    #
+    # flux_df['flux_total'] = flux_df.sum(axis=1)
+    #
+    # return flux_df

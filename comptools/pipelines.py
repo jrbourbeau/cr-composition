@@ -112,8 +112,10 @@ def get_pipeline(classifier_name='BDT'):
             loss='deviance', max_depth=3, n_estimators=100, random_state=2)
         steps.append(('classifier', classifier))
     elif classifier_name == 'BDT_comp_IC86.2012_4-groups':
-        classifier = GradientBoostingClassifier(
-            loss='deviance', max_depth=2, n_estimators=100, random_state=2)
+        classifier = GradientBoostingClassifier(loss='deviance',
+                                                max_depth=2,
+                                                n_estimators=100,
+                                                random_state=2)
         steps.append(('classifier', classifier))
 
     elif classifier_name == 'RF_comp_IC86.2012_4-groups':
@@ -200,12 +202,16 @@ def get_pipeline(classifier_name='BDT'):
 
 
     elif classifier_name == 'RF_energy_IC79.2010':
-        classifier = RandomForestRegressor(
-            n_estimators=100, max_depth=8, n_jobs=10, random_state=2)
+        classifier = RandomForestRegressor(n_estimators=100,
+                                           max_depth=8,
+                                           n_jobs=10,
+                                           random_state=2)
         steps.append(('classifier', classifier))
     elif classifier_name == 'RF_energy_IC86.2012':
-        classifier = RandomForestRegressor(
-            n_estimators=100, max_depth=7, n_jobs=10, random_state=2)
+        classifier = RandomForestRegressor(n_estimators=100,
+                                           max_depth=7,
+                                           n_jobs=10,
+                                           random_state=2)
         steps.append(('classifier', classifier))
     else:
         raise ValueError(

@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn.apionly as sns
 from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
 from ROOT import TH1F, TH2F, TFile
 import dask.array as da
 from dask.diagnostics import ProgressBar
@@ -225,10 +226,14 @@ if __name__ == '__main__':
     parser.add_argument('--num_groups', dest='num_groups', type=int,
                         default=4, choices=[2, 3, 4],
                         help='Number of composition groups')
+    parser.add_argument('--n_jobs', dest='n_jobs', type=int,
+                        default=20,
+                        help='Number of jobs to run in parallel')
     args = parser.parse_args()
 
     config = args.config
     num_groups = args.num_groups
+    n_jobs = args.n_jobs
 
     comp_list = comp.get_comp_list(num_groups=num_groups)
     energybins = comp.get_energybins(config=config)
@@ -237,28 +242,62 @@ if __name__ == '__main__':
 
     # Load simulation training/testing DataFrames
     print('Loading simulation training/testing DataFrames...')
-    df_sim_train, df_sim_test = comp.load_sim(config=config,
-                                              log_energy_min=log_energy_min,
-                                              log_energy_max=log_energy_max,
-                                              test_size=0.5)
+    # df_sim_train, df_sim_test = comp.load_sim(config=config,
+    #                                           log_energy_min=log_energy_min,
+    #                                           log_energy_max=log_energy_max,
+    #                                           test_size=0.5)
+    #
 
-    log_reco_energy_sim_test = df_sim_test['reco_log_energy']
-    log_true_energy_sim_test = df_sim_test['MC_log_energy']
+    df_sim = comp.load_sim(config=config,
+                           energy_reco=False,
+                           log_energy_min=None,
+                           log_energy_max=None,
+                           test_size=0.0,
+                           verbose=True)
+    df_sim_train = df_sim
+    df_sim_test = df_sim
+    # df_sim_train, df_sim_test = comp.load_sim(config=config,
+    #                                           energy_reco=False,
+    #                                           # log_energy_min=energybins.log_energy_min,
+    #                                           # log_energy_max=energybins.log_energy_max,
+    #                                           log_energy_min=None,
+    #                                           log_energy_max=None,
+    #                                           test_size=0.5,
+    #                                           verbose=True)
 
     feature_list, feature_labels = comp.get_training_features()
-    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+
+    # Energy reconstruction
+    # print('Fitting energy regressor...')
+    # energy_pipeline = comp.get_pipeline('RF_energy_{}'.format(config))
+    # energy_pipeline.fit(df_sim_train[feature_list].values,
+    #                     df_sim_train['MC_log_energy'].values)
+    print('Loading energy regressor...')
+    model_dict = comp.load_trained_model('RF_energy_{}'.format(config))
+    energy_pipeline = model_dict['pipeline']
+    for df in [df_sim_train, df_sim_test]:
+        df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
+        df['reco_energy'] = 10**df['reco_log_energy']
+
+
+
+    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline = comp.get_pipeline(pipeline_str)
 
-    # Fit composition classifier
-    print('Fitting composition classifier...')
-    X_train = df_sim_train[feature_list].values
-    y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
-    pipeline = pipeline.fit(X_train, y_train)
+    # # Fit composition classifier
+    # pipeline = comp.get_pipeline(pipeline_str)
+    # print('Fitting composition classifier...')
+    # X_train = df_sim_train[feature_list].values
+    # y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
+    # pipeline = pipeline.fit(X_train, y_train)
+
+    print('Loading composition classifier...')
+    model_dict = comp.load_trained_model(pipeline_str)
+    pipeline = model_dict['pipeline']
 
     # Load fitted effective area
     print('Loading detection efficiencies...')
@@ -280,7 +319,7 @@ if __name__ == '__main__':
     df_data = comp.load_data(config=config, columns=feature_list,
                              log_energy_min=log_energy_min,
                              log_energy_max=log_energy_max,
-                             n_jobs=15,
+                             n_jobs=n_jobs,
                              verbose=True)
 
     X_data = comp.io.dataframe_to_array(df_data, feature_list + ['reco_log_energy'])
@@ -296,7 +335,7 @@ if __name__ == '__main__':
     data_labels = da.map_blocks(comp.decode_composition_groups, data_predictions,
                                 dtype=str, num_groups=num_groups)
     with ProgressBar():
-        data_labels = data_labels.compute(num_workers=20)
+        data_labels = data_labels.compute(num_workers=n_jobs)
 
     # Get number of identified comp in each energy bin
     print('Formatting observed counts...')
@@ -323,12 +362,19 @@ if __name__ == '__main__':
     # plt.show()
 
     # Response matrix
+    df_sim_response = df_sim
+    df_sim_data = df_sim
+    # df_sim_response, df_sim_data = train_test_split(df_sim_test,
+    #                                                 test_size=0.5,
+    #                                                 shuffle=True,
+    #                                                 random_state=2)
+
+    log_reco_energy_sim_test = df_sim_response['reco_log_energy']
+    log_true_energy_sim_test = df_sim_response['MC_log_energy']
+
     print('Making response matrix...')
-    pred_target = pipeline.predict(df_sim_test[feature_list].values)
-    true_target = df_sim_test['comp_target_{}'.format(num_groups)].values
-    # true_comp = df_sim_test['comp_group_{}'.format(num_groups)].values
-    # pred_comp = np.array(comp.composition_encoding.decode_composition_groups(
-    #                         test_predictions, num_groups=num_groups))
+    pred_target = pipeline.predict(df_sim_response[feature_list].values)
+    true_target = df_sim_response['comp_target_{}'.format(num_groups)].values
     res_normalized, res_normalized_err = response_matrix(
                                             log_true_energy_sim_test,
                                             log_reco_energy_sim_test,
@@ -348,86 +394,69 @@ if __name__ == '__main__':
 
     # Priors array
     print('Calcuating priors...')
-    df_sim = comp.load_sim(config=config, test_size=0,
-                           log_energy_min=6.0,
-                           log_energy_max=8.3)
+    priors_list = ['H3a',
+                   'H4a',
+                   'Polygonato',
+                   'simple_power_law',
+                   'broken_power_law',
+                   ]
 
-    p = PDGCode().values
-    pdg_codes = np.array([2212, 1000020040, 1000080160, 1000260560])
-    particle_names = [p[pdg_code].name for pdg_code in pdg_codes]
-    group_names = np.array(comp.composition_encoding.composition_group_labels(
-                           particle_names, num_groups=num_groups))
-    comp_to_pdg_list = {composition: pdg_codes[group_names == composition]
-                        for composition in comp_list}
-    # Replace O16Nucleus with N14Nucleus + Al27Nucleus
-    for composition, pdg_list in comp_to_pdg_list.iteritems():
-        if 1000080160 in pdg_list:
-            pdg_list = pdg_list[pdg_list != 1000080160]
-            comp_to_pdg_list[composition] = np.append(pdg_list,
-                                                      [1000070140, 1000130270])
-        else:
-            continue
-    priors_list = ['H3a', 'H4a', 'Polygonato']
-
-    print('Making priors flux plot...')
     color_dict = comp.get_color_dict()
-    fig, ax = plt.subplots()
-    for flux, name, marker in zip([GaisserH3a(), GaisserH4a(), Hoerandel5()],
-                                  priors_list,
-                                  '.^*o'):
+    # fig, ax = plt.subplots()
+    for prior_name, marker in zip(priors_list, '.^*ox'):
+        model_fluxes = comp.model_flux(model=prior_name,
+                                       energy=energybins.energy_midpoints,
+                                       num_groups=num_groups)
         for composition in comp_list:
-            comp_flux = []
-            for energy_mid in energybins.energy_midpoints:
-                flux_energy_mid = flux(energy_mid,
-                                       comp_to_pdg_list[composition]).sum()
-                comp_flux.append(flux_energy_mid)
-            # Normalize flux in each energy bin to a probability
-            comp_flux = np.asarray(comp_flux)
-            prior_key = '{}_flux_{}'.format(name, composition)
+            comp_flux = model_fluxes['flux_{}'.format(composition)].values
+            prior_key = '{}_flux_{}'.format(prior_name, composition)
             unfolding_df[prior_key] = comp_flux
 
-            # Plot result
-            ax.plot(energybins.log_energy_midpoints,
-                    energybins.energy_midpoints**2.7*comp_flux,
-                    color=color_dict[composition], alpha=0.75,
-                    marker=marker, ls=':',
-                    label='{} ({})'.format(name, composition))
-    ax.set_yscale("log", nonposy='clip')
-    ax.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$')
-    ylabel = '$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$'
-    ax.set_ylabel(ylabel)
-    ax.grid()
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
-    priors_outfile = os.path.join(
-                            comp.paths.figures_dir, 'unfolding',
-                            'priors_flux_{}-groups.png'.format(num_groups))
-    comp.check_output_dir(priors_outfile)
-    plt.savefig(priors_outfile)
-    plt.show()
+    #         # Plot result
+    #         ax.plot(energybins.log_energy_midpoints,
+    #                 energybins.energy_midpoints**2.7*comp_flux,
+    #                 color=color_dict[composition], alpha=0.75,
+    #                 marker=marker, ls=':',
+    #                 label='{} ({})'.format(prior_name, composition))
+    # ax.set_yscale("log", nonposy='clip')
+    # ax.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$')
+    # ylabel = '$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$'
+    # ax.set_ylabel(ylabel)
+    # ax.grid()
+    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
+    # priors_outfile = os.path.join(
+    #                         comp.paths.figures_dir, 'unfolding',
+    #                         'priors_flux_{}-groups.png'.format(num_groups))
+    # comp.check_output_dir(priors_outfile)
+    # plt.savefig(priors_outfile)
+    # plt.show()
 
     print('Making PyUnfold formatted DataFrame...')
-    formatted_df = pd.DataFrame()
-    counts_formatted = []
-    priors_formatted = defaultdict(list)
-    for index, row in unfolding_df.iterrows():
-        for composition in comp_list:
-            counts_formatted.append(row['counts_{}'.format(composition)])
-            for priors_name in priors_list:
-                p = row['{}_flux_{}'.format(priors_name, composition)]
-                priors_formatted[priors_name].append(p)
+    num_cause_bins = num_groups * len(energybins.energy_midpoints)
+    formatted_df = pd.DataFrame({'counts': np.empty(num_cause_bins),
+                                 'counts_err': np.empty(num_cause_bins),
+                                 'efficiencies': efficiencies,
+                                 'efficiencies_err': efficiencies_err,
+                                 })
 
-    formatted_df['counts'] = counts_formatted
-    formatted_df['counts_err'] = np.sqrt(counts_formatted)
+    for idx, composition in enumerate(comp_list):
+        formatted_df.loc[idx::num_groups, 'counts'] = unfolding_df['counts_{}'.format(composition)]
+        formatted_df.loc[idx::num_groups, 'counts_err'] = np.sqrt(unfolding_df['counts_{}'.format(composition)])
 
-    formatted_df['efficiencies'] = efficiencies
-    formatted_df['efficiencies_err'] = efficiencies_err
+    priors_formatted = {prior_name: np.empty(num_cause_bins) for prior_name in priors_list}
+    for prior_name in priors_list:
+        for idx, composition in enumerate(comp_list):
+            comp_flux = unfolding_df['{}_flux_{}'.format(prior_name, composition)]
+            priors_formatted[prior_name][idx::num_groups] = comp_flux
 
-    for key, value in priors_formatted.iteritems():
-        formatted_df[key+'_flux'] = value
-        formatted_df[key+'_prior'] = formatted_df[key+'_flux'] / formatted_df[key+'_flux'].sum()
+    for prior_name, prior_flux in priors_formatted.iteritems():
+        formatted_df['{}_flux'.format(prior_name)] = prior_flux
+        # Normalize prior flux in each energy bin to a probability
+        formatted_df['{}_prior'.format(prior_name)] = prior_flux / prior_flux.sum()
 
     formatted_df.index.rename('log_energy_bin_idx', inplace=True)
 
+    # Test that priors sum to 1 (can be used as probabilities)
     prior_cols = [col for col in formatted_df.columns if 'prior' in col]
     prior_sums = formatted_df[prior_cols].sum()
     np.testing.assert_allclose(prior_sums, np.ones_like(prior_sums))

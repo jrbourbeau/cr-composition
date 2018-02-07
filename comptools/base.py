@@ -60,15 +60,21 @@ def get_paths(username=None):
                   'condor_scratch_dir',
                   'figures_dir',
                   'project_root',
+                  'virtualenv_dir',
                   ]
     PathObject = namedtuple('PathType', path_names)
 
-    metaproject = '/data/user/{}/metaprojects/icerec/V05-01-00'.format(username)
-    comp_data_dir = '/data/user/{}/composition'.format(username)
-    condor_data_dir = '/data/user/{}/composition/condor'.format(username)
-    condor_scratch_dir = '/scratch/{}/composition/condor'.format(username)
-    figures_dir = '/home/{}/public_html/figures/composition'.format(username)
-    project_root = '/home/{}/cr-composition'.format(username)
+    data_user_dir = os.path.abspath(os.path.join(os.sep, 'data', 'user', username))
+    home_dir = os.path.abspath(os.path.join(os.sep, 'home', username))
+    scratch_dir = os.path.abspath(os.path.join(os.sep, 'scratch', username))
+
+    metaproject = os.path.join(data_user_dir, 'metaprojects', 'icerec', 'V05-01-00')
+    comp_data_dir = os.path.join(data_user_dir, 'composition')
+    condor_data_dir = os.path.join(data_user_dir, 'composition', 'condor')
+    condor_scratch_dir = os.path.join(scratch_dir, 'composition', 'condor')
+    figures_dir = os.path.join(home_dir, 'public_html', 'figures', 'composition')
+    project_root = os.path.join(home_dir, 'cr-composition')
+    virtualenv_dir = os.path.join(home_dir, 'cr-composition', 'env')
 
     # Create instance of PathObject with appropriate path information
     paths = PathObject(metaproject=metaproject,
@@ -76,7 +82,8 @@ def get_paths(username=None):
                        condor_data_dir=condor_data_dir,
                        condor_scratch_dir=condor_scratch_dir,
                        figures_dir=figures_dir,
-                       project_root=project_root)
+                       project_root=project_root,
+                       virtualenv_dir=virtualenv_dir)
 
     return paths
 
@@ -218,6 +225,7 @@ def get_training_features(feature_list=None):
     # Features used in the 3-year analysis
     if feature_list is None:
         feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+        # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
         # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'log_d4r_peak_energy', 'log_d4r_peak_sigma']
         # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'median_inice_radius', 'd4r_peak_energy']
         # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'FractionContainment_Laputop_InIce']
@@ -242,7 +250,7 @@ def get_training_features(feature_list=None):
                   'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
                   'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
                   'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
-                  'lap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
+                  'lap_cos_zenith': '$\cos(\\theta)$',
                   'LLHlap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
                   'LLHLF_cos_zenith': '$\cos(\\theta_{\mathrm{LLH+COG}})$',
                   'lap_chi2': '$\chi^2_{\mathrm{Lap}}/\mathrm{n.d.f}$',
@@ -268,7 +276,7 @@ def get_training_features(feature_list=None):
                   'log_dEdX': '$\mathrm{\log_{10}(dE/dX)}$',
                   'eloss_1500_strong': 'dE/dX (strong)',
                   'num_millipede_particles': '$N_{\mathrm{mil}}$',
-                  'avg_inice_radius': '$\mathrm{R_{\mu \ bundle}}$',
+                  'avg_inice_radius': '$\mathrm{\langle R_{\mu} \\rangle }$',
                   'invqweighted_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
