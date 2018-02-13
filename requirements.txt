@@ -1,29 +1,6 @@
-# Analysis requirements
-six
-numpy
-pandas
-tables
-matplotlib
-dask
-scikit-learn
-h5py
-ipython
-matplotlib
-seaborn
-jupyter
-xgboost
-scipy
-mlxtend
-pyprind
-pycondor
-
-# Testing requirements
-pytest
-
-# Documentation requirements
-sphinx
-sphinx_rtd_theme
-numpydoc
+-r requirements/default.txt
+-r requirements/docs.txt
+-r requirements/test.txt
 
 # Install comptools package
 -e .
