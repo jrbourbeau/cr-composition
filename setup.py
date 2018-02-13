@@ -3,8 +3,9 @@ from setuptools import setup
 
 VERSION = '0.0.1'
 
-with open('requirements.txt') as fid:
-    INSTALL_REQUIRES = [l.strip() for l in fid.readlines() if l]
+with open('requirements.txt', 'r') as f:
+    INSTALL_REQUIRES = [l.strip() for l in f.readlines() if l]
+    print('INSTALL_REQUIRES = {}'.format(INSTALL_REQUIRES))
 
 setup(
     name='comptools',
@@ -12,5 +13,5 @@ setup(
     description='Python tools for cosmic-ray composition analysis',
     author='James Bourbeau',
     packages=['comptools'],
-    install_requires=INSTALL_REQUIRES,
+    install_requires=INSTALL_REQUIRES
 )

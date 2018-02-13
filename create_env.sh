@@ -11,8 +11,8 @@ echo "pip version:"
 pip --version
 echo ""
 
-echo "Installing dependencies from requirements.txt..."
-pip install -r requirements.txt
+echo "Installing comptools Python package..."
+pip install -e .
 echo ""
 
 echo "Successfully created the virtual environment for this analysis!"

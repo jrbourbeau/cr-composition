@@ -1,3 +1,27 @@
--r requirements/default.txt
--r requirements/docs.txt
--r requirements/test.txt
+# Analysis requirements
+six
+numpy
+pandas
+tables
+matplotlib
+dask
+scikit-learn
+h5py
+ipython
+matplotlib
+seaborn
+jupyter
+xgboost
+scipy
+mlxtend
+pyprind
+pycondor
+
+# Testing requirements
+pytest
+flake8
+
+# Documentation requirements
+sphinx
+numpydoc
+sphinx_rtd_theme
