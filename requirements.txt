@@ -1,19 +1,27 @@
+# Analysis requirements
 six
 numpy
 pandas
 tables
 matplotlib
-dask
+dask[complete]
 scikit-learn
 h5py
 ipython
 matplotlib
 seaborn
 jupyter
-pytest
 xgboost
 scipy
 mlxtend
 pyprind
 pycondor
--e .
+
+# Testing requirements
+pytest
+flake8
+
+# Documentation requirements
+sphinx
+numpydoc
+sphinx_rtd_theme
