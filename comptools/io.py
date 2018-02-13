@@ -194,7 +194,8 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
         df = df.compute(get=get, num_workers=n_jobs)
 
     if energy_reco:
-        model_dict = load_trained_model('RF_energy_{}'.format(config))
+        model_dict = load_trained_model('RF_energy_{}'.format(config),
+                                        return_metadata=True)
         pipeline = model_dict['pipeline']
         feature_list = list(model_dict['training_features'])
         df['reco_log_energy'] = pipeline.predict(df[feature_list])
@@ -370,16 +371,21 @@ def dataframe_to_X_y(df, feature_list, target='comp_target_2', drop_null=True):
     return X, y
 
 
-def load_trained_model(pipeline_str='BDT'):
+def load_trained_model(pipeline_str='BDT', return_metadata=False):
     """Function to load pre-trained model to avoid re-training
 
     Parameters
     ----------
     pipeline_str : str, optional
         Name of model to load (default is 'BDT').
+    return_metadata : bool, optional
+        Option to return metadata associated with saved model (e.g. list of
+        training features used, scikit-learn version, etc) (default is False).
 
     Returns
     -------
+    pipeline : sklearn.Pipeline
+        Trained scikit-learn pipeline.
     model_dict : dict
         Dictionary containing trained model as well as relevant metadata.
 
@@ -392,4 +398,7 @@ def load_trained_model(pipeline_str='BDT'):
 
     model_dict = joblib.load(model_file)
 
-    return model_dict
+    if return_metadata:
+        return model_dict
+    else:
+        return model_dict['pipeline']

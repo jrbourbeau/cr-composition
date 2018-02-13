@@ -33,10 +33,11 @@ def get_classified_fractions(df_train, df_test, pipeline_str=None, num_groups=4,
 
     # Fit pipeline and get mask for correctly identified events
     feature_list, feature_labels = comp.get_training_features()
-    pipeline = comp.get_pipeline(pipeline_str)
+    # pipeline = comp.get_pipeline(pipeline_str)
+    pipeline = comp.load_trained_model(pipeline_str)
     comp_target_str = 'comp_target_{}'.format(num_groups)
-    pipeline.fit(df_train[feature_list],
-                 df_train[comp_target_str])
+    # pipeline.fit(df_train[feature_list],
+    #              df_train[comp_target_str])
 
     test_predictions = pipeline.predict(df_test[feature_list])
     pred_comp = np.array(comp.decode_composition_groups(test_predictions,
@@ -102,8 +103,8 @@ if __name__ == '__main__':
     # pipeline_str = 'RF_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
+    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'voting_comp_{}_{}-groups'.format(config, num_groups)
 
     df_train, df_test = comp.load_sim(config=config,

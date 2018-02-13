@@ -225,28 +225,3 @@ def get_pipeline(classifier_name='BDT'):
     pipeline = Pipeline(steps)
 
     return pipeline
-
-
-def load_trained_model(pipeline_str='BDT'):
-    """Function to load pre-trained model to avoid re-training
-
-    Parameters
-    ----------
-    pipeline_str : str, optional
-        Name of model to load (default is 'BDT').
-
-    Returns
-    -------
-    model_dict : dict
-        Dictionary containing trained model as well as relevant metadata.
-
-    """
-    paths = get_paths()
-    model_file = os.path.join(paths.project_root, 'models',
-                              '{}.pkl'.format(pipeline_str))
-    if not os.path.exists(model_file):
-        raise IOError('There is no saved model file {}'.format(model_file))
-
-    model_dict = joblib.load(model_file)
-
-    return model_dict

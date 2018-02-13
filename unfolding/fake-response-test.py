@@ -16,7 +16,9 @@ from dask.diagnostics import ProgressBar
 
 import comptools as comp
 
-from save_pyunfold_format import save_pyunfold_root_file
+# import sys
+# sys.path.append('../')
+from save_pyunfold_format import save_pyunfold_root_file, response_matrix
 from run_unfolding import unfold
 
 
@@ -162,7 +164,9 @@ def main(config, num_groups, prior, ts_stopping, case):
         weights.loc[idx_log_energy, composition] = weight
 
         # Get predicted composition
-        pred_target = pipeline.predict(df_sim_bin[feature_list].values)
+        y_test = df_sim_bin['comp_target_{}'.format(num_groups)].values
+        pred_target = custom_predict(y_test, p=p, num_groups=num_groups)
+        # pred_target = pipeline.predict(df_sim_bin[feature_list].values)
         pred_comp = np.array(comp.decode_composition_groups(
                              pred_target, num_groups=num_groups))
         assert len(pred_comp) == df_sim_bin.shape[0]
@@ -209,14 +213,18 @@ def main(config, num_groups, prior, ts_stopping, case):
                                  'counts_err': counts_err_pyunfold,
                                  'efficiencies': efficiencies,
                                  'efficiencies_err': efficiencies_err})
-    formatted_file = os.path.join(os.getcwd(),
+    formatted_file = os.path.join(data_dir,
                                   'test_{}_{}_{}.hdf'.format(prior, case, ts_stopping))
     formatted_df.to_hdf(formatted_file, 'dataframe', mode='w')
 
-    root_file = os.path.join(os.getcwd(),
+    root_file = os.path.join(data_dir,
                              'test_{}_{}_{}.root'.format(prior, case, ts_stopping))
-    save_pyunfold_root_file(config=config, num_groups=num_groups,
-                            outfile=root_file, formatted_df_file=formatted_file)
+    save_pyunfold_root_file(config=config,
+                            num_groups=num_groups,
+                            outfile=root_file,
+                            formatted_df_file=formatted_file,
+                            res_mat_file=res_mat_outfile,
+                            res_mat_err_file=res_mat_err_outfile)
 
     if prior == 'Jeffreys':
         prior_pyunfold = 'Jeffreys'
@@ -287,6 +295,37 @@ def main(config, num_groups, prior, ts_stopping, case):
     return output
 
 
+def custom_predict(y, p=0.8, neighbor_weight=2.0, num_groups=4):
+    """Function to perform random composition classification
+    """
+    np.random.seed(2)
+    p_correct = p
+    y_pred = np.empty_like(y)
+    targets = list(range(num_groups))
+    probs = np.empty_like(targets, dtype=float)
+    for target in targets:
+        comp_mask = y == target
+        probs[target] = p_correct
+
+        not_target = [i for i in targets if i != target]
+
+        neighbors = [target - 1, target + 1]
+        neighbors = [i for i in neighbors if i >= 0 and i < num_groups]
+
+        not_neighbors = list(set(not_target).difference(neighbors))
+
+        weight = (1 - p_correct) / (len(not_neighbors) + neighbor_weight * len(neighbors))
+
+        probs[not_neighbors] = weight
+        probs[neighbors] = neighbor_weight * weight
+
+        # Get custom composition classification
+        y_pred_target = np.random.choice(targets, size=comp_mask.sum(), p=probs)
+        y_pred[comp_mask] = y_pred_target
+
+    return y_pred
+
+
 if __name__ == '__main__':
 
     description = ('Script to run analysis on a known '
@@ -299,20 +338,25 @@ if __name__ == '__main__':
     parser.add_argument('--num_groups', dest='num_groups', type=int,
                         default=4, choices=[2, 3, 4],
                         help='Detector configuration')
-    parser.add_argument('--ts_stopping', dest='ts_stopping', type=float,
-                        default=0.01,
-                        help='Testing statistic stopping condition')
+    parser.add_argument('--prob_correct', dest='prob_correct',
+                        type=float,
+                        default=0.8,
+                        help=('Probability event is correctly classified for '
+                              'custom composition classification'))
     args = parser.parse_args()
 
     color_dict = comp.get_color_dict()
 
     config = args.config
     num_groups = args.num_groups
-    ts_stopping = args.ts_stopping
+    p = args.prob_correct
 
     comp_list = comp.get_comp_list(num_groups=num_groups)
     energybins = comp.get_energybins(config)
     num_ebins = len(energybins.log_energy_midpoints)
+
+    data_dir = os.path.join(comp.paths.comp_data_dir, config, 'unfolding',
+                            'datachallenge')
 
     # Load simulation and train composition classifier
     # df_sim = comp.load_sim(config=config,
@@ -325,8 +369,6 @@ if __name__ == '__main__':
     # df_sim_test = df_sim
     df_sim_train, df_sim_test = comp.load_sim(config=config,
                                               energy_reco=False,
-                                              # log_energy_min=energybins.log_energy_min,
-                                              # log_energy_max=energybins.log_energy_max,
                                               log_energy_min=None,
                                               log_energy_max=None,
                                               test_size=0.5,
@@ -337,10 +379,6 @@ if __name__ == '__main__':
     # Energy reconstruction
     print('Loading energy regressor...')
     energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
-    # energy_pipeline = model_dict['pipeline']
-    # energy_pipeline = comp.get_pipeline('RF_energy_{}'.format(config))
-    # energy_pipeline.fit(df_sim_train[feature_list].values,
-    #                     df_sim_train['MC_log_energy'].values)
     for df in [df_sim_train, df_sim_test]:
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
@@ -353,14 +391,14 @@ if __name__ == '__main__':
     # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
 
-    # pipeline = comp.get_pipeline(pipeline_str)
-    # pipeline = pipeline.fit(df_sim_train[feature_list].values,
-    #                         df_sim_train['comp_target_{}'.format(num_groups)].values)
     pipeline = comp.load_trained_model(pipeline_str)
-    # pipeline = model_dict['pipeline']
 
     df_sim_response = df_sim_test
     df_sim_data = df_sim_test
+
+    # df_sim_response = df_sim
+    # df_sim_data = df_sim
+
     # df_sim_response, df_sim_data = train_test_split(df_sim_test,
     #                                                 test_size=0.5,
     #                                                 shuffle=True,
@@ -384,6 +422,39 @@ if __name__ == '__main__':
     for composition in comp_list+['total']:
         eff_area[composition] = df_eff['eff_median_{}'.format(composition)].values * thrown_area
         eff_area_err[composition] = df_eff['eff_err_low_{}'.format(composition)].values * thrown_area
+
+    # Format for PyUnfold response matrix use
+    efficiencies = np.empty(num_groups * len(energybins.energy_midpoints))
+    efficiencies_err = np.empty(num_groups * len(energybins.energy_midpoints))
+    for idx, composition in enumerate(comp_list):
+        efficiencies[idx::num_groups] = df_eff['eff_median_{}'.format(composition)]
+        efficiencies_err[idx::num_groups] = df_eff['eff_err_low_{}'.format(composition)]
+
+
+    print('Making response matrix...')
+    y_test = df_sim_response['comp_target_{}'.format(num_groups)].values
+    pred_target = custom_predict(y_test, p=p, num_groups=num_groups)
+    true_target = y_test
+
+    log_reco_energy_sim_test = df_sim_response['reco_log_energy']
+    log_true_energy_sim_test = df_sim_response['MC_log_energy']
+
+    res_normalized, res_normalized_err = response_matrix(
+                                            log_true_energy_sim_test,
+                                            log_reco_energy_sim_test,
+                                            true_target, pred_target,
+                                            efficiencies, efficiencies_err,
+                                            energy_bins=energybins.log_energy_bins)
+    res_mat_outfile = os.path.join(
+                                data_dir,
+                                'response_{}-groups.txt'.format(num_groups))
+    res_mat_err_outfile = os.path.join(
+                                data_dir,
+                                'response_err_{}-groups.txt'.format(num_groups))
+    comp.check_output_dir(res_mat_outfile)
+    comp.check_output_dir(res_mat_err_outfile)
+    np.savetxt(res_mat_outfile, res_normalized)
+    np.savetxt(res_mat_err_outfile, res_normalized_err)
 
     # Define convenience functions that will convert counts to flux
     unfolded_counts_to_flux = partial(comp.get_flux,
@@ -424,12 +495,12 @@ if __name__ == '__main__':
     cases = [
              # 'constant',
              # 'constants',
-             'simple_power_law',
-             'broken_power_law_0',
-             # 'broken_power_law_1',
-             'broken_power_law_2',
+             # 'simple_power_law',
+             # 'broken_power_law_0',
+             # # 'broken_power_law_1',
+             # 'broken_power_law_2',
              'H4a',
-             'H3a',
+             # 'H3a',
              ]
     ts_values = [
                  # 0.01,
@@ -535,9 +606,9 @@ if __name__ == '__main__':
                 ax_flux.set_xlim(6.4, 7.8)
                 ax_flux.set_ylim(1e3, 1e5)
                 ax_flux.grid(linestyle='dotted', which="both", lw=1)
+                ax_flux.set_title(composition, fontsize=10)
                 if composition == 'total':
                     ax_flux.legend(fontsize=7, loc='lower left')
-                ax_flux.set_title(composition, fontsize=10)
                 if idx == 0:
                     ax_flux.set_ylabel('$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$',
                                        fontsize=10)
@@ -560,7 +631,7 @@ if __name__ == '__main__':
                                 color=color, ls=ls)
                 ax_ratio.errorbar(energybins.log_energy_midpoints, frac_diff, yerr=frac_diff_stat,
                                   color=color, ls='None', marker=marker,
-                                  label='Flux ratio ({})'.format(label), alpha=0.8)
+                                  label='Unfolded ({})'.format(label), alpha=0.8)
                 ax_ratio.axhline(0, ls='-.', lw=1, marker='None', color='k')
 
                 ax_ratio.grid(linestyle='dotted', which="both", lw=1)
@@ -574,6 +645,8 @@ if __name__ == '__main__':
                 ax_ratio.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$', fontsize=10)
                 ax_ratio.tick_params(axis='both', which='major', labelsize=10)
                 # ax_ratio.legend(fontsize=8)
+                # if composition == 'total':
+                #     ax_ratio.legend(fontsize=7, loc='upper left')
 
         plt.tight_layout()
         flux_outfile = os.path.join(figures_dir,
