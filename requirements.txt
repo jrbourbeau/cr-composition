@@ -4,7 +4,7 @@ numpy
 pandas
 tables
 matplotlib
-dask
+dask[complete]
 scikit-learn
 h5py
 ipython

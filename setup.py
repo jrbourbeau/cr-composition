@@ -5,7 +5,6 @@ VERSION = '0.0.1'
 
 with open('requirements.txt', 'r') as f:
     INSTALL_REQUIRES = [l.strip() for l in f.readlines() if l]
-    print('INSTALL_REQUIRES = {}'.format(INSTALL_REQUIRES))
 
 setup(
     name='comptools',
