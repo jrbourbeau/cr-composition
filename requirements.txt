@@ -1,3 +1,4 @@
+# Analysis requirements
 six
 numpy
 pandas
@@ -10,10 +11,19 @@ ipython
 matplotlib
 seaborn
 jupyter
-pytest
 xgboost
 scipy
 mlxtend
 pyprind
 pycondor
+
+# Testing requirements
+pytest
+
+# Documentation requirements
+sphinx
+sphinx_rtd_theme
+numpydoc
+
+# Install comptools package
 -e .
