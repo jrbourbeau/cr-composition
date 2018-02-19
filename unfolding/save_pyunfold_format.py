@@ -25,196 +25,6 @@ if 'cvmfs' in os.getenv('ROOTSYS'):
     raise comp.ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
 
 
-def column_normalize(res, res_err, efficiencies, efficiencies_err):
-    res_col_sum = res.sum(axis=0)
-    res_col_sum_err = np.array([np.sqrt(np.sum(res_err[:, i]**2))
-                                for i in range(res_err.shape[1])])
-
-    normalizations, normalizations_err = comp.ratio_error(
-                                            res_col_sum, res_col_sum_err,
-                                            efficiencies, efficiencies_err,
-                                            nan_to_num=True)
-
-    res_normalized, res_normalized_err = comp.ratio_error(
-                                            res, res_err,
-                                            normalizations, normalizations_err,
-                                            nan_to_num=True)
-
-    res_normalized = np.nan_to_num(res_normalized)
-    res_normalized_err = np.nan_to_num(res_normalized_err)
-
-    # Test that the columns of res_normalized equal efficiencies
-    np.testing.assert_allclose(res_normalized.sum(axis=0), efficiencies)
-
-    return res_normalized, res_normalized_err
-
-
-def response_matrix(true_energy, reco_energy, true_target, pred_target,
-                    efficiencies, efficiencies_err, energy_bins=None):
-
-    # Check that the input array shapes
-    inputs = [true_energy, reco_energy, true_target, pred_target]
-    assert len(set(map(np.ndim, inputs))) == 1
-    assert len(set(map(np.shape, inputs))) == 1
-
-    num_ebins = len(energy_bins) - 1
-    num_groups = len(np.unique([true_target, pred_target]))
-
-    true_ebin_indices = np.digitize(true_energy, energy_bins) - 1
-    reco_ebin_indices = np.digitize(reco_energy, energy_bins) - 1
-
-    res = np.zeros((num_ebins * num_groups, num_ebins * num_groups))
-    bin_iter = product(range(num_ebins), range(num_ebins),
-                       range(num_groups), range(num_groups))
-    for true_ebin, reco_ebin, true_target_bin, pred_target_bin in bin_iter:
-        # Get mask for events in true/reco energy and true/reco composition bin
-        mask = np.logical_and.reduce((true_ebin_indices == true_ebin,
-                                      reco_ebin_indices == reco_ebin,
-                                      true_target == true_target_bin,
-                                      pred_target == pred_target_bin))
-        res[num_groups * reco_ebin + pred_target_bin,
-            num_groups * true_ebin + true_target_bin] = mask.sum()
-    # Calculate statistical error on response matrix
-    res_err = np.sqrt(res)
-
-    # Normalize response matrix column-wise (i.e. $P(E|C)$)
-    res_normalized, res_normalized_err = column_normalize(res, res_err,
-                                                          efficiencies,
-                                                          efficiencies_err)
-
-    return res_normalized, res_normalized_err
-
-
-def save_pyunfold_root_file(config, num_groups, outfile=None,
-                            formatted_df_file=None, res_mat_file=None,
-                            res_mat_err_file=None):
-
-    unfolding_dir  = os.path.join(comp.paths.comp_data_dir, config,
-                                  'unfolding')
-    # Bin Definitions
-    binname = 'bin0'
-    # ROOT Output
-    if outfile is None:
-        outfile  = os.path.join(unfolding_dir,
-                                'pyunfold_input_{}-groups.root'.format(num_groups))
-    comp.check_output_dir(outfile)
-    if os.path.exists(outfile):
-        os.remove(outfile)
-
-    fout = TFile(outfile , 'UPDATE')
-    # Check if bin directory exists, quit if so, otherwise create it!
-    if not fout.GetDirectory(binname):
-        pdir = fout.mkdir(binname, 'Bin number 0')
-    else:
-        fout.Close()
-        print('\n=========================\n')
-        raise ValueError('Directory {} already exists!\nEither try another '
-                         'bin number or delete {} and start again. '
-                         'Exiting...\n'.format(binname, outfile))
-
-    # Go to home of ROOT file
-    fout.cd(binname)
-
-    if formatted_df_file is None:
-        formatted_df_file  = os.path.join(
-                unfolding_dir, 'unfolding-df_{}-groups.hdf'.format(num_groups))
-    df_flux = pd.read_hdf(formatted_df_file)
-    counts = df_flux['counts'].values
-    if 'counts_err' in df_flux:
-        counts_err = df_flux['counts_err'].values
-    else:
-        counts_err = None
-    efficiencies = df_flux['efficiencies'].values
-    efficiencies_err = df_flux['efficiencies_err'].values
-
-    cbins = len(counts)+1
-    carray = np.arange(cbins, dtype=float)
-
-    ebins = len(counts)+1
-    earray = np.arange(ebins, dtype=float)
-    cbins -= 1
-    ebins -= 1
-
-    # Load response matrix array
-    if res_mat_file is None:
-        res_mat_file = os.path.join(unfolding_dir,
-                                    'response_{}-groups.txt'.format(num_groups))
-    response_array = np.loadtxt(res_mat_file)
-    if res_mat_err_file is None:
-        res_mat_err_file = os.path.join(
-                                unfolding_dir,
-                                'response_err_{}-groups.txt'.format(num_groups))
-    response_err_array = np.loadtxt(res_mat_err_file)
-
-    # Measured effects distribution
-    ne_meas = TH1F('ne_meas', 'effects histogram', ebins, earray)
-    ne_meas.GetXaxis().SetTitle('Effects')
-    ne_meas.GetYaxis().SetTitle('Counts')
-    ne_meas.SetStats(0)
-    ne_meas.Sumw2()
-
-    # Prepare Combined Weighted Histograms - To be Normalized by Model After Filling
-    # Isotropic Weights of Causes - For Calculating Combined Species Efficiency
-    eff = TH1F('Eff', 'Non-Normed Combined Efficiency', cbins, carray)
-    eff.GetXaxis().SetTitle('Causes')
-    eff.GetYaxis().SetTitle('Efficiency')
-    eff.SetStats(0)
-    eff.Sumw2()
-
-    # Isotropic Weighted Mixing Matrix - For Calculating Combined Species MM
-    response = TH2F('MM', 'Weighted Combined Mixing Matrix',
-                    cbins, carray, ebins, earray)
-    response.GetXaxis().SetTitle('Causes')
-    response.GetYaxis().SetTitle('Effects')
-    response.SetStats(0)
-    response.Sumw2()
-
-    for ci in range(0, cbins):
-
-        # Fill measured effects histogram
-        ne_meas.SetBinContent(ci+1, counts[ci])
-        if counts_err is None:
-            ne_meas.SetBinError(ci+1, np.sqrt(counts[ci]))
-        else:
-            ne_meas.SetBinError(ci+1, counts_err[ci])
-        # print('ne_meas[{}] = {}'.format(ci+1, counts[ci]))
-
-        for ek in range(0, ebins):
-            # Fill response matrix entries
-            response.SetBinContent(ci+1, ek+1, response_array[ek][ci])
-            response.SetBinError(ci+1, ek+1, response_err_array[ek][ci])
-
-        # # Fill efficiency histogram from response matrix
-        # eff.SetBinContent(ci+1, np.sum(response_array[:, ci]))
-        # eff.SetBinError(ci+1, np.sqrt(np.sum(response_err_array[:, ci]**2)))
-        # Fill efficiency histogram from response matrix
-        eff.SetBinContent(ci+1, efficiencies[ci])
-        eff.SetBinError(ci+1, efficiencies_err[ci])
-
-    # Write measured effects histogram to file
-    ne_meas.Write()
-    # eff.Write()
-    # Write the cause and effect arrays to file
-    CARRAY = TH1F('CARRAY','Cause Array', cbins, carray)
-    CARRAY.GetXaxis().SetTitle('Causes')
-    EARRAY = TH1F('EARRAY','Effect Array', ebins, earray)
-    EARRAY.GetXaxis().SetTitle('Effects')
-    CARRAY.Write()
-    EARRAY.Write()
-    # Write efficiencies histogram to file
-    eff.Write()
-    # Write response matrix to file
-    response.Write()
-    # # Write model name to file
-    # modelName = 'whatever'
-    # MODELNAME = TNamed("ModelName",modelName)
-    # MODELNAME.Write()
-
-    fout.Write()
-    fout.Close()
-
-    # print('Saving output file {}'.format(outfile))
-
 if __name__ == '__main__':
 
     description = ('Save things needed for unfolding (e.g. response matrix, '
@@ -273,8 +83,8 @@ if __name__ == '__main__':
     # energy_pipeline.fit(df_sim_train[feature_list].values,
     #                     df_sim_train['MC_log_energy'].values)
     print('Loading energy regressor...')
-    model_dict = comp.load_trained_model('RF_energy_{}'.format(config))
-    energy_pipeline = model_dict['pipeline']
+    energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
+    # energy_pipeline = model_dict['pipeline']
     for df in [df_sim_train, df_sim_test]:
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
@@ -296,8 +106,8 @@ if __name__ == '__main__':
     # pipeline = pipeline.fit(X_train, y_train)
 
     print('Loading composition classifier...')
-    model_dict = comp.load_trained_model(pipeline_str)
-    pipeline = model_dict['pipeline']
+    pipeline = comp.load_trained_model(pipeline_str)
+    # pipeline = model_dict['pipeline']
 
     # Load fitted effective area
     print('Loading detection efficiencies...')
@@ -375,11 +185,13 @@ if __name__ == '__main__':
     print('Making response matrix...')
     pred_target = pipeline.predict(df_sim_response[feature_list].values)
     true_target = df_sim_response['comp_target_{}'.format(num_groups)].values
-    res_normalized, res_normalized_err = response_matrix(
-                                            log_true_energy_sim_test,
-                                            log_reco_energy_sim_test,
-                                            true_target, pred_target,
-                                            efficiencies, efficiencies_err,
+    res_normalized, res_normalized_err = comp.normalized_response_matrix(
+                                            true_energy=log_true_energy_sim_test,
+                                            reco_energy=log_reco_energy_sim_test,
+                                            true_target=true_target,
+                                            pred_target=pred_target,
+                                            efficiencies=efficiencies,
+                                            efficiencies_err=efficiencies_err,
                                             energy_bins=energybins.log_energy_bins)
     res_mat_outfile = os.path.join(
                             comp.paths.comp_data_dir, config, 'unfolding',

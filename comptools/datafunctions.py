@@ -1,8 +1,11 @@
 
 import os
 import glob
+from itertools import islice
 import pandas as pd
 import numpy as np
+
+from .base import partition
 
 
 def get_data_configs():
@@ -18,7 +21,7 @@ def _get_data_path_prefix(config=None):
     return prefix
 
 
-def get_run_generator(config=None):
+def run_generator(config=None):
 
     prefix = _get_data_path_prefix(config=config)
     file_pattern = os.path.join(prefix, '????/????/Run*')
@@ -28,10 +31,10 @@ def get_run_generator(config=None):
 
 
 def get_run_list(config=None):
-    return list(get_run_generator(config))
+    return list(run_generator(config))
 
 
-def get_level3_run_i3_files(config=None, run=None):
+def level3_data_files(config=None, run=None):
 
     if config not in get_data_configs():
         raise ValueError('Invalid configuration, {}'.format(config))
@@ -40,18 +43,76 @@ def get_level3_run_i3_files(config=None, run=None):
     data_file_pattern = os.path.join(
                             prefix,
                             '????/????/Run{}/Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(run, config, run))
-    run_files = glob.glob(data_file_pattern)
+    files = glob.glob(data_file_pattern)
 
-    # Extract (and validate) the GCD file for this run
-    GCD_file_pattern = os.path.join(prefix, '????/????/Run{}/*GCD*'.format(run, config, run))
-    GCD_files = glob.glob(GCD_file_pattern)
-    if len(GCD_files) != 1:
-        raise ValueError('Should have found only a single GCD files for run '
-                         '{} in {}, but found {}'.format(run, config, len(GCD_files)))
-    else:
-        GCD_file = GCD_files[0]
+    return files
 
-    return GCD_file, run_files
+
+def level3_data_file_batches(config, run, size, max_batches=None):
+    """Generates level3 data file paths in batches
+
+    Parameters
+    ----------
+    config : str
+        Detector configuration
+    run : str
+        Number of data taking run
+    size: int
+        Number of files in each batch
+    max_batches : int, optional
+        Option to only yield ``max_batches`` number of file batches (default
+        is to yield all batches)
+
+    Returns
+    -------
+    generator
+        Generator that yields batches of data files
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> from comptools.datafunctions import level3_data_file_batches
+    >>> list(level3_data_file_batches(config='IC86.2012', run='00122174', size=3, max_batches=2))
+    [('/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000050.i3.bz2',
+      '/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000110.i3.bz2',
+      '/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000000.i3.bz2'),
+     ('/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000330.i3.bz2',
+      '/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000150.i3.bz2',
+      '/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000240.i3.bz2')]
+
+    """
+
+    prefix = _get_data_path_prefix(config=config)
+    data_file_pattern = os.path.join(prefix, '????', '????',
+                                     'Run{}'.format(run),
+                                     'Level3_{}_data_Run{}_Subrun*.i3.bz2'.format(config, run))
+    files_iter = glob.iglob(data_file_pattern)
+
+    return partition(files_iter, size=size, max_batches=max_batches)
+
+
+def level3_data_GCD_file(config, run):
+
+    if config not in get_data_configs():
+        raise ValueError('Invalid configuration, {}'.format(config))
+
+    prefix = _get_data_path_prefix(config=config)
+    gcd_file_pattern = os.path.join(prefix, '????/????/Run{}/*GCD*'.format(run))
+    # Don't want to make any assumptions about how many files will be found
+    # when globing --> use iglob + next()
+    gcd_gen = glob.iglob(gcd_file_pattern)
+    try:
+        gcd_file = next(gcd_gen)
+    except StopIteration:
+        raise ValueError('Could not find a GCD file for {} run {}'.format(config, run))
+    try:
+        second_gcd_file = next(gcd_gen)
+        raise ValueError('Found more than one GCD file for {} run {}'.format(config, run))
+    except StopIteration:
+        pass
+
+    return gcd_file
 
 
 def get_level3_livetime_hist(config=None, month=None):

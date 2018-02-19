@@ -58,15 +58,10 @@ def test_load_sim_split():
                                      log_energy_min=None,
                                      log_energy_max=None,
                                      test_size=0.5)
-    n = 10
-    sys.stdout.write('\n')
-    for i in range(n):
-        sys.stdout.write('\rTesting load_sim {} of {}'.format(i+1, n))
-        sys.stdout.flush()
-        df_train, df_test = load_sim(config='IC86.2012',
+    df_train_1, df_test_1 = load_sim(config='IC86.2012',
                                      energy_reco=False,
                                      log_energy_min=None,
                                      log_energy_max=None,
                                      test_size=0.5)
-        pd.testing.assert_frame_equal(df_train_0, df_train)
-        pd.testing.assert_frame_equal(df_test_0, df_test)
+    pd.testing.assert_frame_equal(df_train_0, df_train_1)
+    pd.testing.assert_frame_equal(df_test_0, df_test_1)

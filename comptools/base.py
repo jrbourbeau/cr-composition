@@ -3,6 +3,8 @@ from collections import namedtuple
 import os
 import getpass
 from functools import wraps
+from types import NoneType
+from itertools import islice, count
 import numpy as np
 
 
@@ -13,7 +15,7 @@ def requires_icecube(func):
     def wrapper(*args, **kwargs):
         try:
             import icecube
-        except ImportError as e:
+        except ImportError:
             message = ('The function {} requires icecube software. '
                        'Make sure the env-shell.sh script has been '
                        'run.'.format(func.__name__))
@@ -121,28 +123,42 @@ def check_output_dir(outfile, makedirs=True):
     return
 
 
-def file_batches(files, n_files, n_batches=None):
-    '''Generates batches of files
+def partition(seq, size, max_batches=None):
+    '''Generates partitions of length ``size`` from the iterable ``seq``
 
     Parameters
     ----------
-    files : array-like
-        Iterable of files.
-    n_files : int
-        Number of files to have in each batch.
-    n_batches : int, optional
-        Limit the number of batches to yield (default is to yield all batches).
+    seq : iterable
+        Iterable object to be partitioned.
+    size : int
+        Number of items to have in each partition.
+    max_batches : int, optional
+        Limit the number of partitions to yield (default is to yield all
+        partitions).
 
-    Returns
+    Yields
     -------
-    batch : list
-        Batch of files of size n_files.
+    batch : tuple
+        Partition of ``seq`` that is (at most) ``size`` items long.
+
+    Examples
+    --------
+    >>> from comptools import partition
+    >>> list(partition(range(10), 3))
+    [(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]
+
     '''
-    for batch_num, i in enumerate(range(0, len(files), n_files), start=1):
-        if n_batches is not None and batch_num > n_batches:
-            raise StopIteration
-        batch = list(files[i:i+n_files])
-        yield batch
+    if not isinstance(max_batches, (int, NoneType)):
+        raise TypeError('max_batches must either be an integer or None, '
+                        'got {}'.format(type(max_batches)))
+
+    seq_iter = iter(seq)
+    for num_batches in islice(count(), max_batches):
+        batch = tuple(islice(seq_iter, size))
+        if len(batch) == 0:
+            return
+        else:
+            yield batch
 
 
 class ComputingEnvironemtError(Exception):

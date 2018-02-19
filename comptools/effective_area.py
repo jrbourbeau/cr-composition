@@ -9,7 +9,7 @@ except ImportError as e:
     pass
 
 from .base import requires_icecube
-from .simfunctions import get_level3_sim_files
+from .simfunctions import level3_sim_files
 from .io import load_sim
 
 
@@ -103,8 +103,7 @@ def calculate_effective_area_vs_energy(df_sim, energy_bins, verbose=True):
     # comp_counter = collections.Counter([sim_to_comp(sim) for sim in simlist])
     # print('comp_counter = {}'.format(comp_counter))
     for i, sim in enumerate(simlist):
-        gcd_file, sim_files = get_level3_sim_files(sim)
-        num_files = len(sim_files)
+        num_files = len(level3_sim_files(sim))
         if verbose:
             print('Simulation set {}: {} files'.format(sim, num_files))
         if i == 0:

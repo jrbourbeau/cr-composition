@@ -1,7 +1,7 @@
 
 import os
 import glob
-from itertools import chain
+from itertools import chain, izip_longest
 import numpy as np
 
 try:
@@ -9,7 +9,7 @@ try:
 except ImportError as e:
     pass
 
-from .base import requires_icecube
+from .base import requires_icecube, partition
 
 
 def comp2mass(composition):
@@ -128,28 +128,66 @@ def _get_level3_sim_file_pattern(sim):
     config = sim_to_config(sim)
     if config == 'IC79.2010':
         config = 'IC79'
-    prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
+    prefix = os.path.abspath(os.path.join(os.sep, 'data', 'ana', 'CosmicRay',
+                                          'IceTop_level3', 'sim', config))
     sim_file_pattern = os.path.join(prefix, str(sim), 'Level3_*.i3.gz')
 
     return sim_file_pattern
 
 
-def get_level3_sim_files(sim, just_gcd=False):
+def level3_sim_files(sim, files_per_batch=None, max_batches=None):
 
-    # Get GCD file
+    files = glob.glob(_get_level3_sim_file_pattern(sim))
+    return files
+
+
+def level3_sim_file_batches(sim, size, max_batches=None):
+    """Generates level3 simulation file paths in batches
+
+    Parameters
+    ----------
+    sim : int
+        Simulation dataset (e.g. 7006, 7241)
+    size: int
+        Number of files in each batch
+    max_batches : int, optional
+        Option to only yield ``max_batches`` number of file batches (default
+        is to yield all batches)
+
+    Returns
+    -------
+    generator
+        Generator that yields batches of simulation files
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> from comptools.simfunctions import level3_sim_file_batches
+    >>> list(level3_sim_file_batches(7241, size=3, max_batches=2))
+    [('/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005347.i3.gz',
+      '/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005393.i3.gz',
+      '/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run009678.i3.gz'),
+     ('/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run001015.i3.gz',
+      '/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run002597.i3.gz',
+      '/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run007939.i3.gz')]
+
+    """
+
+    files_iter = glob.iglob(_get_level3_sim_file_pattern(sim))
+
+    return partition(files_iter, size=size, max_batches=max_batches)
+
+
+def level3_sim_GCD_file(sim):
+
     config = sim_to_config(sim)
     if config == 'IC79.2010':
         config = 'IC79'
     prefix = '/data/ana/CosmicRay/IceTop_level3/sim/{}'.format(config)
-    gcd_file = os.path.join(prefix, 'GCD/Level3_{}_GCD.i3.gz'.format(sim))
-    if just_gcd:
-        return gcd_file
+    gcd_file = os.path.join(prefix, 'GCD', 'Level3_{}_GCD.i3.gz'.format(sim))
 
-    files = glob.glob(_get_level3_sim_file_pattern(sim))
-    # Don't forget to sort files
-    files = sorted(files)
-
-    return gcd_file, files
+    return gcd_file
 
 
 def get_level3_sim_files_iterator(sim_list):

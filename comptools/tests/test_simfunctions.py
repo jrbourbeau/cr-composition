@@ -1,13 +1,8 @@
 
 import pytest
-from comptools.simfunctions import (get_level3_sim_files, get_sim_dict,
+from comptools.simfunctions import (level3_sim_files, get_sim_dict,
                                     get_sim_configs, config_to_sim,
                                     sim_to_config)
-
-
-def test_get_level3_sim_files_unpacking_fail():
-    with pytest.raises(ValueError):
-        gcd_file, files = get_level3_sim_files(12360, just_gcd=True)
 
 
 def test_get_sim_dict_configs():

@@ -10,9 +10,8 @@ Example usages:
 """
 
 import os
-from itertools import chain
+from itertools import chain, islice
 import argparse
-import pyprind
 import pycondor
 
 import comptools as comp
@@ -25,7 +24,7 @@ if os.getenv('I3_BUILD') is None:
             'Make sure source the env-shell.sh script in your '
             'icecube metaproject build directory before running '
             'process.py')
-if 'cvmfs' not in os.getenv('ROOTSYS'):
+elif 'cvmfs' not in os.getenv('ROOTSYS'):
     raise ComputingEnvironemtError(
             'CVMFS ROOT must be used for i3 file processing')
 
@@ -77,10 +76,7 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
         # Ensure that save_hdf5_job completes before save_df_job
         save_df_job.add_parent(save_hdf5_job)
 
-        # Get config and simulation files
         config = comp.simfunctions.sim_to_config(sim)
-        gcd, i3_files = comp.simfunctions.get_level3_sim_files(sim)
-        # Set up output directory
         outdir = os.path.join(comp.paths.comp_data_dir, config,
                               'i3_hdf_sim')
         # Split file list into smaller batches for submission
@@ -89,8 +85,8 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
             n_batches = 2
         else:
             n_batches = None
-
-        for files in comp.file_batches(i3_files, n, n_batches):
+        gcd = comp.level3_sim_GCD_file(sim)
+        for files in comp.level3_sim_file_batches(sim, size=n, max_batches=n_batches):
             # Name output hdf5 file
             start_index = files[0].find('Run') + 3
             end_index = files[0].find('.i3.gz')
@@ -166,21 +162,19 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
     # Ensure that save_df_job completes before save_df_job
     save_df_job.add_parent(save_hdf5_job)
 
-    run_list = comp.datafunctions.get_run_list(config)
+    run_gen = comp.datafunctions.run_generator(config)
     if test:
-        run_list = run_list[:2]
+        run_gen = islice(run_gen, 2)
         n_batches = 2
     else:
         n_batches = None
 
     save_df_input_files = []
-    bar = pyprind.ProgBar(len(run_list),
-                          title='Adding {} data jobs'.format(config))
-    for run in run_list:
+    for run in run_gen:
         # Get files associated with this run
-        gcd, run_files = comp.datafunctions.get_level3_run_i3_files(
-                                                        config=config, run=run)
-        data_file_batches = comp.file_batches(run_files, n, n_batches)
+        gcd = comp.level3_data_GCD_file(config, run)
+        data_file_batches = comp.level3_data_file_batches(config, run, size=n,
+                                                          max_batches=n_batches)
         for idx, files in enumerate(data_file_batches):
             # Name output hdf5 file
             out = '{}/data_{}_part_{:02d}.hdf5'.format(outdir, run, idx)
@@ -190,8 +184,6 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
             save_arg = '--type data --files {} -o {}'.format(files_str, out)
             save_hdf5_job.add_arg(save_arg, retry=3)
             save_df_input_files.append(out)
-        bar.update()
-    print(bar)
     yield save_hdf5_job
 
     df_outfile = os.path.join(comp.paths.comp_data_dir, config,
