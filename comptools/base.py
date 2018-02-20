@@ -3,7 +3,6 @@ from collections import namedtuple
 import os
 import getpass
 from functools import wraps
-from types import NoneType
 from itertools import islice, count
 import numpy as np
 
@@ -148,7 +147,7 @@ def partition(seq, size, max_batches=None):
     [(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]
 
     '''
-    if not isinstance(max_batches, (int, NoneType)):
+    if not isinstance(max_batches, (int, type(None))):
         raise TypeError('max_batches must either be an integer or None, '
                         'got {}'.format(type(max_batches)))
 

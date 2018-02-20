@@ -1,7 +1,7 @@
 
 import os
 import glob
-from itertools import chain, izip_longest
+from itertools import chain
 import numpy as np
 
 try:
@@ -226,8 +226,6 @@ def run_to_energy_bin(run, sim):
     energy_bin : float
         Corresponding CORSIKA energy bin for run.
     '''
-    # ebin_first = 5.0
-    # ebin_last = 7.9
     ebin_first, ebin_last = sim_to_energy_bins(sim)
     # Taken from simulation production webpage:
     # http://simprod.icecube.wisc.edu/cgi-bin/simulation/cgi/cfg?dataset=12360
