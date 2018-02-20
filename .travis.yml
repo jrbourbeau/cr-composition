@@ -19,10 +19,12 @@ install:
     - conda update -q conda
     # Useful for debugging any issues with conda
     - conda info -a
-    - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
-    - conda env update -n test-environment --file environment.yml
+    - conda create --quiet --name test-environment python=$TRAVIS_PYTHON_VERSION
+    - conda env update --quiet --name test-environment --file environment.yml
     - source activate test-environment
-    - pip install svn+http://code.icecube.wisc.edu/svn/sandbox/james.bourbeau/PyUnfold
+    # Install PyUnfold
+    - echo "store-plaintext-passwords = no" >> /home/travis/.subversion/servers
+    - pip install svn+http://$SVN_USER:$SVN_PASS:code.icecube.wisc.edu/svn/sandbox/james.bourbeau/PyUnfold
     - pip install -e .
 script:
     - pytest -m "not needs_data" comptools
