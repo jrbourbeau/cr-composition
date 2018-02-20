@@ -24,7 +24,9 @@ install:
     - source activate test-environment
     # Install PyUnfold
     - echo "store-plaintext-passwords = no" >> /home/travis/.subversion/servers
-    - pip install svn+http://$SVN_USER:$SVN_PASS:code.icecube.wisc.edu/svn/sandbox/james.bourbeau/PyUnfold
+    - svn co http://code.icecube.wisc.edu/svn/sandbox/james.bourbeau/PyUnfold --username $SVN_USER --password $SVN_PASS
+    - pip install ./PyUnfold
+    # Install comptools package
     - pip install -e .
 script:
     - pytest -m "not needs_data" comptools
