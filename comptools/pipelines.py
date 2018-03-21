@@ -71,6 +71,66 @@ class LineCutClassifier(BaseEstimator, ClassifierMixin):
         return y
 
 
+class CustomClassifier(BaseEstimator, ClassifierMixin):
+
+    def __init__(self, p=0.8, neighbor_weight=2.0, num_groups=4,
+                 random_state=2):
+        self.p = p
+        self.neighbor_weight = neighbor_weight
+        self.num_groups = num_groups
+        self.random_state = random_state
+
+    def fit(self, X, y):
+        # Check that X and y have correct shape
+        X, y = check_X_y(X, y)
+        # Store the classes seen during fit
+        self.classes_ = unique_labels(y)
+        if not len(self.classes_) == self.num_groups:
+            raise ValueError('Must have {} classes'.format(self.num_groups))
+
+        self.X_ = X
+        self.y_ = y
+
+        return self
+
+    def predict(self, y):
+        """Performs random composition classification
+        """
+        # # Check is fit had been called
+        # check_is_fitted(self, ['X_', 'y_'])
+
+        # Input validation
+        # y = check_array(y)
+
+        # Want to get reproducible random classifications
+        np.random.seed(self.random_state)
+        p_correct = self.p
+        y_pred = np.empty_like(y)
+        targets = list(range(self.num_groups))
+        probs = np.empty_like(targets, dtype=float)
+        for target in targets:
+            comp_mask = y == target
+            probs[target] = p_correct
+
+            not_target = [i for i in targets if i != target]
+
+            neighbors = [target - 1, target + 1]
+            neighbors = [i for i in neighbors if i >= 0 and i < self.num_groups]
+
+            not_neighbors = list(set(not_target).difference(neighbors))
+
+            weight = (1 - p_correct) / (len(not_neighbors) + self.neighbor_weight * len(neighbors))
+
+            probs[not_neighbors] = weight
+            probs[neighbors] = self.neighbor_weight * weight
+
+            # Get custom composition classification
+            y_pred_target = np.random.choice(targets, size=comp_mask.sum(), p=probs)
+            y_pred[comp_mask] = y_pred_target
+
+        return y_pred
+
+
 def get_pipeline(classifier_name='BDT'):
     """ Function to get classifier pipeline.
     """
@@ -121,6 +181,15 @@ def get_pipeline(classifier_name='BDT'):
                                                 n_estimators=100,
                                                 random_state=2)
         steps.append(('classifier', classifier))
+    elif 'CustomClassifier' in classifier_name:
+        hyperparams_str = classifier_name.split('_')[1:]
+        assert len(hyperparams_str) == 3, 'Too many CustomClassifier hyperparams. Got {} but should have 3.'.format(len(hyperparams_str))
+        p = float(hyperparams_str[0])
+        neighbor_weight = float(hyperparams_str[1])
+        num_groups = int(hyperparams_str[2])
+        classifier = CustomClassifier(p=p, neighbor_weight=neighbor_weight,
+                                      num_groups=num_groups, random_state=2)
+        steps.append(('classifier', classifier))
 
     elif classifier_name == 'RF_comp_IC86.2012_4-groups':
         classifier = RandomForestClassifier(max_depth=10, n_estimators=500,
@@ -150,10 +219,17 @@ def get_pipeline(classifier_name='BDT'):
         steps.append(('scaler', StandardScaler()))
         steps.append(('classifier', classifier))
 
+    elif classifier_name == 'xgboost_comp_IC86.2012_2-groups':
+        classifier = XGBClassifier(max_depth=2,
+                                   n_estimators=100,
+                                   # subsample=0.75,
+                                   random_state=2)
+        steps.append(('classifier', classifier))
+
     elif classifier_name == 'xgboost_comp_IC86.2012_4-groups':
         classifier = XGBClassifier(max_depth=2,
                                    n_estimators=100,
-                                   subsample=0.75,
+                                   # subsample=0.75,
                                    random_state=2)
         steps.append(('classifier', classifier))
 

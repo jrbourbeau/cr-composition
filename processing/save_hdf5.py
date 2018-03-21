@@ -114,8 +114,15 @@ if __name__ == "__main__":
     # for i in ['1_60']:
     #     keys += ['avg_inice_radius_'+i, 'std_inice_radius_'+i,
     #              'qweighted_inice_radius_'+i, 'invqweighted_inice_radius_'+i]
-    for i in ['1_60']:
-        keys += ['NChannels_'+i, 'NHits_'+i, 'InIce_charge_'+i, 'max_qfrac_'+i]
+    dom_numbers = [1, 15, 30, 45, 60]
+    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])
+    # for i in ['1_60']:
+        key = '{}_{}'.format(min_DOM, max_DOM)
+        keys += ['NChannels_'+key,
+                 'NHits_'+key,
+                 'InIce_charge_'+key,
+                 'max_qfrac_'+key,
+                 ]
     keys += ['FractionContainment_Laputop_IceTop',
              'FractionContainment_Laputop_InIce']
     keys += ['lap_fitstatus_ok']
@@ -162,13 +169,24 @@ if __name__ == "__main__":
              If=lambda frame: IT_pulses in frame)
 
     # Add total inice charge to frame
-    tray.Add(icetray_software.AddInIceCharge,
-             pulses=inice_pulses, min_DOM=1, max_DOM=60,
-             If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
+    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
+        tray.Add(icetray_software.AddInIceCharge,
+                 pulses=inice_pulses,
+                 min_DOM=min_DOM,
+                 max_DOM=max_DOM,
+                 If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
+    # tray.Add(icetray_software.AddInIceCharge,
+    #          pulses=inice_pulses,
+    #          min_DOM=1,
+    #          max_DOM=60,
+    #          If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
 
     # Add InIce muon radius to frame
     tray.Add(icetray_software.AddInIceMuonRadius,
-             track='Laputop', pulses='CoincLaputopCleanedPulses', min_DOM=1, max_DOM=60,
+             track='Laputop',
+             pulses='CoincLaputopCleanedPulses',
+             min_DOM=1,
+             max_DOM=60,
              If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', 'CoincLaputopCleanedPulses') )
 
     # Add fraction containment to frame

@@ -30,6 +30,7 @@ def get_test_counts(case, composition, num_groups, energy_midpoints,
         counts = np.array([1000]*len(log_energy_midpoints))
     elif case == 'simple_power_law':
         comp_flux = comp.broken_power_law_flux(energy_midpoints,
+                                               gamma_before=-3.0,
                                                energy_break=3e12)
         comp_flux = scale * comp_flux
         counts = flux_to_counts_scaling * comp_flux
@@ -230,6 +231,7 @@ def main(config, num_groups, prior, ts_stopping, case, p=None):
 
     if prior == 'Jeffreys':
         prior_pyunfold = 'Jeffreys'
+        print('Jeffreys prior')
     else:
         model_flux = comp.model_flux(model=prior,
                                      energy=energybins.energy_midpoints,
@@ -237,6 +239,8 @@ def main(config, num_groups, prior, ts_stopping, case, p=None):
         prior_pyunfold = np.empty(num_groups * len(energybins.energy_midpoints))
         for idx, composition in enumerate(comp_list):
             prior_pyunfold[idx::num_groups] = model_flux['flux_{}'.format(composition)]
+        # Want to ensure prior_pyunfold are probabilities (i.e. they add to 1)
+        prior_pyunfold = prior_pyunfold / np.sum(prior_pyunfold)
 
     df_unfolding_iter = unfold(config_name=os.path.join(config, 'config.cfg'),
                                priors=prior_pyunfold,
@@ -281,6 +285,9 @@ def main(config, num_groups, prior, ts_stopping, case, p=None):
                                             composition=composition)
         true_flux_err_sys = np.zeros_like(true_flux)
 
+        output['initial_counts_{}'.format(composition)] = initial_counts
+        output['initial_counts_err_{}'.format(composition)] = initial_counts_err
+
         output['flux_{}'.format(composition)] = flux
         output['flux_err_stat_{}'.format(composition)] = flux_err_stat
         output['flux_err_sys_{}'.format(composition)] = flux_err_sys
@@ -308,9 +315,12 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
                                'datachallenge', '{}_case'.format(case),
                                'prior_comparisons',
                                'ts_stopping_{}'.format(ts_stopping))
+
+    # Make initial counts (pre-unfolding) plot
+    fig_counts, ax_counts = plt.subplots()
+
     fig = plt.figure(figsize=(12, 5))
-    gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1,
-                           hspace=0.075)
+    gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1, hspace=0.075)
     axs_flux, axs_ratio = {}, {}
     for idx, composition in enumerate(comp_list + ['total']):
         if idx == 0:
@@ -365,6 +375,20 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
                 initial_flux_test[composition] = initial_flux
                 initial_flux_err_stat_test[composition] = initial_flux_err_stat
                 initial_flux_err_sys_test[composition] = initial_flux_err_sys
+
+                initial_counts = df_group['initial_counts_{}'.format(composition)].values[0]
+                initial_counts_err = df_group['initial_counts_err_{}'.format(composition)].values[0]
+                comp.plot_steps(energybins.log_energy_bins, initial_counts, yerr=initial_counts_err,
+                                ax=ax_counts, alpha=0.8, fillalpha=0.4,
+                                color=color_dict[composition], label=composition)
+                ax_counts.set_yscale("log", nonposy='clip')
+                ax_counts.set_ylabel('Observed counts from BDT')
+                # ax_counts.set_ylabel('$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$')
+                ax_counts.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$')
+                ax_counts.set_xlim(6.4, 7.8)
+                ax_counts.grid()
+                ax_counts.legend()
+
             else:
                 np.testing.assert_allclose(initial_flux_test[composition], initial_flux)
                 np.testing.assert_allclose(initial_flux_err_stat_test[composition], initial_flux_err_stat)
@@ -426,6 +450,12 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
                                 'flux_ratio_{}-groups_{}-case.png'.format(num_groups, case))
     comp.check_output_dir(flux_outfile)
     plt.savefig(flux_outfile)
+
+    counts_outfile = os.path.join(figures_dir,
+                                 'counts_{}-groups_{}-case.png'.format(num_groups, case))
+    comp.check_output_dir(counts_outfile)
+    fig_counts.savefig(counts_outfile)
+
     # Don't want to consume too much memory by keeping too many figures open
     plt.close('all')
 
@@ -461,9 +491,99 @@ def custom_predict(y, p=0.8, neighbor_weight=2.0, num_groups=4):
     return y_pred
 
 
+def calculate_sample_weights(compositions, energies, model=None,
+                             compositon_weights=None,
+                             energy_spectrum_weights=None):
+
+    if not compositions.shape == energies.shape:
+        raise ValueError('compositions and energies must have the same shape, '
+                         'but got shapes {} and {}'.format(compositions.shape, energies.shape))
+
+    num_groups = len(np.unique(compositions))
+    assert num_groups in [2, 3, 4], 'Invalid number of groups, {}'.format(num_groups)
+
+    if model is not None:
+        sample_weight = calculate_model_sample_weights(compositions, energies, num_groups, model=model)
+    elif any([compositon_weights, energy_spectrum_weights]):
+        sample_weight = calculate_simple_sample_weights(compositions, energies, num_groups,
+                                                        compositon_weights=compositon_weights,
+                                                        energy_spectrum_weights=energy_spectrum_weights)
+    else:
+        raise ValueError('At least one of model, compositon_weights, '
+                         'or energy_spectrum_weights must not be None')
+
+    # Normalize such that sample_weight.sum() is 1
+    sample_weight = sample_weight / sample_weight.sum()
+
+    return sample_weight
+
+def calculate_simple_sample_weights(compositions, energies, num_groups, compositon_weights=None,
+                                    energy_spectrum_weights=None):
+
+    if not any([compositon_weights, energy_spectrum_weights]):
+        raise ValueError('Either compositon_weights or energy_spectrum_weights must be specified')
+
+    num_groups = len(np.unique(compositions))
+    assert len(compositon_weights) == num_groups
+    comp_list = comp.get_comp_list(num_groups=num_groups)
+    sample_weight = np.empty_like(energies, dtype=float)
+    # Weighting based on composition
+    if compositon_weights is not None:
+        compositon_weights = map(float, compositon_weights)
+        print('Using compositon_weights: {}'.format(compositon_weights))
+        for composition, comp_weight in zip(comp_list, compositon_weights):
+            comp_mask = compositions == composition
+            sample_weight[comp_mask] = comp_weight
+    # Weighting based on energy
+    if energy_spectrum_weights is not None:
+        # + 1 because the simulation was generated on an E^-1 spectrum
+        sample_weight = sample_weight * energies**(energy_spectrum_weights + 1)
+
+    return sample_weight
+
+
+def calculate_model_sample_weights(compositions, energies, num_groups, model='H4a'):
+
+    comp_list = comp.get_comp_list(num_groups=num_groups)
+    sample_weight = np.empty_like(energies, dtype=float)
+    models = ['H3a',
+              'H4a',
+              'simple_power_law',
+              'broken_power_law']
+    if model in models:
+        flux_df = comp.model_flux(model=model, energy=energies, num_groups=num_groups)
+        for composition in comp_list:
+            comp_mask = compositions == composition
+            comp_flux = flux_df.loc[comp_mask, 'flux_{}'.format(composition)].values
+            sample_weight[comp_mask] = comp_flux
+    else:
+        raise ValueError('Invalid model name, {}, entered.'.format(model))
+
+    return sample_weight
+
+
+def get_composition_pipeline(pipeline, p, use_sample_weights):
+    if p is None:
+        pipeline_str = '{}_comp_{}_{}-groups'.format(pipeline, config, num_groups)
+        pipeline = comp.load_trained_model(pipeline_str)
+    if use_sample_weights is not None:
+        model = use_sample_weights
+        pipeline_str = '{}_comp_{}_{}-groups'.format(pipeline, config, num_groups)
+        pipeline = comp.get_pipeline(pipeline_str)
+        compositions = df_sim_train['comp_group_{}'.format(num_groups)].values
+        energies = df_sim_train['reco_energy'].values
+        sample_weight = calculate_sample_weights(compositions, energies, model=model)
+        X = df_sim_train[feature_list].values
+        y = df_sim_train['comp_target_{}'.format(num_groups)].values
+        fit_params = {'classifier__sample_weight': sample_weight}
+        pipeline.fit(X, y, **fit_params)
+
+    return pipeline
+
+
 if __name__ == '__main__':
 
-    description = 'Script to run analysis on a known input flux'
+    description = 'Script to run unfolding analysis on known input fluxes'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--config', dest='config',
                         default='IC86.2012',
@@ -474,7 +594,17 @@ if __name__ == '__main__':
                         help='Detector configuration')
     parser.add_argument('--pipeline', dest='pipeline',
                         default='BDT',
-                        help='Composition classifier to use (e.g. "BDT", "LinearSVC", etc.)')
+                        help=('Composition classifier to use (e.g. "BDT", '
+                              '"LinearSVC", etc.)'))
+    parser.add_argument('--weights_model', dest='weights_model',
+                        default=None,
+                        help='Option to use sample weights when training composition classifier.')
+    parser.add_argument('--energy_spectrum_weights', dest='energy_spectrum_weights',
+                        default=None, type=float,
+                        help='Option to use sample weights when training composition classifier.')
+    parser.add_argument('--compositon_weights', dest='compositon_weights',
+                        default=None, nargs='*',
+                        help='Option to use sample weights when training composition classifier.')
     parser.add_argument('--prob_correct', dest='prob_correct',
                         type=float,
                         help=('Probability event is correctly classified for '
@@ -507,16 +637,32 @@ if __name__ == '__main__':
 
     feature_list, feature_labels = comp.get_training_features()
 
-    # Energy reconstruction
     print('Loading energy regressor...')
     energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
     for df in [df_sim_train, df_sim_test]:
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
 
-    # Composition classification
-    pipeline_str = '{}_comp_{}_{}-groups'.format(args.pipeline, config, num_groups)
-    pipeline = comp.load_trained_model(pipeline_str)
+    print('Loading or fitting composition classifier...')
+    if any([args.weights_model, args.energy_spectrum_weights, args.compositon_weights]):
+        model = args.weights_model
+        energy_spectrum_weights = args.energy_spectrum_weights
+        compositon_weights = args.compositon_weights
+
+        pipeline_str = '{}_comp_{}_{}-groups'.format(args.pipeline, config, num_groups)
+        pipeline = comp.get_pipeline(pipeline_str)
+        compositions = df_sim_train['comp_group_{}'.format(num_groups)].values
+        energies = df_sim_train['reco_energy'].values
+        sample_weight = calculate_sample_weights(compositions, energies, model=model,
+                                                 compositon_weights=compositon_weights,
+                                                 energy_spectrum_weights=energy_spectrum_weights)
+        X = df_sim_train[feature_list].values
+        y = df_sim_train['comp_target_{}'.format(num_groups)].values
+        fit_params = {'classifier__sample_weight': sample_weight}
+        pipeline.fit(X, y, **fit_params)
+    elif p is None:
+        pipeline_str = '{}_comp_{}_{}-groups'.format(args.pipeline, config, num_groups)
+        pipeline = comp.load_trained_model(pipeline_str)
 
     df_sim_response = df_sim_test
     df_sim_data = df_sim_test
@@ -602,34 +748,35 @@ if __name__ == '__main__':
                              scalingindex=2.7)
 
     priors = [
-              'Jeffreys',
-              'H4a',
-              'H3a',
-              # 'simple_power_law',
+              'simple_power_law',
               'broken_power_law',
+              # 'Jeffreys',
+              'H3a',
+              'H4a',
               ]
 
     priors_labels = [
-                      'Jeffreys',
-                      'H4a',
-                      'H3a',
-                      # 'Simple PL',
+                      'Simple PL',
                       'Broken PL',
+                      # 'Jeffreys',
+                      'H3a',
+                      'H4a',
                       ]
 
     cases = [
              # 'constant',
              'simple_power_law',
-             'broken_power_law_0',
-             # 'broken_power_law_1',
-             'broken_power_law_2',
+             # # 'broken_power_law_0',
+             # # 'broken_power_law_1',
+             # 'broken_power_law_2',
+             # 'H3a',
              'H4a',
-             'H3a',
              ]
     ts_values = [
                  # 0.01,
                  0.005,
-                 # 0.001,
+                 0.001,
+                 0.0005,
                  ]
 
     plot_initial_flux = False

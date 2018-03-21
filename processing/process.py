@@ -1,13 +1,4 @@
 #!/usr/bin/env python
-"""
-Script to process data and simulation .i3 files and save pandas.DataFrame
-objects used for this analysis.
-
-Example usages:
-    python process.py  --config IC86.2012
-    python process.py  --config IC86.2012 --sim
-    python process.py  --config IC86.2012 --data
-"""
 
 import os
 from itertools import chain, islice
@@ -18,18 +9,20 @@ import comptools as comp
 from comptools import ComputingEnvironemtError
 
 
-if os.getenv('I3_BUILD') is None:
-    raise ComputingEnvironemtError(
+try:
+    import icecube
+except ImportError:
+    raise ImportError(
             'Did not detect an active icecube software environment. '
             'Make sure source the env-shell.sh script in your '
             'icecube metaproject build directory before running '
             'process.py')
-elif 'cvmfs' not in os.getenv('ROOTSYS'):
-    raise ComputingEnvironemtError(
-            'CVMFS ROOT must be used for i3 file processing')
+
+if 'cvmfs' not in os.getenv('ROOTSYS'):
+    raise ComputingEnvironemtError('CVMFS ROOT must be used for i3 file processing')
 
 
-def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
+def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, testing=False):
     """Yields pycondor Jobs for simulation processing
 
     Parameters
@@ -44,7 +37,7 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
         Iterable of detector configurations.
     n : int, optional
         Batch size (default is 1000).
-    test : bool, optional
+    testing : bool, optional
         Option to run in testing mode (default is False).
 
     Yields
@@ -52,6 +45,10 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
     job : pycondor.Job
         Simulation Job to be included in processing Dagman.
     """
+    outdir = os.path.join(comp.paths.comp_data_dir,
+                          config,
+                          'i3_hdf_sim')
+
     save_df_name = 'save_df_sim_{}'.format(config.replace('.', '-'))
     save_df_job = pycondor.Job(name=save_df_name,
                                executable=save_df_ex,
@@ -59,8 +56,7 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
                                output=output,
                                log=log,
                                submit=submit,
-                               request_memory='3GB' if test else None,
-                               verbose=1)
+                               request_memory='3GB' if testing else None)
 
     save_df_input_files = []
     for sim in sims:
@@ -71,16 +67,13 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
                                      error=error,
                                      output=output,
                                      log=log,
-                                     submit=submit,
-                                     verbose=1)
+                                     submit=submit)
         # Ensure that save_hdf5_job completes before save_df_job
         save_df_job.add_parent(save_hdf5_job)
 
         config = comp.simfunctions.sim_to_config(sim)
-        outdir = os.path.join(comp.paths.comp_data_dir, config,
-                              'i3_hdf_sim')
         # Split file list into smaller batches for submission
-        if test:
+        if testing:
             n = 10
             n_batches = 2
         else:
@@ -92,7 +85,8 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
             end_index = files[0].find('.i3.gz')
             start = files[0][start_index:end_index]
             end = files[-1][start_index:end_index]
-            out = '{}/sim_{}_part{}-{}.hdf5'.format(outdir, sim, start, end)
+            out = os.path.join(outdir,
+                               'sim_{}_part{}-{}.hdf5'.format(outdir, sim, start, end))
             comp.check_output_dir(out)
 
             # Don't forget to insert GCD file at beginning of FileNameList
@@ -105,17 +99,19 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, test=False):
 
         yield save_hdf5_job
 
-    df_outfile = os.path.join(comp.paths.comp_data_dir, config,
+    df_outfile = os.path.join(comp.paths.comp_data_dir,
+                              config,
                               'sim_dataframe.hdf5')
     df_input_files_str = ' '.join(save_df_input_files)
-    df_arg = '--input {} --output {} --type sim --config {}'.format(
-        df_input_files_str, df_outfile, config)
+    df_arg = '--input {} --output {} --type sim --config {}'.format(df_input_files_str,
+                                                                    df_outfile,
+                                                                    config)
     save_df_job.add_arg(df_arg)
 
     yield save_df_job
 
 
-def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
+def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, testing=False):
     """Yields pycondor Jobs for data processing
 
     Parameters
@@ -128,7 +124,7 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
         Detector configuration.
     n : int, optional
         Batch size (default is 50).
-    test : bool, optional
+    testing : bool, optional
         Option to run in testing mode (default is False).
 
     Yields
@@ -157,13 +153,13 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, test=False):
                                output=output,
                                log=log,
                                submit=submit,
-                               request_memory='5GB' if test else None,
+                               request_memory='5GB' if testing else None,
                                verbose=1)
     # Ensure that save_df_job completes before save_df_job
     save_df_job.add_parent(save_hdf5_job)
 
     run_gen = comp.datafunctions.run_generator(config)
-    if test:
+    if testing:
         run_gen = islice(run_gen, 2)
         n_batches = 2
     else:
@@ -200,51 +196,64 @@ if __name__ == "__main__":
 
     description = 'Processes simulation and data .i3 files'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--type', dest='type',
+    parser.add_argument('--type',
+                        dest='type',
                         choices=['data', 'sim'],
-                        help=('Option to restring process to simulation only '
-                              'or data only'))
-    parser.add_argument('-d', '--date', dest='date',
+                        default=None,
+                        help=('Option to restrict processing to simulation '
+                              'or data files only. By default both will be '
+                              'included.'))
+    parser.add_argument('-d', '--date',
+                        dest='date',
                         help='Date to run over (mmyyyy)')
-    parser.add_argument('-c', '--config', dest='config',
+    parser.add_argument('-c', '--config',
+                        dest='config',
                         default='IC86.2012',
                         help='Detector configuration')
-    parser.add_argument('-s', '--sim', dest='sim',
-                        nargs='*', type=int,
+    parser.add_argument('-s', '--sim',
+                        dest='sim',
+                        nargs='*',
+                        type=int,
                         help='Simulation to run over')
-    parser.add_argument('--n_sim', dest='n_sim',
-                        type=int, default=1000,
-                        help=('Number of files to run per batch for '
-                              'simulation processing'))
-    parser.add_argument('--n_data', dest='n_data',
-                        type=int, default=50,
-                        help=('Number of files to run per batch for '
-                              'data processing'))
-    parser.add_argument('--test', dest='test',
+    parser.add_argument('--n_sim',
+                        dest='n_sim',
+                        type=int,
+                        default=1000,
+                        help='Number of files to run per batch for simulation processing')
+    parser.add_argument('--n_data',
+                        dest='n_data',
+                        type=int,
+                        default=50,
+                        help='Number of files to run per batch for data processing')
+    parser.add_argument('--testing',
+                        dest='testing',
                         action='store_true',
                         default=False,
-                        help='Option for running test off cluster')
-    parser.add_argument('--overwrite', dest='overwrite',
+                        help='Run processing on a small subset of files (useful for debugging)')
+    parser.add_argument('--overwrite',
+                        dest='overwrite',
                         action='store_true',
                         default=False,
                         help='Option for overwriting existing files.')
-    parser.add_argument('--maxjobs', dest='maxjobs',
-                        type=int, default=3000,
+    parser.add_argument('--maxjobs',
+                        dest='maxjobs',
+                        type=int,
+                        default=3000,
                         help='Maximum number of jobs to run at a given time.')
     args = parser.parse_args()
 
-    # Validate user inputs
-    if args.type not in ['sim', 'data', None]:
-        raise ValueError("Invalid processing type entered. Must be either "
-                         "'sim', 'data', or None.")
-    process_types = ['sim', 'data'] if args.type is None else args.type
+    if args.type is None:
+        process_types = ('sim', 'data')
+    else:
+        process_types = (args.type, )
 
+    # Want to make sure a valid config is entered for the given process_types
     sim_configs = comp.simfunctions.get_sim_configs()
     data_configs = comp.datafunctions.get_data_configs()
-    if 'sim' in process_types and args.config not in sim_configs:
-        raise ValueError('Invalid sim config {} entered'.format(args.config))
-    if 'data' in process_types and args.config not in data_configs:
-        raise ValueError('Invalid data config {} entered'.format(args.config))
+    for process_type, valid_configs in zip(('sim', 'data'),
+                                           (sim_configs, data_configs)):
+        if process_type in process_types and args.config not in valid_configs:
+            raise ValueError('Invalid {} config {} entered'.format(process_type, args.config))
 
     if 'sim' in process_types and not args.sim:
         args.sim = comp.simfunctions.config_to_sim(args.config)
@@ -271,14 +280,15 @@ if __name__ == "__main__":
                                config=args.config,
                                sims=args.sim,
                                n=args.n_sim,
-                               test=args.test)
+                               testing=args.testing)
         jobs.append(sim_gen)
     if 'data' in process_types:
         data_gen = gen_data_jobs(save_hdf5_ex, save_df_ex,
                                  config=args.config,
                                  n=args.n_data,
-                                 test=args.test)
+                                 testing=args.testing)
         jobs.append(data_gen)
+
     for job in chain.from_iterable(jobs):
         dag.add_job(job)
 

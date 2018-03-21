@@ -143,14 +143,22 @@ def _model_flux_power_law(model='simple_power_law', energy=None, num_groups=4):
     if energy is None:
         energy = get_energybins().energy_midpoints
 
-    if model == 'simple_power_law':
-        comp_flux = broken_power_law_flux(energy, energy_break=3e12)
-    else:
-        comp_flux = broken_power_law_flux(energy, energy_break=10**7.0)
-
     flux_df = pd.DataFrame()
     for composition in comp_list:
+        if model == 'simple_power_law':
+            comp_flux = broken_power_law_flux(energy, energy_break=3e12)
+        else:
+            # comp_flux = broken_power_law_flux(energy, energy_break=10**7.0)
+            if composition in ['PPlus', 'He4Nucleus', 'light']:
+                gamma_after = -4.0
+            else:
+                gamma_after = -3.0
+            comp_flux = broken_power_law_flux(energy,
+                                              energy_break=10**7.0,
+                                              gamma_before=-2.7,
+                                              gamma_after=gamma_after)
         flux_df['flux_{}'.format(composition)] = comp_flux
+
     flux_df['flux_total'] = flux_df.sum(axis=1)
 
     return flux_df

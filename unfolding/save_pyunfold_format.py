@@ -52,44 +52,23 @@ if __name__ == '__main__':
 
     # Load simulation training/testing DataFrames
     print('Loading simulation training/testing DataFrames...')
-    # df_sim_train, df_sim_test = comp.load_sim(config=config,
-    #                                           log_energy_min=log_energy_min,
-    #                                           log_energy_max=log_energy_max,
-    #                                           test_size=0.5)
-    #
-
-    df_sim = comp.load_sim(config=config,
-                           energy_reco=False,
-                           log_energy_min=None,
-                           log_energy_max=None,
-                           test_size=0.0,
-                           verbose=True)
-    df_sim_train = df_sim
-    df_sim_test = df_sim
-    # df_sim_train, df_sim_test = comp.load_sim(config=config,
-    #                                           energy_reco=False,
-    #                                           # log_energy_min=energybins.log_energy_min,
-    #                                           # log_energy_max=energybins.log_energy_max,
-    #                                           log_energy_min=None,
-    #                                           log_energy_max=None,
-    #                                           test_size=0.5,
-    #                                           verbose=True)
+    df_sim_train, df_sim_test = comp.load_sim(config=config,
+                                              energy_reco=False,
+                                              # log_energy_min=energybins.log_energy_min,
+                                              # log_energy_max=energybins.log_energy_max,
+                                              log_energy_min=None,
+                                              log_energy_max=None,
+                                              test_size=0.5,
+                                              verbose=True)
 
     feature_list, feature_labels = comp.get_training_features()
 
     # Energy reconstruction
-    # print('Fitting energy regressor...')
-    # energy_pipeline = comp.get_pipeline('RF_energy_{}'.format(config))
-    # energy_pipeline.fit(df_sim_train[feature_list].values,
-    #                     df_sim_train['MC_log_energy'].values)
     print('Loading energy regressor...')
     energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
-    # energy_pipeline = model_dict['pipeline']
     for df in [df_sim_train, df_sim_test]:
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
-
-
 
     pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
@@ -98,16 +77,8 @@ if __name__ == '__main__':
     # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
 
-    # # Fit composition classifier
-    # pipeline = comp.get_pipeline(pipeline_str)
-    # print('Fitting composition classifier...')
-    # X_train = df_sim_train[feature_list].values
-    # y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
-    # pipeline = pipeline.fit(X_train, y_train)
-
     print('Loading composition classifier...')
     pipeline = comp.load_trained_model(pipeline_str)
-    # pipeline = model_dict['pipeline']
 
     # Load fitted effective area
     print('Loading detection efficiencies...')
@@ -115,18 +86,18 @@ if __name__ == '__main__':
                     comp.paths.comp_data_dir, config, 'efficiencies',
                     'efficiency_fit_num_groups_{}.hdf'.format(num_groups))
     df_eff = pd.read_hdf(eff_path)
-    # Format for PyUnfold response matrix use
-    efficiencies, efficiencies_err = [], []
-    for idx, row in df_eff.iterrows():
-        for composition in comp_list:
-            efficiencies.append(row['eff_median_{}'.format(composition)])
-            efficiencies_err.append(row['eff_err_low_{}'.format(composition)])
-    efficiencies = np.asarray(efficiencies)
-    efficiencies_err = np.asarray(efficiencies_err)
+    # Format detection efficiencies for PyUnfold use
+    efficiencies = np.empty(num_groups * len(energybins.energy_midpoints))
+    efficiencies_err = np.empty(num_groups * len(energybins.energy_midpoints))
+    for idx, composition in enumerate(comp_list):
+        efficiencies[idx::num_groups] = df_eff['eff_median_{}'.format(composition)]
+        efficiencies_err[idx::num_groups] = df_eff['eff_err_low_{}'.format(composition)]
 
     # Load data DataFrame
     print('Loading data DataFrame...')
-    df_data = comp.load_data(config=config, columns=feature_list,
+    df_data = comp.load_data(config=config,
+                             columns=feature_list,
+                             energy_cut_key='reco_log_energy',
                              log_energy_min=log_energy_min,
                              log_energy_max=log_energy_max,
                              n_jobs=n_jobs,
@@ -137,7 +108,7 @@ if __name__ == '__main__':
     X_data = X_data[:, :-1]
 
     print('Making composition predictions on data...')
-    # Apply pipeline.predict method in chunks
+    # Apply pipeline.predict method in chunks for parallel predicting
     X_da = da.from_array(X_data, chunks=(len(X_data) // 100, X_data.shape[1]))
     data_predictions = da.map_blocks(pipeline.predict, X_da,
                                      dtype=int, drop_axis=1)
@@ -152,39 +123,23 @@ if __name__ == '__main__':
     unfolding_df = pd.DataFrame()
     for composition in comp_list:
         comp_mask = data_labels == composition
-        counts = np.histogram(log_energy_data[comp_mask],
-                              bins=energybins.log_energy_bins)[0]
+        counts, _ = np.histogram(log_energy_data[comp_mask],
+                                 bins=energybins.log_energy_bins)
         counts_err = np.sqrt(counts)
         unfolding_df['counts_' + composition] = counts
         unfolding_df['counts_' + composition + '_err'] = counts_err
 
-    unfolding_df['counts_total'] = np.histogram(
-                                        log_energy_data,
-                                        bins=energybins.log_energy_bins)[0]
+    unfolding_df['counts_total'], _ = np.histogram(log_energy_data,
+                                                   bins=energybins.log_energy_bins)
     unfolding_df['counts_total_err'] = np.sqrt(unfolding_df['counts_total'])
     unfolding_df.index.rename('log_energy_bin_idx', inplace=True)
 
-    # fig, ax = plt.subplots()
-    # for composition in comp_list:
-    #     ax.plot(unfolding_df['counts_{}'.format(composition)], color=color_dict[composition])
-    # ax.set_yscale("log", nonposy='clip')
-    # ax.grid()
-    # plt.show()
-
     # Response matrix
-    df_sim_response = df_sim
-    df_sim_data = df_sim
-    # df_sim_response, df_sim_data = train_test_split(df_sim_test,
-    #                                                 test_size=0.5,
-    #                                                 shuffle=True,
-    #                                                 random_state=2)
-
-    log_reco_energy_sim_test = df_sim_response['reco_log_energy']
-    log_true_energy_sim_test = df_sim_response['MC_log_energy']
-
     print('Making response matrix...')
-    pred_target = pipeline.predict(df_sim_response[feature_list].values)
-    true_target = df_sim_response['comp_target_{}'.format(num_groups)].values
+    log_reco_energy_sim_test = df_sim_test['reco_log_energy'].values
+    log_true_energy_sim_test = df_sim_test['MC_log_energy'].values
+    pred_target = pipeline.predict(df_sim_test[feature_list].values)
+    true_target = df_sim_test['comp_target_{}'.format(num_groups)].values
     res_normalized, res_normalized_err = comp.normalized_response_matrix(
                                             true_energy=log_true_energy_sim_test,
                                             reco_energy=log_reco_energy_sim_test,
@@ -193,12 +148,10 @@ if __name__ == '__main__':
                                             efficiencies=efficiencies,
                                             efficiencies_err=efficiencies_err,
                                             energy_bins=energybins.log_energy_bins)
-    res_mat_outfile = os.path.join(
-                            comp.paths.comp_data_dir, config, 'unfolding',
-                            'response_{}-groups.txt'.format(num_groups))
-    res_mat_err_outfile = os.path.join(
-                            comp.paths.comp_data_dir, config, 'unfolding',
-                            'response_err_{}-groups.txt'.format(num_groups))
+    res_mat_outfile = os.path.join(comp.paths.comp_data_dir, config, 'unfolding',
+                                  'response_{}-groups.txt'.format(num_groups))
+    res_mat_err_outfile = os.path.join(comp.paths.comp_data_dir, config, 'unfolding',
+                                       'response_err_{}-groups.txt'.format(num_groups))
     comp.check_output_dir(res_mat_outfile)
     comp.check_output_dir(res_mat_err_outfile)
     np.savetxt(res_mat_outfile, res_normalized)
@@ -208,13 +161,11 @@ if __name__ == '__main__':
     print('Calcuating priors...')
     priors_list = ['H3a',
                    'H4a',
-                   'Polygonato',
                    'simple_power_law',
                    'broken_power_law',
                    ]
 
     color_dict = comp.get_color_dict()
-    # fig, ax = plt.subplots()
     for prior_name, marker in zip(priors_list, '.^*ox'):
         model_fluxes = comp.model_flux(model=prior_name,
                                        energy=energybins.energy_midpoints,
@@ -223,25 +174,6 @@ if __name__ == '__main__':
             comp_flux = model_fluxes['flux_{}'.format(composition)].values
             prior_key = '{}_flux_{}'.format(prior_name, composition)
             unfolding_df[prior_key] = comp_flux
-
-    #         # Plot result
-    #         ax.plot(energybins.log_energy_midpoints,
-    #                 energybins.energy_midpoints**2.7*comp_flux,
-    #                 color=color_dict[composition], alpha=0.75,
-    #                 marker=marker, ls=':',
-    #                 label='{} ({})'.format(prior_name, composition))
-    # ax.set_yscale("log", nonposy='clip')
-    # ax.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$')
-    # ylabel = '$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$'
-    # ax.set_ylabel(ylabel)
-    # ax.grid()
-    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=False)
-    # priors_outfile = os.path.join(
-    #                         comp.paths.figures_dir, 'unfolding',
-    #                         'priors_flux_{}-groups.png'.format(num_groups))
-    # comp.check_output_dir(priors_outfile)
-    # plt.savefig(priors_outfile)
-    # plt.show()
 
     print('Making PyUnfold formatted DataFrame...')
     num_cause_bins = num_groups * len(energybins.energy_midpoints)
@@ -281,4 +213,4 @@ if __name__ == '__main__':
                         format='table', mode='w')
 
     print('Saving PyUnfold input ROOT file...')
-    save_pyunfold_root_file(config, num_groups)
+    comp.save_pyunfold_root_file(config, num_groups)

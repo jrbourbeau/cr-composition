@@ -7,8 +7,7 @@ import pandas as pd
 import shutil
 
 import comptools as comp
-from comptools.composition_encoding import (composition_group_labels,
-                                            encode_composition_groups)
+from comptools.composition_encoding import composition_group_labels, encode_composition_groups
 
 
 def extract_dataframe(input_file, config, datatype):
@@ -27,19 +26,31 @@ def extract_dataframe(input_file, config, datatype):
                       'FractionContainment_Laputop_InIce',
                       'passed_IceTopQualityCuts',
                       'passed_InIceQualityCuts',
-                      'avg_inice_radius', 'std_inice_radius', 'median_inice_radius',
+                      'avg_inice_radius',
+                      'std_inice_radius',
+                      'median_inice_radius',
                       'frac_outside_one_std_inice_radius',
-                      'frac_outside_two_std_inice_radius']
+                      'frac_outside_two_std_inice_radius',
+                      ]
 
         for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
             value_keys += ['passed_{}'.format(cut)]
-        for i in ['1_60']:
-            value_keys += ['NChannels_'+i, 'NHits_'+i, 'InIce_charge_'+i, 'max_qfrac_'+i]
+
+        dom_numbers = [1, 15, 30, 45, 60]
+        for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])
+        # for i in ['1_60']:
+            key = '{}_{}'.format(min_DOM, max_DOM)
+            value_keys += ['NChannels_'+key,
+                           'NHits_'+key,
+                           'InIce_charge_'+key,
+                           'max_qfrac_'+key,
+                           ]
         if datatype == 'sim':
             # Add MC containment
             value_keys += ['FractionContainment_MCPrimary_IceTop',
                            'FractionContainment_MCPrimary_InIce',
-                           'angle_MCPrimary_Laputop']
+                           'angle_MCPrimary_Laputop',
+                           ]
         for key in value_keys:
             series_dict[key] = store[key]['value']
 

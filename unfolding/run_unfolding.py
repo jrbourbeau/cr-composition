@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+from __future__ import division, print_function
 import os
 import argparse
 import numpy as np
+from numpy.testing import assert_allclose
 import pandas as pd
 import pyprind
 
@@ -153,9 +155,11 @@ def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
         n_c = np.asarray(priors)
     elif priors == 'Jeffreys':
         n_c = PyUnfold.Utils.UserPrior(['Jeffreys'], Caxis, n_obs)
+        n_c = n_c / np.sum(n_c)
     else:
-        raise TypeError('priors must be a np.ndarray, '
+        raise TypeError('priors must be a array_like, '
                         'but got {}'.format(type(priors)))
+    assert_allclose(np.sum(n_c), 1)
 
     # Setup the Tools Used in Unfolding
     # Prepare Regularizer
@@ -203,7 +207,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outfile', dest='output_file',
                         help='Output DataFrame file')
     parser.add_argument('--ts_stopping', dest='ts_stopping', type=float,
-                        default=0.01,
+                        default=0.005,
                         help='Testing statistic stopping condition')
 
     args = parser.parse_args()

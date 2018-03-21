@@ -40,7 +40,6 @@ if __name__ == '__main__':
     y_train = df_sim_train['MC_log_energy'].values
     pipeline.fit(X_train, y_train)
 
-
     # Construct dictionary containing fitted pipeline along with metadata
     # For information on why this metadata is needed see:
     # http://scikit-learn.org/stable/modules/model_persistence.html#security-maintainability-limitations
@@ -49,6 +48,7 @@ if __name__ == '__main__':
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
     # Save trained model w/metadata to disk
-    outfile_dir = os.path.join(comp.paths.project_root, 'models')
-    outfile_basename = '{}.pkl'.format(pipeline_str)
-    joblib.dump(model_dict, os.path.join(outfile_dir, outfile_basename))
+    outfile = os.path.join(comp.paths.project_root,
+                           'models',
+                           '{}.pkl'.format(pipeline_str))
+    joblib.dump(model_dict, outfile)

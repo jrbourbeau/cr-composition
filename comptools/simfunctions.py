@@ -201,16 +201,16 @@ def get_level3_sim_files_iterator(sim_list):
 
     Returns
     -------
-    files : itertools.chain object
+    file_iter : itertools.chain
         Iterable of simulation i3 files.
     '''
-
     if isinstance(sim_list, int):
         sim_list = [sim_list]
 
     file_patterns = [_get_level3_sim_file_pattern(sim) for sim in sim_list]
+    file_iter = chain.from_iterable(glob.iglob(pattern) for pattern in file_patterns)
 
-    return chain.from_iterable(glob.iglob(pattern) for pattern in file_patterns)
+    return file_iter
 
 
 def run_to_energy_bin(run, sim):

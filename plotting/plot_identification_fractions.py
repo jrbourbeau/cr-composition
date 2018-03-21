@@ -33,13 +33,16 @@ def get_classified_fractions(df_train, df_test, pipeline_str=None, num_groups=4,
 
     # Fit pipeline and get mask for correctly identified events
     feature_list, feature_labels = comp.get_training_features()
-    # pipeline = comp.get_pipeline(pipeline_str)
-    pipeline = comp.load_trained_model(pipeline_str)
+    if 'CustomClassifier' in pipeline_str:
+        pipeline = comp.get_pipeline(pipeline_str)
+    else:
+        pipeline = comp.load_trained_model(pipeline_str)
     comp_target_str = 'comp_target_{}'.format(num_groups)
-    # pipeline.fit(df_train[feature_list],
-    #              df_train[comp_target_str])
 
-    test_predictions = pipeline.predict(df_test[feature_list])
+    if 'CustomClassifier' in pipeline_str:
+        test_predictions = pipeline.predict(df_test['comp_target_{}'.format(num_groups)])
+    else:
+        test_predictions = pipeline.predict(df_test[feature_list])
     pred_comp = np.array(comp.decode_composition_groups(test_predictions,
                                                         num_groups=num_groups))
 
@@ -89,6 +92,10 @@ if __name__ == '__main__':
                         default='MC',
                         choices=['MC', 'reco'],
                         help='Energy that should be used.')
+    parser.add_argument('--prob_correct', dest='prob_correct',
+                        type=float,
+                        help=('Probability event is correctly classified for '
+                              'custom composition classification'))
     args = parser.parse_args()
 
     config = args.config
@@ -97,15 +104,21 @@ if __name__ == '__main__':
     n_jobs = args.n_jobs
     energy_key = 'MC_log_energy' if args.energy == 'MC' else 'reco_log_energy'
 
+    p = args.prob_correct
+
     energybins = comp.get_energybins(config)
     comp_list = comp.get_comp_list(num_groups=num_groups)
     feature_list, feature_labels = comp.get_training_features()
-    # pipeline_str = 'RF_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'voting_comp_{}_{}-groups'.format(config, num_groups)
+
+    if p is not None:
+        pipeline_str = 'CustomClassifier_{}_2_{}'.format(p, num_groups)
+    else:
+        # pipeline_str = 'RF_comp_{}_{}-groups'.format(config, num_groups)
+        # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
+        # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
+        pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+        # pipeline_str = 'LogisticRegression_comp_{}_{}-groups'.format(config, num_groups)
+        # pipeline_str = 'voting_comp_{}_{}-groups'.format(config, num_groups)
 
     df_train, df_test = comp.load_sim(config=config,
                                       log_energy_min=energybins.log_energy_min,
@@ -153,10 +166,8 @@ if __name__ == '__main__':
         ax.set_title('MC {}'.format(true_composition))
         ax.set_ylim([0.0, 1.0])
         ax.set_xlim(6.4, energybins.log_energy_max)
-        # ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
         ax.grid()
         leg = ax.legend(title='Classified composition', fontsize=8)
-        # Set fontsize for legend title
         plt.setp(leg.get_title(),fontsize=10)
 
     outfile = os.path.join(comp.paths.figures_dir, 'model_evaluation',

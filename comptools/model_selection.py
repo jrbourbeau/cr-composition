@@ -6,7 +6,7 @@ from dask import delayed, multiprocessing, threaded
 from dask.diagnostics import ProgressBar
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.model_selection import StratifiedKFold, KFold, GridSearchCV
 from sklearn.metrics import get_scorer
 
 from .base import get_training_features
@@ -255,3 +255,93 @@ def cross_validate_comp(df_train, df_test, pipeline_str, param_name,
         df_cv = df_cv.compute(get=get, num_works=n_jobs)
 
     return df_cv
+
+
+def get_param_grid(pipeline_name=None):
+    """Returns dictionary with hyperparameter values to search
+
+    Parameters
+    ----------
+    pipeline_name : str, optional
+        Pipeline name. Should be formatted as
+        <name>_comp_<config>_<num_groups>-groups. For example,
+        pipeline_name=BDT_comp_IC86.2012_2-groups (default is None).
+
+    Returns
+    -------
+    param_grid : dict
+        Dictionary with hyperparameter names / values to be passed to
+        GridSearchCV.
+    """
+    if pipeline_name is None:
+        raise ValueError('Must enter a value for pipeline_name.')
+    if 'BDT' in pipeline_name:
+        param_grid = {'classifier__n_estimators': [10, 50, 100, 150, 200, 250, 300],
+                      'classifier__max_depth': list(range(1, 11)),
+                      'classifier__learning_rate': [0.1, 0.5, 0.8]}
+    elif 'xgboost' in pipeline_name:
+        # param_grid = {'classifier__n_estimators': [100, 150, 200],
+        #               'classifier__max_depth': list(range(3, 7)),
+        #               'classifier__learning_rate': [0.1, 0.15, 0.2]}
+        param_grid = {'classifier__n_estimators': [100, 150, 200, 250, 300, 400],
+                      'classifier__max_depth': list(range(3, 11)),
+                      'classifier__learning_rate': [0.01, 0.025, 0.05, 0.1, 0.15, 0.2],
+                      'classifier__subsample': [0.5, 0.75, 1.0]}
+    else:
+        raise ValueError('Invalid pipeline entered: {}'.format(pipeline_name))
+
+    return param_grid
+
+
+def gridsearch_optimize(pipeline, param_grid, X_train, y_train, n_jobs=1,
+                        return_gridsearch=False):
+    """Runs a grid search to optimize hyperparameters
+
+    Parameters
+    ----------
+    pipeline : sklearn.model_selection.Pipeline
+        Pipeline to fit.
+    param_grid : dict
+        Dictionary with hyperparameter names / values to be passed to
+        GridSearchCV.
+    X_train : array_like
+        Training features.
+    y_train : array_like
+        Training labels.
+    n_jobs : int, optional
+        Number of jobs to run in parallel (default is 1).
+    return_gridsearch : bool, optional
+        Whether to return the fitted GridSearchCV object, or the
+        best_estimator_ object (default is False, so will return the
+        best_estimator_).
+
+    Returns
+    -------
+    best_pipeline : sklearn.model_selection.Pipeline
+        Pipeline with optimal hyperparameter values that has been trained on
+        the entire training dataset (X_train, y_train).
+    gridsearch : sklearn.model_selection.GridSearchCV
+        Fitted GridSearchCV object.
+    """
+    # Want to make sure pipeline isn't running in parallel
+    # Will run GridSearchCV in parallel instead
+    if hasattr(pipeline, 'classifier__n_jobs'):
+        pipeline.set_params(classifier__n_jobs=1)
+
+    param_str = '\n\t'.join(['{}: {}'.format(key, value) for key, value in param_grid.iteritems()])
+    print('Running grid search over the following parameters:\n\t{}'.format(param_str))
+    gridsearch = GridSearchCV(pipeline,
+                              param_grid=param_grid,
+                              cv=10,
+                              scoring='accuracy',
+                              n_jobs=n_jobs,
+                              return_train_score=True,
+                              verbose=1)
+    gridsearch.fit(X_train, y_train)
+    print('best GridSearchCV params = {}'.format(gridsearch.best_params_))
+
+    if return_gridsearch:
+        return gridsearch
+    else:
+        best_pipeline = gridsearch.best_estimator_
+        return best_pipeline

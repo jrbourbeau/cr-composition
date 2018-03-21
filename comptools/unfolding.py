@@ -3,8 +3,11 @@ import os
 from itertools import product
 import numpy as np
 import pandas as pd
-from ROOT import TH1F, TH2F, TFile
-import PyUnfold
+try:
+    from ROOT import TH1F, TH2F, TFile
+    import PyUnfold
+except ImportError:
+    print('Could not import ROOT / PyUnfold.')
 
 from .composition_encoding import get_comp_list
 from .base import get_energybins, get_paths, check_output_dir
