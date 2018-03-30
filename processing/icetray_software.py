@@ -1,6 +1,7 @@
 
 from __future__ import division
 from collections import defaultdict
+import math
 import numpy as np
 import pandas as pd
 from scipy import optimize
@@ -284,11 +285,13 @@ class AddIceTopChargeDistance(icetray.I3ConditionalModule):
         icetray.I3ConditionalModule.__init__(self, context)
         self.AddParameter('track', 'Track to calculate distances from', 'Laputop')
         self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        self.AddParameter('min_dist', 'Minimum distance to include', 0)
         self.AddOutBox('OutBox')
 
     def Configure(self):
         self.track = self.GetParameter('track')
         self.pulses = self.GetParameter('pulses')
+        self.min_dist = self.GetParameter('min_dist')
         self.get_dist = phys_services.I3Calculator.closest_approach_distance
         pass
 
@@ -300,54 +303,85 @@ class AddIceTopChargeDistance(icetray.I3ConditionalModule):
 
     def Physics(self, frame):
         track = frame[self.track]
+        x_track, y_track, z_track = track.pos
+
         frame['I3RecoPulseSeriesMap_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
-        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'I3RecoPulseSeriesMap_union')
+        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame,
+                                                                'I3RecoPulseSeriesMap_union')
 
-        tanks_dist, tanks_charge = [], []
-        for omkey, pulses in pulse_map:
-            # Get distance of clostest approach to DOM from track
-            dist = self.get_dist(track, self.geomap[omkey].position)
-            tanks_dist.append(dist)
-            # Get charge recorded in DOM
-            charge = sum([pulse.charge for pulse in pulses])
-            tanks_charge.append(charge)
-            # pair = dataclasses.make_pair(dist, charge)
-            # tanks_charge_dist_pair.append(pair)
+        charges = []
+        dists = []
+        for omkey, omgeo in self.geomap:
+            # Only interested in saving IceTop OM charges
+            if omgeo.omtype.name != 'IceTop':
+                continue
+            try:
+                pulses = pulse_map[omkey]
+                charge = sum([pulse.charge for pulse in pulses])
+                x, y, z = omgeo.position
+                dist = np.sqrt((x - x_track)**2 + (y - y_track)**2)
+            except KeyError:
+                continue
+            charges.append(charge)
+            dists.append(dist)
 
-        # frame['tank_charge_dist_{}'.format(self.track)] = dataclasses.I3VectorDoubleDouble(tanks_charge_dist_pair)
-        if tanks_dist and tanks_charge:
-            frame.Put('tanks_charge_{}'.format(self.track), dataclasses.I3VectorDouble(tanks_charge))
-            frame.Put('tanks_dist_{}'.format(self.track), dataclasses.I3VectorDouble(tanks_dist))
+
+        # tanks_dist, tanks_charge = [], []
+        # for omkey, pulses in pulse_map:
+        #     # Get distance of clostest approach to DOM from track
+        #     dist = self.get_dist(track, self.geomap[omkey].position)
+        #     tanks_dist.append(dist)
+        #     # Get charge recorded in DOM
+        #     charge = sum([pulse.charge for pulse in pulses])
+        #     tanks_charge.append(charge)
+
+        if dists and charges:
+            # frame.Put('tanks_charge_{}'.format(self.track), dataclasses.I3VectorDouble(tanks_charge))
+            # frame.Put('tanks_dist_{}'.format(self.track), dataclasses.I3VectorDouble(tanks_dist))
             # frame.Put('IceTop_charge', dataclasses.I3Double( np.sum(charges) ))
 
             # Convert to ndarrays for easy array manipulation
-            tanks_dist = np.asarray(tanks_dist)
-            tanks_charge = np.asarray(tanks_charge)
-            distance_mask = tanks_dist > 175
-            # charge_175m = np.sum(charges[distance_mask])
-            # frame.Put('IceTop_charge_175m', dataclasses.I3Double(charge_175m))
+            dists = np.asarray(dists)
+            charges = np.asarray(charges)
+            # Sometimes there are nan pulses...not sure why
+            charges = np.nan_to_num(charges)
+            distance_mask = dists >= self.min_dist
+            total_charge = np.sum(charges[distance_mask])
+        else:
+            total_charge = 0.0
 
-            try:
-                lap_params = frame['LaputopParams']
-                lap_log_s125 = lap_params.value(recclasses.LaputopParameter.Log10_S125)
-                lap_beta = lap_params.value(recclasses.LaputopParameter.Beta)
-                tank_dist_mask = tanks_dist > 11
-                # beta, log_s125 = fit_DLP_params(tanks_charge[distance_mask],
-                #     tanks_dist[distance_mask], lap_log_s125, lap_beta)
-                log_s125, beta = fit_DLP_params(tanks_charge[distance_mask],
-                    tanks_dist[distance_mask], lap_log_s125, lap_beta)
-                # print('lap_beta, refit_beta = {}, {}'.format(lap_beta, beta))
-                # print('lap_log_s125, refit_log_s125 = {}, {}'.format(lap_log_s125, log_s125))
-                # print('='*20)
-            except Exception as e:
-                print('Refitting shower to DLP didn\'t work out. '
-                      'Setting to NaN...')
-                print(e)
-                log_s125, beta = NaN, NaN
-                pass
-            frame.Put('refit_beta', dataclasses.I3Double(beta))
-            frame.Put('refit_log_s125', dataclasses.I3Double(log_s125))
-            # print('='*20)
+        if np.isnan(total_charge).any():
+            print('total_charge = {}'.format(total_charge))
+            print('dists = {}'.format(dists))
+            print('charges = {}'.format(charges))
+            print('distance_mask = {}'.format(distance_mask))
+            print('self.min_dist = {}'.format(self.min_dist))
+
+        total_charge = dataclasses.I3Double(total_charge)
+        frame.Put('IceTop_charge_beyond_{}m'.format(self.min_dist),
+                  total_charge)
+            #
+            # try:
+            #     lap_params = frame['LaputopParams']
+            #     lap_log_s125 = lap_params.value(recclasses.LaputopParameter.Log10_S125)
+            #     lap_beta = lap_params.value(recclasses.LaputopParameter.Beta)
+            #     tank_dist_mask = tanks_dist > 11
+            #     # beta, log_s125 = fit_DLP_params(tanks_charge[distance_mask],
+            #     #     tanks_dist[distance_mask], lap_log_s125, lap_beta)
+            #     log_s125, beta = fit_DLP_params(tanks_charge[distance_mask],
+            #         tanks_dist[distance_mask], lap_log_s125, lap_beta)
+            #     # print('lap_beta, refit_beta = {}, {}'.format(lap_beta, beta))
+            #     # print('lap_log_s125, refit_log_s125 = {}, {}'.format(lap_log_s125, log_s125))
+            #     # print('='*20)
+            # except Exception as e:
+            #     print('Refitting shower to DLP didn\'t work out. '
+            #           'Setting to NaN...')
+            #     print(e)
+            #     log_s125, beta = NaN, NaN
+            #     pass
+            # frame.Put('refit_beta', dataclasses.I3Double(beta))
+            # frame.Put('refit_log_s125', dataclasses.I3Double(log_s125))
+            # # print('='*20)
 
         del frame['I3RecoPulseSeriesMap_union']
         self.PushFrame(frame)

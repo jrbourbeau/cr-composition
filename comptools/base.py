@@ -73,9 +73,11 @@ def get_paths(username=None):
     comp_data_dir = os.path.join(data_user_dir, 'composition')
     condor_data_dir = os.path.join(data_user_dir, 'composition', 'condor')
     condor_scratch_dir = os.path.join(scratch_dir, 'composition', 'condor')
+
+    here = os.path.abspath(os.path.dirname(__file__))
+    project_root = os.path.normpath(os.path.join(here, '../'))
     figures_dir = os.path.join(home_dir, 'public_html', 'figures', 'composition')
-    project_root = os.path.join(home_dir, 'cr-composition')
-    virtualenv_dir = os.path.join(home_dir, 'cr-composition', 'env')
+    virtualenv_dir = os.path.join(project_root, '.env')
 
     # Create instance of PathObject with appropriate path information
     paths = PathObject(metaproject=metaproject,
@@ -137,7 +139,7 @@ def partition(seq, size, max_batches=None):
 
     Yields
     -------
-    batch : tuple
+    batch : list
         Partition of ``seq`` that is (at most) ``size`` items long.
 
     Examples
@@ -153,7 +155,7 @@ def partition(seq, size, max_batches=None):
 
     seq_iter = iter(seq)
     for num_batches in islice(count(), max_batches):
-        batch = tuple(islice(seq_iter, size))
+        batch = list(islice(seq_iter, size))
         if len(batch) == 0:
             return
         else:
@@ -311,6 +313,29 @@ def get_training_features(feature_list=None):
                   'd4r_N': 'D4R N',
                   'median_inice_radius': 'Median InIce'
                   }
+    dom_numbers = [1, 15, 30, 45, 60]
+    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
+        key = 'NChannels_{}_{}'.format(min_DOM, max_DOM)
+        label = 'NChannels {} {}'.format(min_DOM, max_DOM)
+        label_dict[key] = label
+    min_DOM, max_DOM = 1, 60
+    key = 'NChannels_{}_{}'.format(min_DOM, max_DOM)
+    label = 'NChannels {} {}'.format(min_DOM, max_DOM)
+    label_dict[key] = label
+
+    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
+        key = 'NHits_{}_{}'.format(min_DOM, max_DOM)
+        label = 'NHits {} {}'.format(min_DOM, max_DOM)
+        label_dict[key] = label
+    min_DOM, max_DOM = 1, 60
+    key = 'NHits_{}_{}'.format(min_DOM, max_DOM)
+    label = 'NHits {} {}'.format(min_DOM, max_DOM)
+    label_dict[key] = label
+
+    min_dists = np.arange(0, 1125, 125)
+    for min_dist in min_dists:
+        key = 'IceTop_charge_beyond_{}m'.format(min_dist)
+        label_dict[key] = 'IT Q > {}m'.format(min_dist)
 
     feature_labels = [label_dict[feature] for feature in feature_list]
 

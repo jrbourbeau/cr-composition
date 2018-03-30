@@ -2,17 +2,31 @@
 
 from __future__ import division, print_function
 import os
+import numpy as np
 import argparse
 import warnings
+from itertools import product
 import pycondor
 
 import comptools as comp
 
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="sklearn")
 
-scan_features = [['lap_cos_zenith', 'log_s125', 'log_dEdX'],
-                 ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius'],
+base_features = ['lap_cos_zenith', 'log_s125', 'log_dEdX']
+scan_features = [base_features,
+                 base_features + ['avg_inice_radius'],
                  ]
+dom_numbers = [1, 15, 30, 45, 60]
+scan_features += [base_features + ['NChannels_1_60'] + \
+                 ['NChannels_{}_{}'.format(min_DOM, max_DOM)
+                    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])]
+                 ]
+scan_features += [base_features + ['NHits_1_60'] + \
+                 ['NHits_{}_{}'.format(min_DOM, max_DOM)
+                    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])]
+                 ]
+min_dists = np.arange(0, 1125, 125)
+scan_features += [base_features + ['IceTop_charge_beyond_{}m'.format(min_dist) for min_dist in min_dists]]
 
 if __name__ == '__main__':
 
@@ -45,22 +59,26 @@ if __name__ == '__main__':
     log = os.path.join(comp.paths.condor_scratch_dir, 'log')
     submit = os.path.join(comp.paths.condor_scratch_dir, 'submit')
 
-    dag = pycondor.Dagman(name='feature_scan_{}'.format(pipeline),
+    dag_name = 'feature_scan_{}_num_groups-{}'.format(pipeline, num_groups)
+    dag = pycondor.Dagman(name=dag_name,
                           submit=submit)
-    for features in scan_features:
+    for idx, (features, random_feature) in enumerate(product(scan_features, [True, False])):
         feature_str = '-'.join(features)
-        job = pycondor.Job(name='feature_scan_{}'.format(feature_str),
+        job = pycondor.Job(name='feature_scan_num_groups-{}_{}'.format(num_groups, idx),
                            executable=executable,
                            submit=submit,
                            error=error,
                            output=output,
                            log=log,
                            request_cpus=n_jobs,
+                           request_memory='3GB',
                            verbose=1,
                            dag=dag)
         argument = '--features {} '.format(' '.join(features))
         for arg_name in ['config', 'num_groups', 'pipeline', 'n_jobs']:
             argument += '--{} {} '.format(arg_name, getattr(args, arg_name))
+        if random_feature:
+            argument += '--random_feature '
         job.add_arg(argument)
 
     dag.build_submit()

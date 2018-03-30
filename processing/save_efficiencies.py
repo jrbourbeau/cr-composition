@@ -215,7 +215,7 @@ if __name__ == "__main__":
     eff_outfile = os.path.join(comp.paths.comp_data_dir,
                                args.config,
                                'efficiencies',
-                               'efficiency_fit_num_groups_{}.hdf'.format(num_groups),
+                               'efficiency_fit_num_groups_{}_sigmoid-{}.hdf'.format(num_groups, args.sigmoid),
                                )
     comp.check_output_dir(eff_outfile)
     # Only want to save fitted efficiencies for energies in analysis range

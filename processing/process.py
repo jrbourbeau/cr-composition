@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 import os
-from itertools import chain, islice
+from itertools import chain, islice, product
 import argparse
 import pycondor
 
 import comptools as comp
 from comptools import ComputingEnvironemtError
-
 
 try:
     import icecube
@@ -22,7 +21,7 @@ if 'cvmfs' not in os.getenv('ROOTSYS'):
     raise ComputingEnvironemtError('CVMFS ROOT must be used for i3 file processing')
 
 
-def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, testing=False):
+def gen_sim_jobs(save_hdf5_ex, save_df_ex, save_efficiencies_ex, config, sims, n=1000, testing=False):
     """Yields pycondor Jobs for simulation processing
 
     Parameters
@@ -67,7 +66,8 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, testing=False):
                                      error=error,
                                      output=output,
                                      log=log,
-                                     submit=submit)
+                                     submit=submit,
+                                     requirements='( OpSysAndVer == "SL6" )')
         # Ensure that save_hdf5_job completes before save_df_job
         save_df_job.add_parent(save_hdf5_job)
 
@@ -86,7 +86,7 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, testing=False):
             start = files[0][start_index:end_index]
             end = files[-1][start_index:end_index]
             out = os.path.join(outdir,
-                               'sim_{}_part{}-{}.hdf5'.format(outdir, sim, start, end))
+                               'sim_{}_part{}-{}.hdf5'.format(sim, start, end))
             comp.check_output_dir(out)
 
             # Don't forget to insert GCD file at beginning of FileNameList
@@ -108,7 +108,12 @@ def gen_sim_jobs(save_hdf5_ex, save_df_ex, config, sims, n=1000, testing=False):
                                                                     config)
     save_df_job.add_arg(df_arg)
 
+    # Job for calculating detection efficiencies based on simulation
+    efficiencies_job = get_efficiencies_jobs(save_efficiencies_ex, config=config)
+    efficiencies_job.add_parent(save_df_job)
+
     yield save_df_job
+    yield efficiencies_job
 
 
 def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, testing=False):
@@ -143,8 +148,7 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, testing=False):
                                  error=error,
                                  output=output,
                                  log=log,
-                                 submit=submit,
-                                 verbose=1)
+                                 submit=submit)
 
     save_df_name = 'save_df_data_{}'.format(config.replace('.', '-'))
     save_df_job = pycondor.Job(name=save_df_name,
@@ -153,8 +157,7 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, testing=False):
                                output=output,
                                log=log,
                                submit=submit,
-                               request_memory='5GB' if testing else None,
-                               verbose=1)
+                               request_memory='5GB' if testing else None)
     # Ensure that save_df_job completes before save_df_job
     save_df_job.add_parent(save_hdf5_job)
 
@@ -190,6 +193,36 @@ def gen_data_jobs(save_hdf5_ex, save_df_ex, config, n=50, testing=False):
     save_df_job.add_arg(df_arg)
 
     yield save_df_job
+
+
+def get_efficiencies_jobs(executable, config):
+    """Returns pycondor Job saving simulation detection efficiencies
+
+    Parameters
+    ----------
+    executable : str
+        Path to executable.
+    config : str
+        Detector configuration.
+
+    Returns
+    ------
+    job : pycondor.Job
+        Data Job to be included in processing Dagman.
+    """
+    efficiencies_job = pycondor.Job(name='save_efficiencies',
+                                    executable=executable,
+                                    error=error,
+                                    output=output,
+                                    log=log,
+                                    submit=submit)
+    for num_groups, sigmoid in product([2, 3, 4], ['flat', 'slant']):
+        arg = '--config {} --num_groups {} --sigmoid {}'.format(config,
+                                                                num_groups,
+                                                                sigmoid)
+        efficiencies_job.add_arg(arg)
+
+    return efficiencies_job
 
 
 if __name__ == "__main__":
@@ -272,11 +305,14 @@ if __name__ == "__main__":
     processing_dir = os.path.join(comp.paths.project_root, 'processing')
     save_hdf5_ex = os.path.join(processing_dir, 'save_hdf5.py')
     save_df_ex = os.path.join(processing_dir, 'save_dataframe.py')
+    save_efficiencies_ex = os.path.join(processing_dir, 'save_efficiencies.py')
 
     # Add Jobs to processing Dagman
     jobs = []
     if 'sim' in process_types:
-        sim_gen = gen_sim_jobs(save_hdf5_ex, save_df_ex,
+        sim_gen = gen_sim_jobs(save_hdf5_ex,
+                               save_df_ex,
+                               save_efficiencies_ex,
                                config=args.config,
                                sims=args.sim,
                                n=args.n_sim,
@@ -293,4 +329,6 @@ if __name__ == "__main__":
         dag.add_job(job)
 
     # Build and submit processing dagman
-    dag.build_submit(maxjobs=args.maxjobs, fancyname=True)
+    submit_options = '-maxjobs {}'.format(args.maxjobs)
+    dag.build_submit(fancyname=True,
+                     submit_options=submit_options)

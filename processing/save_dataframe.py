@@ -36,15 +36,24 @@ def extract_dataframe(input_file, config, datatype):
         for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
             value_keys += ['passed_{}'.format(cut)]
 
+        min_dists = np.arange(0, 1125, 125)
+        for min_dist in min_dists:
+            value_keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
+
         dom_numbers = [1, 15, 30, 45, 60]
-        for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])
-        # for i in ['1_60']:
+        for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
             key = '{}_{}'.format(min_DOM, max_DOM)
             value_keys += ['NChannels_'+key,
                            'NHits_'+key,
                            'InIce_charge_'+key,
                            'max_qfrac_'+key,
                            ]
+        key = '1_60'
+        value_keys += ['NChannels_'+key,
+                       'NHits_'+key,
+                       'InIce_charge_'+key,
+                       'max_qfrac_'+key,
+                       ]
         if datatype == 'sim':
             # Add MC containment
             value_keys += ['FractionContainment_MCPrimary_IceTop',

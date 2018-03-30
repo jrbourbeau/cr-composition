@@ -54,7 +54,7 @@ Python environment (e.g. using `virtualenv`).
    This will install `comptools` along with all of the required dependencies
    (`pandas`, `numpy`, `scikit-learn`, etc.).
 
-3. Install version `05-01-00` of the icerec IceCube metaproject.
+3. Install version `V05-01-05` of the icerec IceCube metaproject.
 
 
 ## Quickstart

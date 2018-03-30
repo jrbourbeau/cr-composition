@@ -283,10 +283,11 @@ def get_param_grid(pipeline_name=None):
         # param_grid = {'classifier__n_estimators': [100, 150, 200],
         #               'classifier__max_depth': list(range(3, 7)),
         #               'classifier__learning_rate': [0.1, 0.15, 0.2]}
-        param_grid = {'classifier__n_estimators': [100, 150, 200, 250, 300, 400],
+        param_grid = {'classifier__n_estimators': [100, 150, 200, 250, 300, 400, 500, 600],
                       'classifier__max_depth': list(range(3, 11)),
                       'classifier__learning_rate': [0.01, 0.025, 0.05, 0.1, 0.15, 0.2],
-                      'classifier__subsample': [0.5, 0.75, 1.0]}
+                      # 'classifier__subsample': [0.5, 0.75, 1.0],
+                      }
     else:
         raise ValueError('Invalid pipeline entered: {}'.format(pipeline_name))
 

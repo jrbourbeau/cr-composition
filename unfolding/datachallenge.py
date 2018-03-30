@@ -765,7 +765,7 @@ if __name__ == '__main__':
 
     cases = [
              # 'constant',
-             'simple_power_law',
+             # 'simple_power_law',
              # # 'broken_power_law_0',
              # # 'broken_power_law_1',
              # 'broken_power_law_2',
@@ -774,9 +774,9 @@ if __name__ == '__main__':
              ]
     ts_values = [
                  # 0.01,
-                 0.005,
+                 # 0.005,
                  0.001,
-                 0.0005,
+                 # 0.0005,
                  ]
 
     plot_initial_flux = False

@@ -16,11 +16,10 @@ scipy
 mlxtend
 pyprind
 pycondor
-
+git+https://github.com/jrbourbeau/pyunfold.git
 # Testing requirements
 pytest
 flake8
-
 # Documentation requirements
 sphinx
 numpydoc

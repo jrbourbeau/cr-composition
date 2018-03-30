@@ -4,6 +4,7 @@ import time
 import argparse
 import os
 import socket
+import numpy as np
 
 from icecube import (dataio, tableio, astro, toprec, dataclasses, icetray,
                      phys_services, stochastics, millipede, ddddr)
@@ -114,8 +115,12 @@ if __name__ == "__main__":
     # for i in ['1_60']:
     #     keys += ['avg_inice_radius_'+i, 'std_inice_radius_'+i,
     #              'qweighted_inice_radius_'+i, 'invqweighted_inice_radius_'+i]
+    min_dists = np.arange(0, 1125, 125)
+    for min_dist in min_dists:
+        keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
+
     dom_numbers = [1, 15, 30, 45, 60]
-    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:])
+    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
     # for i in ['1_60']:
         key = '{}_{}'.format(min_DOM, max_DOM)
         keys += ['NChannels_'+key,
@@ -123,6 +128,12 @@ if __name__ == "__main__":
                  'InIce_charge_'+key,
                  'max_qfrac_'+key,
                  ]
+    key = '1_60'
+    keys += ['NChannels_'+key,
+             'NHits_'+key,
+             'InIce_charge_'+key,
+             'max_qfrac_'+key,
+             ]
     keys += ['FractionContainment_Laputop_IceTop',
              'FractionContainment_Laputop_InIce']
     keys += ['lap_fitstatus_ok']
@@ -175,6 +186,11 @@ if __name__ == "__main__":
                  min_DOM=min_DOM,
                  max_DOM=max_DOM,
                  If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
+    tray.Add(icetray_software.AddInIceCharge,
+             pulses=inice_pulses,
+             min_DOM=1,
+             max_DOM=60,
+             If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
     # tray.Add(icetray_software.AddInIceCharge,
     #          pulses=inice_pulses,
     #          min_DOM=1,
@@ -216,6 +232,13 @@ if __name__ == "__main__":
     #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
     # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
     #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
+
+    for min_dist in min_dists:
+        tray.Add(icetray_software.AddIceTopChargeDistance,
+                 track='Laputop',
+                 pulses=pulses,
+                 min_dist=min_dist,
+                 If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
     #====================================================================
     # Finish

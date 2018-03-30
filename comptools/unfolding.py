@@ -3,11 +3,18 @@ import os
 from itertools import product
 import numpy as np
 import pandas as pd
-try:
-    from ROOT import TH1F, TH2F, TFile
-    import PyUnfold
-except ImportError:
-    print('Could not import ROOT / PyUnfold.')
+import socket
+
+on_submitter = 'submitter' in socket.gethostname()
+cvmfs_root = 'cvmfs' in os.getenv('ROOTSYS', '')
+if on_submitter or cvmfs_root:
+    pass
+else:
+    try:
+        from ROOT import TH1F, TH2F, TFile
+        import pyunfold as PyUnfold
+    except ImportError:
+        print('Could not import ROOT / PyUnfold.')
 
 from .composition_encoding import get_comp_list
 from .base import get_energybins, get_paths, check_output_dir

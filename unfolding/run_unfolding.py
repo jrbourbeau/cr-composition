@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 import pandas as pd
 import pyprind
 
-import PyUnfold
+import pyunfold as PyUnfold
 import comptools as comp
 
 
@@ -168,7 +168,7 @@ def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
                 ParamNames=ParamNames, xarray=Caxis[i], xedges=Cedges[i],
                 verbose=RegVFlag, plot=RegPFlag) for i in range(nStack)]
     # Prepare Test Statistic-er
-    tsMeth = PyUnfold.Utils.GetTS(tsname)
+    tsMeth = PyUnfold.Utils.get_ts(tsname)
     tsFunc = [tsMeth(tsname, tol=tsTol, Xaxis=Caxis[i], TestRange=tsRange, verbose=tsVerbFlag)
               for i in range(nStack)]
 
@@ -181,8 +181,8 @@ def unfold(config_name=None, EffDist=None, priors='Jeffreys', input_file=None,
         UnfolderName += '_'+''.join(binList)
 
     Unfolder = PyUnfold.IterUnfold.IterativeUnfolder(
-        UnfolderName, maxIter=UnfMaxIter, smoothIter=UnfSmoothIter, n_c=n_c,
-        MixFunc=Mixer, RegFunc=Rglzr, TSFunc=tsFunc, Stack=stackFlag,
+        UnfolderName, max_iter=UnfMaxIter, smooth_iter=UnfSmoothIter, n_c=n_c,
+        mix_func=Mixer, reg_func=Rglzr, ts_func=tsFunc, stack=stackFlag,
         verbose=UnfVerbFlag)
     # Iterate the Unfolder
     unfolding_result = Unfolder.IUnfold()

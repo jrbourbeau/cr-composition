@@ -33,6 +33,12 @@ if __name__ == '__main__':
     parser.add_argument('--features', dest='features', nargs='*',
                         default=None,
                         help='Training features to use')
+    parser.add_argument('--random_feature',
+                        dest='random_feature',
+                        action='store_true',
+                        default=False,
+                        help='Add a random training feature column. Useful '
+                             'motivator for feature selection.')
     parser.add_argument('--n_jobs', dest='n_jobs', type=int,
                         default=1, choices=list(range(1, 21)),
                         help='Number of jobs to run in parallel for the '
@@ -58,10 +64,18 @@ if __name__ == '__main__':
                                               # log_energy_min=log_energy_min,
                                               # log_energy_max=log_energy_max,
                                               test_size=0.5)
+
     features, feature_labels = comp.get_training_features(args.features)
+    # Add random training feature if specified
+    if args.random_feature:
+        np.random.seed(2)
+        df_sim_train['random'] = np.random.random(size=len(df_sim_train))
+        features.append('random')
+        feature_labels.append('random')
 
     X_train = df_sim_train[features].values
     y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
+
     # Will need energy for each event to make classification performance vs. energy plot
     log_energy_train = df_sim_train['reco_log_energy'].values
 
