@@ -127,6 +127,8 @@ if __name__ == '__main__':
         outfile = os.path.join(here,
                                'feature_scan_results',
                                '{}-{}.pkl'.format(pipeline_str, feature_str))
+    else:
+        outfile = args.outfile
     comp.check_output_dir(outfile)
     gridsearch_results = {'pipeline_name': pipeline_str,
                           'pipeline': gridsearch.best_estimator_,

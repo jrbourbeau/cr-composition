@@ -59,6 +59,9 @@ if __name__ == '__main__':
     log = os.path.join(comp.paths.condor_scratch_dir, 'log')
     submit = os.path.join(comp.paths.condor_scratch_dir, 'submit')
 
+    outdir = os.path.join(os.path.dirname(__file__),
+                          'feature_scan_results')
+
     dag_name = 'feature_scan_{}_num_groups-{}'.format(pipeline, num_groups)
     dag = pycondor.Dagman(name=dag_name,
                           submit=submit)
@@ -79,6 +82,10 @@ if __name__ == '__main__':
             argument += '--{} {} '.format(arg_name, getattr(args, arg_name))
         if random_feature:
             argument += '--random_feature '
+
+        outfile = os.path.join(outdir, '{}_{}-groups-{}.pkl'.format(pipeline, num_groups, idx))
+        argument += '--outfile {} '.format(outfile)
+
         job.add_arg(argument)
 
     dag.build_submit()
