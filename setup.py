@@ -1,23 +1,30 @@
 
-from setuptools import setup
+import os
+import io
+from setuptools import setup, find_packages
 
 VERSION = '0.0.1'
 
-with open('requirements.txt', 'r') as f:
-    INSTALL_REQUIRES = [l.strip() for l in f.readlines() if l]
+here = os.path.abspath(os.path.dirname(__file__))
 
-for idx, requirement in enumerate(INSTALL_REQUIRES):
-    if 'pyunfold' in requirement:
-        INSTALL_REQUIRES[idx] = 'pyunfold'
+def read(path, encoding='utf-8'):
+    with io.open(path, encoding=encoding) as f:
+        content = f.read()
+    return content
+
+def get_install_requirements(path):
+    content = read(path)
+    requirements = [req for req in content.split("\n")
+                    if req != '' and not req.startswith('#')]
+    return requirements
+
+INSTALL_REQUIRES = get_install_requirements(os.path.join(here, 'requirements.txt'))
 
 setup(
     name='comptools',
     version=VERSION,
     description='Python tools for cosmic-ray composition analysis',
     author='James Bourbeau',
-    packages=['comptools'],
+    packages=find_packages(),
     install_requires=INSTALL_REQUIRES,
-    dependency_links=[
-        'git+https://github.com/jrbourbeau/pyunfold.git@master#egg=pyunfold-0.0.1.dev0',
-        ],
     )
