@@ -16,7 +16,7 @@ scipy
 mlxtend
 pyprind
 pycondor
-git+https://github.com/jrbourbeau/pyunfold.git
+pyunfold
 # Testing requirements
 pytest
 flake8
