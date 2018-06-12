@@ -17,6 +17,7 @@ mlxtend
 pyprind
 pycondor
 pyunfold
+healpy
 # Testing requirements
 pytest
 flake8
