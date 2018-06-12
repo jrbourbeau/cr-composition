@@ -10,9 +10,12 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import ListedColormap
 from scipy import optimize
 
-from icecube import astro
+from .base import get_paths, requires_icecube
 
-from .base import get_paths
+try:
+    from icecube import astro
+except ImportError as e:
+    pass
 
 
 def equatorial_to_healpy(ra, dec):
@@ -36,6 +39,7 @@ def add_to_skymap(theta, phi, skymap, n_side=64, weights=1.0):
     return skymap
 
 
+@requires_icecube
 def append_to_skymaps(row, times, data_map, ref_map, local_map,
                       n_side, n_resamples):
 
@@ -64,6 +68,7 @@ def append_to_skymaps(row, times, data_map, ref_map, local_map,
     return
 
 
+@requires_icecube
 def make_skymaps(df, times, n_resamples=20, n_side=64, verbose=False):
 
     n_pix = hp.nside2npix(n_side)
