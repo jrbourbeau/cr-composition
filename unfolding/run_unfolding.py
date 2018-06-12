@@ -3,12 +3,13 @@
 from __future__ import division, print_function
 import os
 import argparse
+import itertools
 import numpy as np
 from numpy.testing import assert_allclose
 import pandas as pd
 import pyprind
+import pyunfold
 
-import pyunfold as PyUnfold
 import comptools as comp
 
 
@@ -212,33 +213,124 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    unfolding_dir  = os.path.join(comp.paths.comp_data_dir, args.config,
-                                  'unfolding')
+    config = args.config
+    num_groups = args.num_groups
+
+    comp_list = comp.get_comp_list(num_groups=num_groups)
+    energybins = comp.get_energybins(config)
+    num_ebins = len(energybins.log_energy_midpoints)
+
+    unfolding_dir  = os.path.join(comp.paths.comp_data_dir,
+                                  config,
+                                  'unfolding',
+                                  )
     if not args.output_file:
-        args.output_file = os.path.join(unfolding_dir, 'pyunfold_output_{}-groups.hdf'.format(args.num_groups))
-    if not args.config_file:
-        args.config_file = os.path.join(args.config, 'config.cfg')
-    if not args.input_file:
-        args.input_file = os.path.join(unfolding_dir,
-                        'pyunfold_input_{}-groups.root'.format(args.num_groups))
-        if not os.path.exists(args.input_file):
-            raise IOError('PyUnfold input ROOT file {} doesn\'t exist...'.format(args.input_file))
-    print('Writing to output file: {}'.format(args.output_file))
-    print('Using config file: {}'.format(args.config_file))
-    print('Using input ROOT file: {}'.format(args.input_file))
+        output_file = os.path.join(unfolding_dir,
+                                   'pyunfold_output_{}-groups.hdf'.format(num_groups))
 
     # Load DataFrame with saved prior distributions
     df_file = os.path.join(unfolding_dir,
-                           'unfolding-df_{}-groups.hdf'.format(args.num_groups))
+                           'unfolding-df_{}-groups.hdf'.format(num_groups))
     df = pd.read_hdf(df_file)
 
+    # Load simulation and train composition classifier
+    df_sim_train, df_sim_test = comp.load_sim(config=config,
+                                              energy_reco=False,
+                                              log_energy_min=None,
+                                              log_energy_max=None,
+                                              test_size=0.5,
+                                              n_jobs=10,
+                                              verbose=True)
+
+    feature_list, feature_labels = comp.get_training_features()
+
+    print('Running energy reconstruction...')
+    energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
+    for df in [df_sim_train, df_sim_test]:
+        X = df_sim_train[feature_list].values
+        # Energy reconstruction
+        df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
+        df['reco_energy'] = 10**df['reco_log_energy']
+
+
+    efficiencies, efficiencies_err = comp.get_detector_efficiencies(config=config,
+                                                                    num_groups=num_groups,
+                                                                    sigmoid='slant',
+                                                                    pyunfold_format=True)
+
+
+    print('Running composition classifications...')
+    pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
+    comp_pipeline = comp.load_trained_model(pipeline_str)
+    pred_target = comp_pipeline.predict(df[feature_list].values)
+
+    print('Making response matrix...')
+    log_reco_energy_sim_test = df_sim_test['reco_log_energy']
+    log_true_energy_sim_test = df_sim_test['MC_log_energy']
+    true_target = df_sim_test['comp_target_{}'.format(num_groups)].values
+
+    response, response_err = comp.response_matrix(true_energy=log_true_energy_sim_test,
+                                                  reco_energy=log_reco_energy_sim_test,
+                                                  true_target=true_target,
+                                                  pred_target=pred_target,
+                                                  efficiencies=efficiencies,
+                                                  efficiencies_err=efficiencies_err,
+                                                  energy_bins=energybins.log_energy_bins)
+
+    # Run analysis pipeline on data
+    print('Loading data into memory...')
+    df_data = comp.load_data(config=config,
+                             energy_reco=False,
+                             log_energy_min=None,
+                             log_energy_max=None,
+                             columns=feature_list,
+                             n_jobs=10,
+                             verbose=True)
+
+    print('Running energy and composition reconstructions...')
+    df_data['pred_comp_target'] = comp_pipeline.predict(df_data[feature_list].values)
+    df_data['reco_log_energy'] = energy_pipeline.predict(df_data[feature_list].values)
+
+    counts_observed = {}
+    counts_observed_err = {}
+    for idx, composition in enumerate(comp_list):
+        # Filter out events that don't pass composition & energy mask
+        pred_comp_mask = df_data['pred_comp_target'] == idx
+        energies = df_data.loc[pred_comp_mask, 'reco_log_energy'].values
+        comp_counts, _ = np.histogram(energies,
+                                      bins=energybins.log_energy_bins)
+        counts_observed[composition] = comp_counts
+        counts_observed_err[composition] = np.sqrt(comp_counts)
+
+    counts_observed_err['total'] = np.sqrt(np.sum(counts_observed_err[composition]**2 for composition in comp_list))
+    # Calculate total counts
+    counts_observed['total'] = np.sum(counts_observed[composition] for composition in comp_list)
+
+    # Format observed counts, detection efficiencies, and priors for PyUnfold use
+    counts_pyunfold = np.empty(num_groups * len(energybins.energy_midpoints))
+    counts_err_pyunfold = np.empty(num_groups * len(energybins.energy_midpoints))
+    for idx, composition in enumerate(comp_list):
+        counts_pyunfold[idx::num_groups] = counts_observed[composition]
+        counts_err_pyunfold[idx::num_groups] = counts_observed_err[composition]
+
     # Run unfolding for each of the priors
-    names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
+    names = ['uniform', 'H3a', 'H4a', 'Polygonato']
+    # names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
+    logger = pyunfold.callbacks.Logger()
     for prior_name in pyprind.prog_bar(names):
-        priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
-        df_unfolding_iter = unfold(config_name=args.config_file,
-                                   priors=priors,
-                                   input_file=args.input_file,
-                                   ts_stopping=args.ts_stopping)
-        # Save to hdf file
-        df_unfolding_iter.to_hdf(args.output_file, prior_name)
+        prior = None if prior_name == 'uniform' else df['{}_prior'.format(prior_name)]
+        # priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
+        df_unfolding_iter = pyunfold.iterative_unfold(data=counts_pyunfold,
+                                                      data_err=counts_err_pyunfold,
+                                                      response=response,
+                                                      response_err=response_err,
+                                                      efficiencies=efficiencies,
+                                                      efficiencies_err=efficiencies_err,
+                                                      ts='ks',
+                                                      ts_stopping=args.ts_stopping,
+                                                      prior=prior,
+                                                      return_iterations=True,
+                                                      callbacks=[logger,])
+        print(df_unfolding_iter)
+        # # Save to hdf file
+        # df_unfolding_iter.to_hdf(output_file, prior_name)

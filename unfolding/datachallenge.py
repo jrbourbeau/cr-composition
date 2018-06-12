@@ -16,9 +16,10 @@ from dask.diagnostics import ProgressBar
 import warnings
 
 import comptools as comp
-from run_unfolding import unfold
+from pyunfold import iterative_unfold
 
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="sklearn")
 
 
 def get_test_counts(case, composition, num_groups, energy_midpoints,
@@ -30,7 +31,8 @@ def get_test_counts(case, composition, num_groups, energy_midpoints,
         counts = np.array([1000]*len(log_energy_midpoints))
     elif case == 'simple_power_law':
         comp_flux = comp.broken_power_law_flux(energy_midpoints,
-                                               gamma_before=-3.0,
+                                               gamma_before=-2.7,
+                                               # gamma_before=-3.0,
                                                energy_break=3e12)
         comp_flux = scale * comp_flux
         counts = flux_to_counts_scaling * comp_flux
@@ -82,7 +84,7 @@ def calculate_ratio(flux, flux_err_stat, flux_err_sys,
     return frac_diff, frac_diff_stat, frac_diff_sys
 
 
-def main(config, num_groups, prior, ts_stopping, case, p=None):
+def main(config, num_groups, prior, ts_stopping, case, response, response_err, p=None):
 
     figures_dir = os.path.join(comp.paths.figures_dir, 'unfolding', config,
                                'datachallenge', '{}_case'.format(case),
@@ -212,23 +214,6 @@ def main(config, num_groups, prior, ts_stopping, case, p=None):
         efficiencies[idx::num_groups] = df_eff['eff_median_{}'.format(composition)]
         efficiencies_err[idx::num_groups] = df_eff['eff_err_low_{}'.format(composition)]
 
-    formatted_df = pd.DataFrame({'counts': counts_pyunfold,
-                                 'counts_err': counts_err_pyunfold,
-                                 'efficiencies': efficiencies,
-                                 'efficiencies_err': efficiencies_err})
-    formatted_file = os.path.join(data_dir,
-                                  'test_{}_{}_{}.hdf'.format(prior, case, ts_stopping))
-    formatted_df.to_hdf(formatted_file, 'dataframe', mode='w')
-
-    root_file = os.path.join(data_dir,
-                             'test_{}_{}_{}.root'.format(prior, case, ts_stopping))
-    comp.save_pyunfold_root_file(config=config,
-                                 num_groups=num_groups,
-                                 outfile=root_file,
-                                 formatted_df_file=formatted_file,
-                                 res_mat_file=res_mat_outfile,
-                                 res_mat_err_file=res_mat_err_outfile)
-
     if prior == 'Jeffreys':
         prior_pyunfold = 'Jeffreys'
         print('Jeffreys prior')
@@ -242,13 +227,18 @@ def main(config, num_groups, prior, ts_stopping, case, p=None):
         # Want to ensure prior_pyunfold are probabilities (i.e. they add to 1)
         prior_pyunfold = prior_pyunfold / np.sum(prior_pyunfold)
 
-    df_unfolding_iter = unfold(config_name=os.path.join(config, 'config.cfg'),
-                               priors=prior_pyunfold,
-                               input_file=root_file,
-                               ts_stopping=ts_stopping)
-    # Delete temporary ROOT file needed for PyUnfold
-    os.remove(root_file)
-    os.remove(formatted_file)
+
+    df_unfolding_iter = iterative_unfold(data=counts_pyunfold,
+                                         data_err=counts_err_pyunfold,
+                                         response=res_normalized,
+                                         response_err=res_normalized_err,
+                                         efficiencies=efficiencies,
+                                         efficiencies_err=efficiencies_err,
+                                         priors=prior_pyunfold,
+                                         ts='ks',
+                                         ts_stopping=ts_stopping,
+                                         max_iter=100,
+                                         return_iterations=True)
 
     # print('\n{} case (prior {}): {} iterations'.format(case, prior, df_unfolding_iter.shape[0]))
 
@@ -320,7 +310,8 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
     fig_counts, ax_counts = plt.subplots()
 
     fig = plt.figure(figsize=(12, 5))
-    gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1, hspace=0.075)
+    gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1, hspace=0.1)
+    # gs = gridspec.GridSpec(nrows=2, ncols=num_groups+1, hspace=0.075)
     axs_flux, axs_ratio = {}, {}
     for idx, composition in enumerate(comp_list + ['total']):
         if idx == 0:
@@ -331,6 +322,7 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
     prior_groupby = group.groupby('prior')
     marker_iter = iter('.^x*')
     ls_iter = iter(['-', ':', '-.', '--'])
+    fontsize = 18
     initial_flux_test, initial_flux_err_stat_test, initial_flux_err_sys_test = {}, {}, {}
     for prior_idx, (prior, df_group) in enumerate(prior_groupby):
         marker = next(marker_iter)
@@ -406,16 +398,16 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
             ax_flux.set_xlim(6.4, 7.8)
             ax_flux.set_ylim(1e3, 1e5)
             ax_flux.grid(linestyle='dotted', which="both", lw=1)
-            ax_flux.set_title(composition, fontsize=10)
+            ax_flux.set_title(composition, fontsize=14)
             if composition == 'total':
-                ax_flux.legend(fontsize=7, loc='lower left')
+                ax_flux.legend(fontsize=10, loc='lower left')
             if idx == 0:
-                ax_flux.set_ylabel('$\mathrm{ E^{2.7} \ J(E) \ [GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$',
-                                   fontsize=10)
+                ax_flux.set_ylabel('$\mathrm{ E^{2.7} \ J(E)}$' +'\n' + '$\mathrm{[GeV^{1.7} m^{-2} sr^{-1} s^{-1}]}$',
+                                   fontsize=18)
             else:
                 plt.setp(ax_flux.get_yticklabels(), visible=False)
             plt.setp(ax_flux.get_xticklabels(), visible=False)
-            ax_flux.tick_params(axis='both', which='major', labelsize=10)
+            ax_flux.tick_params(axis='both', which='major', labelsize=14)
 
             if plot_initial_flux:
                 frac_diff, frac_diff_stat, frac_diff_sys = calculate_ratio(
@@ -435,15 +427,16 @@ def save_flux_plot(group, config, case, ts_stopping, num_groups):
             ax_ratio.axhline(0, ls='-.', lw=1, marker='None', color='k')
 
             ax_ratio.grid(linestyle='dotted', which="both", lw=1)
-            ax_ratio.set_yticks(np.arange(-1, 1.5, 0.25))
+            ax_ratio.set_yticks(np.arange(-1, 1.5, 0.5))
+            # ax_ratio.set_yticks(np.arange(-1, 1.5, 0.25))
             ax_ratio.set_ylim(-1, 1)
             if idx == 0:
                 ax_ratio.set_ylabel('$\mathrm{(J - J_{true}) / J_{true}}$',
-                                    fontsize=10)
+                                    fontsize=18)
             else:
                 plt.setp(ax_ratio.get_yticklabels(), visible=False)
-            ax_ratio.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$', fontsize=10)
-            ax_ratio.tick_params(axis='both', which='major', labelsize=10)
+            ax_ratio.set_xlabel('$\mathrm{\log_{10}(E/GeV)}$', fontsize=18)
+            ax_ratio.tick_params(axis='both', which='major', labelsize=14)
 
     plt.tight_layout()
     flux_outfile = os.path.join(figures_dir,
@@ -765,17 +758,17 @@ if __name__ == '__main__':
 
     cases = [
              # 'constant',
-             # 'simple_power_law',
-             # # 'broken_power_law_0',
-             # # 'broken_power_law_1',
-             # 'broken_power_law_2',
-             # 'H3a',
+             'simple_power_law',
+             # 'broken_power_law_0',
+             # 'broken_power_law_1',
+             'broken_power_law_2',
+             'H3a',
              'H4a',
              ]
     ts_values = [
                  # 0.01,
-                 # 0.005,
-                 0.001,
+                 0.005,
+                 # 0.001,
                  # 0.0005,
                  ]
 
@@ -784,7 +777,9 @@ if __name__ == '__main__':
     calculations = []
     for case, ts_stopping, prior in itertools.product(cases, ts_values, priors):
         calc = delayed(main)(config, num_groups, prior, ts_stopping=ts_stopping,
-                             case=case, p=p)
+                             case=case, response=res_normalized,
+                             response_err=res_normalized_err,
+                             p=p)
         calculations.append(calc)
 
     df = delayed(pd.DataFrame.from_records)(calculations)

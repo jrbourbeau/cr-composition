@@ -14,12 +14,14 @@ from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
 
+from llh_ratio_scripts.llh_ratio_i3_module import IceTop_LLH_Ratio
+
 import comptools as comp
 import icetray_software
-
+from file_localizer import localized
 
 def get_good_file_list(files):
-    '''Checks that input i3 files aren't corrupted
+    """Checks that input i3 files aren't corrupted
 
     Parameters
     ----------
@@ -32,7 +34,7 @@ def get_good_file_list(files):
         List of i3 files (from input files) that were able to be
         succeessfully loaded.
 
-    '''
+    """
     good_file_list = []
     for i3file in files:
         try:
@@ -54,7 +56,7 @@ def get_good_file_list(files):
 
 
 def check_keys(frame, *keys):
-    '''Function to check if all keys are in frame
+    """Function to check if all keys are in frame
 
     Parameters
     ----------
@@ -68,23 +70,25 @@ def check_keys(frame, *keys):
     boolean
         Whether or not all the keys in keys are in frame
 
-    '''
+    """
     return all([key in frame for key in keys])
 
 
 if __name__ == "__main__":
 
-    p = argparse.ArgumentParser(
-        description='Runs extra modules over a given fileList')
-    p.add_argument('-f', '--files', dest='files', nargs='*',
+    description='Runs extra modules over a given fileList'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-f', '--files', dest='files', nargs='*',
                    help='Files to run over')
-    p.add_argument('--type', dest='type',
+    parser.add_argument('--type', dest='type',
                    choices=['data', 'sim'],
                    default='sim',
                    help='Option to process simulation or data')
-    p.add_argument('-o', '--outfile', dest='outfile',
+    parser.add_argument('--sim', dest='sim',
+                   help='Simulation dataset')
+    parser.add_argument('-o', '--outfile', dest='outfile',
                    help='Output file')
-    args = p.parse_args()
+    args = parser.parse_args()
 
     # Starting parameters
     IT_pulses, inice_pulses = comp.datafunctions.reco_pulses()
@@ -138,7 +142,8 @@ if __name__ == "__main__":
              'FractionContainment_Laputop_InIce']
     keys += ['lap_fitstatus_ok']
     keys += ['passed_IceTopQualityCuts', 'passed_InIceQualityCuts']
-    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2', 'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
+    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
+                'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
         keys += ['passed_{}'.format(cut)]
     keys += ['angle_MCPrimary_Laputop']
     # keys += ['tank_charge_dist_Laputop']
@@ -146,113 +151,138 @@ if __name__ == "__main__":
 
     # keys += ['refit_beta', 'refit_log_s125']
     # keys += ['NNcharges']
-    keys += ['tank_charge_v_dist']
+    # keys += ['tank_charge_v_dist']
+    # keys += ['tank_x', 'tank_y', 'tank_charge']
+    keys += ['IceTopLLHRatio']
 
     t0 = time.time()
 
     icetray.set_log_level(icetray.I3LogLevel.LOG_WARN)
 
-    # Construct list of non-truncated files to process
-    good_file_list = get_good_file_list(args.files)
+    comp.check_output_dir(args.outfile)
+    with localized(inputs=args.files, output=args.outfile) as (inputs, output):
+        # Construct list of non-truncated files to process
+        good_file_list = get_good_file_list(inputs)
 
-    tray = I3Tray()
-    # If not running on cobalt (i.e. running a cluster job), add a file stager
-    if 'cobalt' not in socket.gethostname():
-        tray.context['I3FileStager'] = dataio.get_stagers(
-            staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
-    tray.Add('I3Reader', FileNameList=good_file_list)
-    # Uncompress Level3 diff files
-    tray.Add(uncompress, 'uncompress')
+        tray = I3Tray()
+        # # If not running on cobalt (i.e. running a cluster job), add a file stager
+        # if 'cobalt' not in socket.gethostname():
+        #     tray.context['I3FileStager'] = dataio.get_stagers(
+        #         staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
+        tray.Add('I3Reader', FileNameList=good_file_list)
+        # Uncompress Level3 diff files
+        tray.Add(uncompress, 'uncompress')
 
-    if args.type == 'data':
-        # Filter out all events that don't pass standard IceTop cuts
-        tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
-        # Filter out non-coincident P frames
-        tray.Add(lambda frame: inice_pulses in frame)
+        if args.type == 'data':
+            # Filter out all events that don't pass standard IceTop cuts
+            tray.Add(lambda frame: all(frame['IT73AnalysisIceTopQualityCuts'].values()))
+            # Filter out non-coincident P frames
+            tray.Add(lambda frame: inice_pulses in frame)
 
-    tray.Add(icetray_software.add_IceTop_quality_cuts,
-             If=lambda frame: 'IT73AnalysisIceTopQualityCuts' in frame)
+        tray.Add(icetray_software.add_IceTop_quality_cuts,
+                 If=lambda frame: 'IT73AnalysisIceTopQualityCuts' in frame)
 
-    tray.Add(icetray_software.add_InIce_quality_cuts,
-             If=lambda frame: 'IT73AnalysisInIceQualityCuts' in frame)
+        tray.Add(icetray_software.add_InIce_quality_cuts,
+                 If=lambda frame: 'IT73AnalysisInIceQualityCuts' in frame)
 
-    tray.Add(icetray_software.add_nstations, pulses=IT_pulses,
-             If=lambda frame: IT_pulses in frame)
+        tray.Add(icetray_software.add_nstations, pulses=IT_pulses,
+                 If=lambda frame: IT_pulses in frame)
 
-    # Add total inice charge to frame
-    for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
+        # Add total inice charge to frame
+        for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
+            tray.Add(icetray_software.AddInIceCharge,
+                     pulses=inice_pulses,
+                     min_DOM=min_DOM,
+                     max_DOM=max_DOM,
+                     If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
         tray.Add(icetray_software.AddInIceCharge,
                  pulses=inice_pulses,
-                 min_DOM=min_DOM,
-                 max_DOM=max_DOM,
+                 min_DOM=1,
+                 max_DOM=60,
                  If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
-    tray.Add(icetray_software.AddInIceCharge,
-             pulses=inice_pulses,
-             min_DOM=1,
-             max_DOM=60,
-             If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
-    # tray.Add(icetray_software.AddInIceCharge,
-    #          pulses=inice_pulses,
-    #          min_DOM=1,
-    #          max_DOM=60,
-    #          If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
+        # tray.Add(icetray_software.AddInIceCharge,
+        #          pulses=inice_pulses,
+        #          min_DOM=1,
+        #          max_DOM=60,
+        #          If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
 
-    # Add InIce muon radius to frame
-    tray.Add(icetray_software.AddInIceMuonRadius,
-             track='Laputop',
-             pulses='CoincLaputopCleanedPulses',
-             min_DOM=1,
-             max_DOM=60,
-             If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', 'CoincLaputopCleanedPulses') )
-
-    # Add fraction containment to frame
-    tray.Add(icetray_software.add_fraction_containment, track='Laputop',
-             If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop') )
-    # if args.type == 'sim':
-    tray.Add(icetray_software.add_fraction_containment, track='MCPrimary',
-             If=lambda frame: check_keys(frame, 'I3Geometry', 'MCPrimary') )
-
-    # Add Laputop fitstatus ok boolean to frame
-    tray.Add(icetray_software.lap_fitstatus_ok,
-             If=lambda frame: 'Laputop' in frame)
-
-    # Add opening angle between Laputop and MCPrimary for angular resolution calculation
-    tray.Add(icetray_software.add_opening_angle,
-             particle1='MCPrimary', particle2='Laputop',
-             key='angle_MCPrimary_Laputop',
-             If=lambda frame: 'MCPrimary' in frame and 'Laputop' in frame)
-
-    pulses=['IceTopLaputopSeededSelectedHLC', 'IceTopLaputopSeededSelectedSLC']
-    # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
-    tray.Add(icetray_software.add_IceTop_tankXYcharge, pulses=pulses,
-             If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-    tray.Add(icetray_software.AddIceTopLogQLogR, pulses=pulses,
-             If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-    # tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
-    #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-    # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
-    #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
-
-    for min_dist in min_dists:
-        tray.Add(icetray_software.AddIceTopChargeDistance,
+        # Add InIce muon radius to frame
+        tray.Add(icetray_software.AddInIceMuonRadius,
                  track='Laputop',
+                 pulses='CoincLaputopCleanedPulses',
+                 min_DOM=1,
+                 max_DOM=60,
+                 If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', 'CoincLaputopCleanedPulses') )
+
+        # Add fraction containment to frame
+        tray.Add(icetray_software.add_fraction_containment, track='Laputop',
+                 If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop') )
+        # if args.type == 'sim':
+        tray.Add(icetray_software.add_fraction_containment, track='MCPrimary',
+                 If=lambda frame: check_keys(frame, 'I3Geometry', 'MCPrimary') )
+
+        # Add Laputop fitstatus ok boolean to frame
+        tray.Add(icetray_software.lap_fitstatus_ok,
+                 If=lambda frame: 'Laputop' in frame)
+
+        # Add opening angle between Laputop and MCPrimary for angular resolution calculation
+        tray.Add(icetray_software.add_opening_angle,
+                 particle1='MCPrimary', particle2='Laputop',
+                 key='angle_MCPrimary_Laputop',
+                 If=lambda frame: 'MCPrimary' in frame and 'Laputop' in frame)
+
+        pulses=['IceTopHLCSeedRTPulses', 'IceTopLaputopSeededSelectedSLC']
+        # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
+        tray.Add(icetray_software.add_IceTop_tankXYcharge,
                  pulses=pulses,
-                 min_dist=min_dist,
-                 If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
+                 If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+        tray.Add(icetray_software.AddIceTopLogQLogR,
+                 pulses=pulses,
+                 If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
 
-    #====================================================================
-    # Finish
-    comp.check_output_dir(args.outfile)
+        # outdir, tail = os.path.split(output)
+        # root, ext  = os.path.splitext(tail)
+        # charge_dist_outfile = root + '_charge-dist' + ext
+        # charge_dist_outfile = os.path.join(outdir, charge_dist_outfile)
+        # tray.Add(icetray_software.AddIceTopTankXYCharge,
+        #          pulses=pulses,
+        #          # outfile=charge_dist_outfile,
+        #          # sim=args.sim,
+        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses) and all(frame['IT73AnalysisIceTopQualityCuts'].values()))
 
-    hdf = I3HDFTableService(args.outfile)
-    keys = {key: tableio.default for key in keys}
-    if args.type == 'data':
-        keys['Laputop'] = [dataclasses.converters.I3ParticleConverter(),
-                           astro.converters.I3AstroConverter()]
+        # tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
+        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+        # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
+        #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
-    tray.Add(I3TableWriter, tableservice=hdf, keys=keys, SubEventStreams=['ice_top'])
+        for min_dist in min_dists:
+            tray.Add(icetray_software.AddIceTopChargeDistance,
+                     track='Laputop',
+                     pulses=pulses,
+                     min_dist=min_dist,
+                     If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
-    tray.Execute()
-    tray.Finish()
+
+        tray.AddModule(IceTop_LLH_Ratio, 'IceTopLLHRatio',
+                       Output='IceTopLLHRatio',
+    	               TwoDPDFPickleYear='2012',
+                	   GeometryHDF5='/data/user/zgriffith/llhratio_files/geometry.h5',
+                       highEbins=True,
+                       If=lambda frame: 'IceTopLaputopSeededSelectedSLC' in frame,
+                       )
+
+        #====================================================================
+        # Finish
+
+        hdf = I3HDFTableService(output)
+        keys = {key: tableio.default for key in keys}
+        if args.type == 'data':
+            keys['Laputop'] = [dataclasses.converters.I3ParticleConverter(),
+                               astro.converters.I3AstroConverter()]
+
+        tray.Add(I3TableWriter, tableservice=hdf, keys=keys, SubEventStreams=['ice_top'])
+
+        tray.Execute()
+        tray.Finish()
 
     print('Time taken: {}'.format(time.time() - t0))

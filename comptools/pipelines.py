@@ -220,8 +220,9 @@ def get_pipeline(classifier_name='BDT'):
         steps.append(('classifier', classifier))
 
     elif classifier_name == 'xgboost_comp_IC86.2012_2-groups':
-        classifier = XGBClassifier(max_depth=2,
-                                   n_estimators=100,
+        classifier = XGBClassifier(learning_rate=0.05,
+                                   max_depth=7,
+                                   n_estimators=150,
                                    # subsample=0.75,
                                    random_state=2)
         steps.append(('classifier', classifier))

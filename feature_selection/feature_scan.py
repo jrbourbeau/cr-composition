@@ -70,11 +70,13 @@ if __name__ == '__main__':
     if args.random_feature:
         np.random.seed(2)
         df_sim_train['random'] = np.random.random(size=len(df_sim_train))
+        print('Adding random column: \n {}'.format(df_sim_train['random']))
         features.append('random')
         feature_labels.append('random')
 
-    X_train = df_sim_train[features].values
-    y_train = df_sim_train['comp_target_{}'.format(num_groups)].values
+    X_train = df_sim_train.loc[:, features].values
+    target_col = 'comp_target_{}'.format(num_groups)
+    y_train = df_sim_train.loc[:, target_col].values
 
     # Will need energy for each event to make classification performance vs. energy plot
     log_energy_train = df_sim_train['reco_log_energy'].values
@@ -136,6 +138,7 @@ if __name__ == '__main__':
                           # Using tuple because items must be pickle-able
                           'features': tuple(features),
                           'feature_labels': tuple(feature_labels),
+                          'target': tuple(target_col),
                           'sklearn_version': sklearn.__version__,
                           'source_code': os.path.realpath(__file__),
                           'config': config,

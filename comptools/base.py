@@ -298,7 +298,7 @@ def get_training_features(feature_list=None):
                   'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
                   'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
                   'FractionContainment_Laputop_InIce': '$C_{\mathrm{IC}}$',
-                  'Laputop_IceTop_FractionContainment': '$C_{\mathrm{IT}}$',
+                  'FractionContainment_Laputop_IceTop': '$C_{\mathrm{IT}}$',
                   'max_inice_radius': '$R_{\mathrm{max}}$',
                   'invcharge_inice_radius': '$R_{\mathrm{q,core}}$',
                   'lap_zenith': 'zenith',
@@ -311,7 +311,8 @@ def get_training_features(feature_list=None):
                   'log_d4r_peak_energy': '$\mathrm{\log_{10}(E_{D4R})}$',
                   'log_d4r_peak_sigma': '$\mathrm{\log_{10}(\sigma E_{D4R})}$',
                   'd4r_N': 'D4R N',
-                  'median_inice_radius': 'Median InIce'
+                  'median_inice_radius': 'Median InIce',
+                  'IceTopLLHRatio': 'IceTopLLHRatio',
                   }
     dom_numbers = [1, 15, 30, 45, 60]
     for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):

@@ -21,8 +21,13 @@ from .model_selection import (get_CV_frac_correct, cross_validate_comp,
 from .spectrumfunctions import (get_flux, model_flux, counts_to_flux,
                                 broken_power_law_flux)
 from .data_functions import ratio_error
-from .unfolding import (unfolded_counts_dist, normalized_response_matrix,
-                        save_pyunfold_root_file)
+from .unfolding import (unfolded_counts_dist,
+                        response_matrix,
+                        # save_pyunfold_root_file,
+                        )
+# from .skymap import equatorial_to_healpy
+from .mapfunctions import (equatorial_to_healpy, smooth_map, mask_map,
+                           plot_skymap)
 
 paths = get_paths()
 color_dict = get_color_dict()

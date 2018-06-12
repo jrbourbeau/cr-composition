@@ -11,18 +11,15 @@ import matplotlib.pyplot as plt
 import seaborn.apionly as sns
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
-from ROOT import TH1F, TH2F, TFile
 import dask.array as da
 from dask.diagnostics import ProgressBar
+import pyprind
 
 from icecube.weighting.weighting import PDGCode
 from icecube.weighting.fluxes import GaisserH3a, GaisserH4a, Hoerandel5
 
 import comptools as comp
-
-
-if 'cvmfs' in os.getenv('ROOTSYS'):
-    raise comp.ComputingEnvironemtError('CVMFS ROOT cannot be used for unfolding')
+from pyunfold import iterative_unfold, Logger
 
 
 if __name__ == '__main__':
@@ -70,8 +67,8 @@ if __name__ == '__main__':
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
 
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
-    # pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'SVC_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'linecut_comp_{}_{}-groups'.format(config, num_groups)
     # pipeline_str = 'LinearSVC_comp_{}_{}-groups'.format(config, num_groups)
@@ -127,6 +124,7 @@ if __name__ == '__main__':
                                  bins=energybins.log_energy_bins)
         counts_err = np.sqrt(counts)
         unfolding_df['counts_' + composition] = counts
+        print('counts ({}) = {}'.format(composition, unfolding_df['counts_' + composition].values))
         unfolding_df['counts_' + composition + '_err'] = counts_err
 
     unfolding_df['counts_total'], _ = np.histogram(log_energy_data,
@@ -184,8 +182,10 @@ if __name__ == '__main__':
                                  })
 
     for idx, composition in enumerate(comp_list):
-        formatted_df.loc[idx::num_groups, 'counts'] = unfolding_df['counts_{}'.format(composition)]
-        formatted_df.loc[idx::num_groups, 'counts_err'] = np.sqrt(unfolding_df['counts_{}'.format(composition)])
+        comp_counts = unfolding_df['counts_{}'.format(composition)].values
+        comp_counts_err = np.sqrt(comp_counts)
+        formatted_df.loc[idx::num_groups, 'counts'] = comp_counts
+        formatted_df.loc[idx::num_groups, 'counts_err'] = comp_counts_err
 
     priors_formatted = {prior_name: np.empty(num_cause_bins) for prior_name in priors_list}
     for prior_name in priors_list:
@@ -212,5 +212,37 @@ if __name__ == '__main__':
     formatted_df.to_hdf(formatted_df_outfile, 'dataframe',
                         format='table', mode='w')
 
-    print('Saving PyUnfold input ROOT file...')
-    comp.save_pyunfold_root_file(config, num_groups)
+    # Run unfolding for each of the priors
+    names = ['Jeffreys', 'H3a', 'H4a', 'simple_power_law', 'broken_power_law']
+    # names = ['Jeffreys', 'H3a', 'H4a', 'Polygonato']
+    for prior_name in pyprind.prog_bar(names):
+        if prior_name == 'Jeffreys':
+            priors = 'Jeffreys'
+        else:
+            priors = formatted_df['{}_prior'.format(prior_name)]
+        # priors = 'Jeffreys' if prior_name == 'Jeffreys' else df['{}_prior'.format(prior_name)]
+
+        # df_unfolding_iter = iterative_unfold(config_name=args.config_file,
+        #                            priors=priors,
+        #                            input_file=args.input_file,
+        #                            ts_stopping=args.ts_stopping)
+
+        df_unfolding_iter = iterative_unfold(data=formatted_df['counts'],
+                                             data_err=formatted_df['counts_err'],
+                                             response=res_normalized,
+                                             response_err=res_normalized_err,
+                                             efficiencies=formatted_df['efficiencies'],
+                                             efficiencies_err=formatted_df['efficiencies_err'],
+                                             priors=priors,
+                                             ts='ks',
+                                             ts_stopping=0.005,
+                                             max_iter=100,
+                                             return_iterations=True,
+                                             callbacks=[Logger()])
+        # Save to hdf file
+        outfile  = os.path.join(comp.paths.comp_data_dir,
+                                config,
+                                'unfolding',
+                                'pyunfold_output_{}-groups.hdf'.format(num_groups))
+        comp.check_output_dir(outfile)
+        df_unfolding_iter.to_hdf(outfile, prior_name)

@@ -7,13 +7,16 @@ METAPROJECT_PATH="$PWD/metaproject"
 
 function usage()
 {
-    echo "if this was a real script you would see something useful here"
+    echo "Script to setup computing environment needed for analysis"
     echo ""
-    echo "./simple_args_parsing.sh"
-    echo "\t-h --help"
-    echo "\t--venv-path=$VENV_PATH"
-    echo "\t--metaproject-path=$METAPROJECT_PATH"
+    echo "Command line options:"
     echo ""
+    echo -e "-h --help"
+    echo -e "--venv-path: Path where Python virtual environment will be installed"
+    echo -e "--metaproject-path: Path where icerec metaproject will be installed"
+    echo ""
+    echo "Example useage:"
+    echo "./setup_env.sh --venv-path=/path/to/virtual/envionment --metaproject-path=/other/path"
 }
 
 while [ "$1" != "" ]; do
@@ -57,10 +60,8 @@ echo -e "${CYAN}Setting up py2-v3 toolset...\n${NC}"
 TOOLSET=py2-v3
 CVMFS_ROOT=/cvmfs/icecube.opensciencegrid.org
 eval `$CVMFS_ROOT/$TOOLSET/setup.sh`
-# ROOT 6 issue
-export PYTHONPATH="/cvmfs/icecube.opensciencegrid.org/py2-v3/RHEL_6_x86_64/lib:$PYTHONPATH"
 # Add gcc version 4.8 to path
-source /opt/rh/devtoolset-2/enable
+# source /opt/rh/devtoolset-2/enable
 
 
 ###################################
@@ -87,16 +88,17 @@ echo -e "${CYAN}pip version:${NC}"
 pip --version
 echo ""
 
-###########################
-# Install comptools package
-###########################
+
+#############################
+# Install Python dependencies
+#############################
 echo -e "${CYAN}Installing Python dependencies...${NC}"
-# pip install -r requirements.txt
-# pip install svn+http://code.icecube.wisc.edu/svn/sandbox/james.bourbeau/PyUnfold
-pip install --process-dependency-links -e .
+pip install -r requirements.txt
+# Install comptools package
+pip install -e .
 echo ""
 
-echo -e "${GREEN}Successfully installed all needed Python packages. To activate the environment use the command:"
+echo -e "${GREEN}Successfully installed all Python dependencies. To activate the virtual environment use the command:"
 echo "      source $VENV_PATH/bin/activate"
 echo "Activating Python virtual environment at $VENV_PATH"
 echo -e "${NC}"
@@ -108,16 +110,15 @@ echo -e "${NC}"
 echo -e "${CYAN}Setting up icerec metaproject...${NC}"
 mkdir "${METAPROJECT_PATH}"
 echo -e "${CYAN}Checking out icerec V05-01-05 from the IceCube SVN into ${METAPROJECT_PATH}/src ${NC}"
-svn co --username=icecube --password=skua --no-auth-cache http://code.icecube.wisc.edu/svn/meta-projects/icerec/releases/V05-01-05 "${METAPROJECT_PATH}/src"
+svn co --no-auth-cache http://code.icecube.wisc.edu/svn/meta-projects/icerec/releases/V05-01-05 "${METAPROJECT_PATH}/src"
 cd "$METAPROJECT_PATH"
-# cp -r /data/user/jbourbeau/metaprojects/icerec/V05-01-00/src .
 mkdir -p "$METAPROJECT_PATH/build"
 cd "$METAPROJECT_PATH/build"
 echo -e "${CYAN}Using cmake to create Makefiles${NC}"
 cmake -DCMAKE_CXX_STANDARD=11 ../src
 echo -e "${CYAN}Building icerec metaproject${NC}"
 make -j5
-echo -e "${GREEN}Icerec metaproject successfully built!!!"
+echo -e "${GREEN}Icerec metaproject successfully built!"
 echo -e "${GREEN}To activate the metaproject run:"
 echo "      $METAPROJECT_PATH/build/env-shell.sh"
 echo -e "${NC}"

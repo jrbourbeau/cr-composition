@@ -4,6 +4,7 @@ from collections import defaultdict
 import math
 import numpy as np
 import pandas as pd
+import h5py
 from scipy import optimize
 from I3Tray import NaN, Inf
 from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclasses
@@ -105,7 +106,12 @@ class AddIceTopTankXYCharge(icetray.I3ConditionalModule):
 
     def __init__(self, context):
         icetray.I3ConditionalModule.__init__(self, context)
-        self.AddParameter('pulses', 'Pulses to caluclate distances to from track', 'SRTCoincPulses')
+        pulses = ['IceTopHLCSeedRTPulses', 'IceTopLaputopSeededSelectedSLC']
+        self.AddParameter('pulses',
+                          'Pulses to caluclate distances to from track',
+                          pulses,
+                          )
+        # bins = np.linspace(-1000, 1000, 25, dtype=float)
         self.AddOutBox('OutBox')
 
     def Configure(self):
@@ -118,26 +124,51 @@ class AddIceTopTankXYCharge(icetray.I3ConditionalModule):
         self.PushFrame(frame)
 
     def Physics(self, frame):
-        frame['I3RecoPulseSeriesMap_union'] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
-        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, 'I3RecoPulseSeriesMap_union')
+        pulses_key = 'I3RecoPulseSeriesMap_union'
+        frame[pulses_key] = dataclasses.I3RecoPulseSeriesMapUnion(frame, self.pulses)
+        pulse_map = dataclasses.I3RecoPulseSeriesMap.from_frame(frame, pulses_key)
 
-        tanks_x, tanks_y, tanks_charge = [], [], []
+        tank_x, tank_y, tank_charge = [], [], []
         for omkey, pulses in pulse_map:
             x, y, z = self.geomap[omkey].position
-            tanks_x.append(x)
-            tanks_y.append(y)
-            charge = sum([pulse.charge for pulse in pulses])
-            tanks_charge.append(charge)
+            tank_x.append(x)
+            tank_y.append(y)
+            # Check for nan charges
+            charge = 0
+            for pulse in pulses:
+                if pulse.charge != NaN:
+                    charge += pulse.charge
+                else:
+                    print('pulse.charge is NaN!!')
+            # charge = sum([pulse.charge for pulse in pulses])
+            tank_charge.append(charge)
 
-        if tanks_x and tanks_y and tanks_charge:
-            frame['tanks_x'] = dataclasses.I3VectorDouble(tanks_x)
-            frame['tanks_y'] = dataclasses.I3VectorDouble(tanks_y)
-            frame['tanks_charge'] = dataclasses.I3VectorDouble(tanks_charge)
+        if tank_x and tank_y and tank_charge:
+            tank_charge = np.nan_to_num(tank_charge)
+            frame['tank_x'] = dataclasses.I3VectorDouble(tank_x)
+            frame['tank_y'] = dataclasses.I3VectorDouble(tank_y)
+            frame['tank_charge'] = dataclasses.I3VectorDouble(tank_charge)
+            # hist, _, _ = np.histogram2d(tanks_x, tanks_y,
+            #                             bins=[self.xbins, self.ybins],
+            #                             weights=tanks_charge)
+            # self.hists.append(hist)
+            # event_header = frame['I3EventHeader']
+            # event_id = '{}_{}_{}_{}'.format(self.sim,
+            #                                 event_header.run_id,
+            #                                 event_header.event_id,
+            #                                 event_header.sub_event_id)
+            # self.event_ids.append(event_id)
 
-        del frame['I3RecoPulseSeriesMap_union']
+        del frame[pulses_key]
         self.PushFrame(frame)
 
     def Finish(self):
+        # with h5py.File(self.outfile, 'w') as f:
+        #     charge_dist_dataset = f.create_dataset('charge_dist',
+        #                                            data=np.asarray(self.hists))
+        #     event_id_dataset = f.create_dataset('event_id',
+        #                                         data=np.asarray(self.event_ids))
+
         return
 
 

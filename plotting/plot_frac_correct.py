@@ -95,7 +95,8 @@ if __name__ == '__main__':
     energybins = comp.get_energybins(config)
     comp_list = comp.get_comp_list(num_groups=num_groups)
     feature_list, feature_labels = comp.get_training_features()
-    pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
+    pipeline_str = 'xgboost_comp_{}_{}-groups'.format(config, num_groups)
+    # pipeline_str = 'BDT_comp_{}_{}-groups'.format(config, num_groups)
 
     df_train, df_test = comp.load_sim(config=config,
                                       log_energy_min=energybins.log_energy_min,
@@ -134,15 +135,21 @@ if __name__ == '__main__':
         xlabel = '$\mathrm{\log_{10}(E_{MC}/GeV)}$'
     else:
         xlabel = '$\mathrm{\log_{10}(E_{reco}/GeV)}$'
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel('Classification accuracy [{:d}-fold CV]'.format(n_splits))
+    fontsize = 18
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel('Classification accuracy [{:d}-fold CV]'.format(n_splits),
+                  fontsize=fontsize)
+    plt.xticks(fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
     ax.set_ylim([0.0, 1.0])
     ax.set_xlim(6.4, energybins.log_energy_max)
     # ax.set_xlim(energybins.log_energy_min, energybins.log_energy_max)
     ax.grid()
     leg = plt.legend(loc='upper center', frameon=False,
-                     bbox_to_anchor=(0.5, 1.1), ncol=len(comp_list)+1,
-                     fancybox=False)
+                     bbox_to_anchor=(0.5,
+                                     1.15),
+                     ncol=len(comp_list)+1,
+                     fancybox=False, fontsize=fontsize)
     # set the linewidth of each legend object
     for legobj in leg.legendHandles:
         legobj.set_linewidth(3.0)

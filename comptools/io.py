@@ -172,26 +172,30 @@ def add_convenience_variables(df, datatype='sim'):
 def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                           energy_reco=True, energy_cut_key='reco_log_energy',
                           log_energy_min=None, log_energy_max=None,
-                          columns=None, n_jobs=1, verbose=False):
+                          columns=None, n_jobs=1, verbose=False,
+                          return_dask=True):
 
     validate_datatype(datatype)
-    # If df_file is not specified, use default path
-    if df_file is None:
-        paths = get_paths()
-        df_file = os.path.join(paths.comp_data_dir, config,
-                               '{}_dataframe.hdf5'.format(datatype))
-    if not os.path.exists(df_file):
-        raise IOError('The DataFrame file {} doesn\'t exist'.format(df_file))
 
-    chunksize = 1000000
-    df = dd.read_hdf(df_file, 'dataframe', mode='r', columns=columns,
-                     chunksize=chunksize)
+    paths = get_paths()
+    file_pattern = os.path.join(paths.comp_data_dir,
+                                config,
+                                datatype,
+                                'processed_hdf',
+                                '*.hdf')
+    chunksize = 10000
+    ddf = dd.read_hdf(file_pattern,
+                      key='dataframe',
+                      mode='r',
+                      columns=columns,
+                      chunksize=chunksize)
+
     get = multiprocessing.get if n_jobs > 1 else dask.get
     if verbose:
         with ProgressBar():
-            df = df.compute(get=get, num_workers=n_jobs)
+            df = ddf.compute(get=get, num_workers=n_jobs)
     else:
-        df = df.compute(get=get, num_workers=n_jobs)
+        df = ddf.compute(get=get, num_workers=n_jobs)
 
     if energy_reco:
         model_dict = load_trained_model('RF_energy_{}'.format(config),
@@ -214,7 +218,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
              energy_reco=True, energy_cut_key='reco_log_energy',
              log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
              verbose=False):
-    '''Function to load processed simulation DataFrame
+    """Function to load processed simulation DataFrame
 
     Parameters
     ----------
@@ -252,8 +256,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     pandas.DataFrame, tuple of pandas.DataFrame
         Return a single DataFrame if test_size is 0, otherwise return
         a 2-tuple of training and testing DataFrame.
-
-    '''
+    """
 
     if config not in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
@@ -282,7 +285,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
 def load_data(df_file=None, config='IC86.2012', energy_reco=True,
               energy_cut_key='reco_log_energy', log_energy_min=6.0,
               log_energy_max=8.0, columns=None, n_jobs=1, verbose=False):
-    '''Function to load processed data DataFrame
+    """Function to load processed data DataFrame
 
     Parameters
     ----------
@@ -316,7 +319,7 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
     pandas.DataFrame
         Return a DataFrame with processed data
 
-    '''
+    """
 
     if config not in get_data_configs():
         raise ValueError('config must be in {}'.format(get_data_configs()))

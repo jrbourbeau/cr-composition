@@ -3,9 +3,12 @@ channels:
   - conda-forge
 dependencies:
   # Analysis requirements
+  - python=3.6
   - six
   - numpy
+  - xarray
   - pandas
+  - h5py
   - pytables
   - matplotlib
   - dask
@@ -20,12 +23,19 @@ dependencies:
   - healpy
   - mlxtend
   - pyprind
-  - root5
+  - pyunfold
+  # Deep learning stuff
+  - keras
+  - tensorflow
+  # Stuff from PyPI (i.e. not on conda-forge)
   - pip:
       - pycondor
+      - livelossplot
+
   # Testing requirements
   - pytest
   - flake8
+
   # Documentation requirements
   - sphinx
   - numpydoc
