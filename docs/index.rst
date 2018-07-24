@@ -7,7 +7,7 @@
 
 .. toctree::
    :maxdepth: 3
-   :caption: User Guide:
+   :caption: User Guide
    :hidden:
 
    Overview <self>
