@@ -27,8 +27,10 @@ def composition_group_labels(compositions, num_groups=2):
     else:
         raise ValueError('Invalid number of groups entered. '
                          'Must be 2, 3, or 4.')
-
-    return [comp_to_group[c] for c in compositions]
+    if isinstance(compositions, str):
+        return comp_to_group[compositions]
+    else:
+        return [comp_to_group[c] for c in compositions]
 
 
 _two_group_encoding = OrderedDict()
@@ -63,7 +65,10 @@ def _get_group_encoding_dict(num_groups=2):
 
 def encode_composition_groups(groups, num_groups=2):
     group_to_label = _get_group_encoding_dict(num_groups=num_groups)
-    return [group_to_label[g] for g in groups]
+    if isinstance(groups, str):
+        return group_to_label[groups]
+    else:
+        return [group_to_label[g] for g in groups]
 
 
 def decode_composition_groups(labels, num_groups=2):

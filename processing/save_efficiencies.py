@@ -126,8 +126,6 @@ if __name__ == "__main__":
     df_sim = comp.load_sim(config=args.config, test_size=0,
                            log_energy_min=None, log_energy_max=None)
 
-    geom_factor = (df_sim.lap_cos_zenith.max() + df_sim.lap_cos_zenith.min()) / 2
-
     # Thrown areas are different for different energy bin
     thrown_radii = comp.simfunctions.get_sim_thrown_radius(bin_midpoints)
     thrown_areas = np.pi * thrown_radii**2
@@ -145,6 +143,7 @@ if __name__ == "__main__":
             comp_mask = compositions == composition
         sim_list = df_sim.loc[comp_mask, 'sim'].unique()
         thrown_showers = thrown_showers_per_ebin(sim_list, log_energy_bins=bins)
+        print('thrown_showers ({}) = {}'.format(composition, thrown_showers))
         passed_showers = np.histogram(df_sim.loc[comp_mask, 'MC_log_energy'], bins=bins)[0]
 
         efficiency, efficiency_err = comp.ratio_error(num=passed_showers,

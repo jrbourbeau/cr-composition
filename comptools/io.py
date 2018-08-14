@@ -7,7 +7,7 @@ import dask
 from dask import multiprocessing
 from dask.diagnostics import ProgressBar
 import dask.dataframe as dd
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import ShuffleSplit, train_test_split
 from sklearn.externals import joblib
 
 from .base import get_paths
@@ -178,13 +178,24 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
     validate_datatype(datatype)
 
     paths = get_paths()
-    file_pattern = os.path.join(paths.comp_data_dir,
+    # file_pattern = os.path.join(paths.comp_data_dir,
+    #                             config,
+    #                             datatype,
+    #                             'processed_hdf',
+    #                             '*.hdf')
+    files_record = os.path.join(paths.comp_data_dir,
                                 config,
                                 datatype,
                                 'processed_hdf',
-                                '*.hdf')
+                                'files.txt')
+
+    with open(files_record, 'r') as f:
+        lines = f.readlines()
+    files = [l.strip() for l in lines]
+
     chunksize = 10000
-    ddf = dd.read_hdf(file_pattern,
+    # ddf = dd.read_hdf(file_pattern,
+    ddf = dd.read_hdf(files,
                       key='dataframe',
                       mode='r',
                       columns=columns,
@@ -198,8 +209,10 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
         df = ddf.compute(get=get, num_workers=n_jobs)
 
     if energy_reco:
-        model_dict = load_trained_model('RF_energy_{}'.format(config),
+        model_dict = load_trained_model('linearregression_energy_{}'.format(config),
                                         return_metadata=True)
+        # model_dict = load_trained_model('RF_energy_{}'.format(config),
+        #                                 return_metadata=True)
         pipeline = model_dict['pipeline']
         feature_list = list(model_dict['training_features'])
         df['reco_log_energy'] = pipeline.predict(df[feature_list].values)
@@ -218,7 +231,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
              energy_reco=True, energy_cut_key='reco_log_energy',
              log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
              verbose=False):
-    """Function to load processed simulation DataFrame
+    """ Function to load processed simulation DataFrame
 
     Parameters
     ----------
@@ -256,6 +269,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     pandas.DataFrame, tuple of pandas.DataFrame
         Return a single DataFrame if test_size is 0, otherwise return
         a 2-tuple of training and testing DataFrame.
+
     """
 
     if config not in get_sim_configs():
@@ -272,10 +286,9 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
-        splitter = ShuffleSplit(n_splits=1, test_size=test_size,
-                                random_state=2)
-        train_mask, test_mask = next(splitter.split(df.values))
-        output = df.iloc[train_mask], df.iloc[test_mask]
+        output = train_test_split(df, test_size=test_size, shuffle=True,
+                                  random_state=2)
+
     else:
         output = df
 
@@ -285,7 +298,7 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
 def load_data(df_file=None, config='IC86.2012', energy_reco=True,
               energy_cut_key='reco_log_energy', log_energy_min=6.0,
               log_energy_max=8.0, columns=None, n_jobs=1, verbose=False):
-    """Function to load processed data DataFrame
+    """ Function to load processed data DataFrame
 
     Parameters
     ----------

@@ -6,11 +6,11 @@ from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor,
                               VotingClassifier)
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC, LinearSVC, NuSVC
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.externals import joblib
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, XGBRegressor
 
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression, SGDClassifier
 from mlxtend.classifier import StackingClassifier
 
 from .base import get_paths
@@ -20,6 +20,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import euclidean_distances
+from sklearn.pipeline import make_pipeline
 
 
 def line(x, x1, y1, x2, y2):
@@ -294,6 +295,26 @@ def get_pipeline(classifier_name='BDT'):
                                            n_jobs=10,
                                            random_state=2)
         steps.append(('classifier', classifier))
+    elif classifier_name == 'xgboost_energy_IC86.2012':
+        classifier = XGBRegressor(n_estimators=75,
+                                  booster='gblinear',
+                                  # subsample=0.75,
+                                  random_state=2)
+        steps.append(('classifier', classifier))
+    elif classifier_name == 'linearregression_energy_IC86.2012':
+        reg = make_pipeline(PolynomialFeatures(2),
+                            # StandardScaler(),
+                            LinearRegression(),
+                            )
+        return reg
+    elif classifier_name == 'SGD_comp_IC86.2012_2-groups':
+        # clf = make_pipeline(StandardScaler(),
+        #                     SGDClassifier(random_state=2, n_jobs=1),
+        #                     )
+        clf = make_pipeline(StandardScaler(),
+                            SGDClassifier(loss='hinge', alpha=1e-3, max_iter=50, tol=1e-3, shuffle=True, random_state=2),
+                            )
+        return clf
     else:
         raise ValueError(
             '{} is not a valid classifier name'.format(classifier_name))

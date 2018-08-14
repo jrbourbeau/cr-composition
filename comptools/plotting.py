@@ -2,6 +2,7 @@
 from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def get_color_dict():
@@ -27,6 +28,16 @@ def get_colormap(composition):
                   'data': 'Blacks'}
 
     return cmaps[composition]
+
+
+def colorbar(mappable, label=None):
+    if label is None:
+        label = ''
+    ax = mappable.axes
+    fig = ax.figure
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    return fig.colorbar(mappable, cax=cax, label=label)
 
 
 def histogram_2D(x, y, bins, weights=None, log_counts=False, make_prob=False,
@@ -99,7 +110,7 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     return im
 
 
-def plot_steps(edges, y, yerr=None, color='C0', lw=1, ls='-', alpha=1.0,
+def plot_steps(edges, y, yerr=None, color=None, lw=1, ls='-', alpha=1.0,
                fillalpha=0.2, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects

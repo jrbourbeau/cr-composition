@@ -234,7 +234,7 @@ def main(config, num_groups, prior, ts_stopping, case, response, response_err, p
                                          response_err=res_normalized_err,
                                          efficiencies=efficiencies,
                                          efficiencies_err=efficiencies_err,
-                                         priors=prior_pyunfold,
+                                         prior=prior_pyunfold,
                                          ts='ks',
                                          ts_stopping=ts_stopping,
                                          max_iter=100,
@@ -631,7 +631,8 @@ if __name__ == '__main__':
     feature_list, feature_labels = comp.get_training_features()
 
     print('Loading energy regressor...')
-    energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
+    energy_pipeline = comp.load_trained_model('linearregression_energy_{}'.format(config))
+    # energy_pipeline = comp.load_trained_model('RF_energy_{}'.format(config))
     for df in [df_sim_train, df_sim_test]:
         df['reco_log_energy'] = energy_pipeline.predict(df[feature_list].values)
         df['reco_energy'] = 10**df['reco_log_energy']
@@ -702,7 +703,7 @@ if __name__ == '__main__':
     log_reco_energy_sim_test = df_sim_response['reco_log_energy']
     log_true_energy_sim_test = df_sim_response['MC_log_energy']
 
-    res_normalized, res_normalized_err = comp.normalized_response_matrix(
+    res_normalized, res_normalized_err = comp.response_matrix(
                                             true_energy=log_true_energy_sim_test,
                                             reco_energy=log_reco_energy_sim_test,
                                             true_target=y_test,

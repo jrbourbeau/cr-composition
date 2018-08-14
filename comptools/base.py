@@ -171,71 +171,74 @@ class ComputingEnvironemtError(Exception):
 
 
 def get_energybins(config='IC86.2012'):
-    """Function to return analysis energy bin information
+    from .binning import get_energybins as get_ebins
+    return get_ebins(config=config)
 
-    Parameters
-    ----------
-    config : str, optional
-        Detector configuration (default is 'IC86.2012').
 
-    Returns
-    -------
-    energybins : namedtuple
-        Namedtuple containing analysis energy bin information.
-    """
-    # Create EnergyBin namedtuple
-    energy_field_names = ['energy_min',
-                          'energy_max',
-                          'energy_bins',
-                          'energy_midpoints',
-                          'energy_bin_widths',
-                          'log_energy_min',
-                          'log_energy_max',
-                          'log_energy_bin_width',
-                          'log_energy_bins',
-                          'log_energy_midpoints',
-                          ]
-    EnergyBin = namedtuple('EnergyBins', energy_field_names)
-
-    # Define energy range for this analysis
-    if 'IC79' in config:
-        log_energy_min = 6.1
-        log_energy_break = 8.0
-        log_energy_max = 9.0
-        log_energy_bins = np.concatenate(
-                        (np.arange(log_energy_min, log_energy_break-0.1, 0.1),
-                         np.arange(log_energy_break, log_energy_max+0.2, 0.2)))
-    elif 'IC86' in config:
-        log_energy_min = 6.1
-        log_energy_max = 8.0
-        log_energy_bins = np.arange(log_energy_min, log_energy_max+0.1, 0.1)
-    else:
-        raise ValueError(
-            'Invalid detector configuration entered: {}'.format(config))
-
-    log_energy_bin_width = log_energy_bins[1:] - log_energy_bins[:-1]
-    log_energy_midpoints = (log_energy_bins[1:] + log_energy_bins[:-1]) / 2
-
-    energy_min = 10**log_energy_min
-    energy_max = 10**log_energy_max
-    energy_bins = 10**log_energy_bins
-    energy_midpoints = 10**log_energy_midpoints
-    energy_bin_widths = energy_bins[1:] - energy_bins[:-1]
-
-    # Create instance of EnergyBins with appropriate binning
-    energybins = EnergyBin(energy_min=energy_min,
-                           energy_max=energy_max,
-                           energy_bins=energy_bins,
-                           energy_midpoints=energy_midpoints,
-                           energy_bin_widths=energy_bin_widths,
-                           log_energy_min=log_energy_min,
-                           log_energy_max=log_energy_max,
-                           log_energy_bin_width=log_energy_bin_width,
-                           log_energy_bins=log_energy_bins,
-                           log_energy_midpoints=log_energy_midpoints)
-
-    return energybins
-
+LABEL_DICT = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
+              'lap_log_energy': '$\log_{10}(E_{\mathrm{Lap}}/\mathrm{GeV})$',
+              'log_s50': '$\log_{10}(S_{\mathrm{50}})$',
+              'log_s80': '$\log_{10}(S_{\mathrm{80}})$',
+              'log_s125': '$\log_{10}(S_{\mathrm{125}})$',
+              'log_s180': '$\log_{10}(S_{\mathrm{180}})$',
+              'log_s250': '$\log_{10}(S_{\mathrm{250}})$',
+              'log_s500': '$\log_{10}(S_{\mathrm{500}})$',
+              'lap_rlogl': '$r\log_{10}(l)$',
+              'lap_beta': 'lap beta',
+              'InIce_log_charge_1_60': 'InIce charge',
+              'InIce_log_charge_1_45': 'InIce charge (top 75\%)',
+              'InIce_charge_1_30': 'InIce charge (top 50\%)',
+              'InIce_log_charge_1_30': '$\log_{10}(InIce charge (top 50))$',
+              'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
+              'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
+              'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
+              'lap_cos_zenith': '$\cos(\\theta)$',
+              'LLHlap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
+              'LLHLF_cos_zenith': '$\cos(\\theta_{\mathrm{LLH+COG}})$',
+              'lap_chi2': '$\chi^2_{\mathrm{Lap}}/\mathrm{n.d.f}$',
+              'NChannels_1_60': 'NChannels',
+              'NChannels_1_45': 'NChannels (top 75\%)',
+              'NChannels_1_30': 'NChannels (top 50\%)',
+              'NChannels_1_15': 'NChannels (top 25\%)',
+              'NChannels_1_6': 'NChannels (top 10\%)',
+              'log_NChannels_1_30': '$\log_{10}$(NChannels (top 50\%))',
+              'StationDensity': 'StationDensity',
+              'charge_nchannels_ratio': 'Charge/NChannels',
+              'stationdensity_charge_ratio': 'StationDensity/Charge',
+              'NHits_1_30': 'NHits',
+              'log_NHits_1_30': '$\log_{10}$(NHits (top 50\%))',
+              'charge_nhits_ratio': 'Charge/NHits',
+              'nhits_nchannels_ratio': 'NHits/NChannels',
+              'stationdensity_nchannels_ratio': 'StationDensity/NChannels',
+              'stationdensity_nhits_ratio': 'StationDensity/NHits',
+              'llhratio': 'llhratio',
+              'n_he_stoch_standard': 'Num HE stochastics (standard)',
+              'n_he_stoch_strong': 'Num HE stochastics (strong)',
+              'eloss_1500_standard': 'dE/dX (standard)',
+              'log_dEdX': '$\mathrm{\log_{10}(dE/dX)}$',
+              'eloss_1500_strong': 'dE/dX (strong)',
+              'num_millipede_particles': '$N_{\mathrm{mil}}$',
+              'avg_inice_radius': '$\mathrm{\langle R_{\mu} \\rangle }$',
+              'invqweighted_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
+              'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
+              'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
+              'FractionContainment_Laputop_InIce': '$C_{\mathrm{IC}}$',
+              'FractionContainment_Laputop_IceTop': '$C_{\mathrm{IT}}$',
+              'max_inice_radius': '$R_{\mathrm{max}}$',
+              'invcharge_inice_radius': '$R_{\mathrm{q,core}}$',
+              'lap_zenith': 'zenith',
+              'NStations': 'NStations',
+              'IceTop_charge': 'IT charge',
+              'IceTop_charge_175m': 'Signal greater 175m',
+              'log_IceTop_charge_175m': '$\log_{10}(Q_{IT, 175})$',
+              'IT_charge_ratio': 'IT charge ratio',
+              'refit_beta': '$\mathrm{\\beta_{refit}}$',
+              'log_d4r_peak_energy': '$\mathrm{\log_{10}(E_{D4R})}$',
+              'log_d4r_peak_sigma': '$\mathrm{\log_{10}(\sigma E_{D4R})}$',
+              'd4r_N': 'D4R N',
+              'median_inice_radius': 'Median InIce',
+              'IceTopLLHRatio': 'IceTopLLHRatio',
+              }
 
 def get_training_features(feature_list=None):
 
@@ -250,94 +253,30 @@ def get_training_features(feature_list=None):
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'max_inice_radius']
     # feature_list = ['lap_cos_zenith', 'log_s125', 'log_dEdX', 'avg_inice_radius']
 
-    label_dict = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
-                  'lap_log_energy': '$\log_{10}(E_{\mathrm{Lap}}/\mathrm{GeV})$',
-                  'log_s50': '$\log_{10}(S_{\mathrm{50}})$',
-                  'log_s80': '$\log_{10}(S_{\mathrm{80}})$',
-                  'log_s125': '$\log_{10}(S_{\mathrm{125}})$',
-                  'log_s180': '$\log_{10}(S_{\mathrm{180}})$',
-                  'log_s250': '$\log_{10}(S_{\mathrm{250}})$',
-                  'log_s500': '$\log_{10}(S_{\mathrm{500}})$',
-                  'lap_rlogl': '$r\log_{10}(l)$',
-                  'lap_beta': 'lap beta',
-                  'InIce_log_charge_1_60': 'InIce charge',
-                  'InIce_log_charge_1_45': 'InIce charge (top 75\%)',
-                  'InIce_charge_1_30': 'InIce charge (top 50\%)',
-                  'InIce_log_charge_1_30': '$\log_{10}(InIce charge (top 50))$',
-                  'InIce_log_charge_1_15': 'InIce charge (top 25\%)',
-                  'InIce_log_charge_1_6': 'InIce charge (top 10\%)',
-                  'reco_cos_zenith': '$\cos(\\theta_{\mathrm{reco}})$',
-                  'lap_cos_zenith': '$\cos(\\theta)$',
-                  'LLHlap_cos_zenith': '$\cos(\\theta_{\mathrm{Lap}})$',
-                  'LLHLF_cos_zenith': '$\cos(\\theta_{\mathrm{LLH+COG}})$',
-                  'lap_chi2': '$\chi^2_{\mathrm{Lap}}/\mathrm{n.d.f}$',
-                  'NChannels_1_60': 'NChannels',
-                  'NChannels_1_45': 'NChannels (top 75\%)',
-                  'NChannels_1_30': 'NChannels (top 50\%)',
-                  'NChannels_1_15': 'NChannels (top 25\%)',
-                  'NChannels_1_6': 'NChannels (top 10\%)',
-                  'log_NChannels_1_30': '$\log_{10}$(NChannels (top 50\%))',
-                  'StationDensity': 'StationDensity',
-                  'charge_nchannels_ratio': 'Charge/NChannels',
-                  'stationdensity_charge_ratio': 'StationDensity/Charge',
-                  'NHits_1_30': 'NHits',
-                  'log_NHits_1_30': '$\log_{10}$(NHits (top 50\%))',
-                  'charge_nhits_ratio': 'Charge/NHits',
-                  'nhits_nchannels_ratio': 'NHits/NChannels',
-                  'stationdensity_nchannels_ratio': 'StationDensity/NChannels',
-                  'stationdensity_nhits_ratio': 'StationDensity/NHits',
-                  'llhratio': 'llhratio',
-                  'n_he_stoch_standard': 'Num HE stochastics (standard)',
-                  'n_he_stoch_strong': 'Num HE stochastics (strong)',
-                  'eloss_1500_standard': 'dE/dX (standard)',
-                  'log_dEdX': '$\mathrm{\log_{10}(dE/dX)}$',
-                  'eloss_1500_strong': 'dE/dX (strong)',
-                  'num_millipede_particles': '$N_{\mathrm{mil}}$',
-                  'avg_inice_radius': '$\mathrm{\langle R_{\mu} \\rangle }$',
-                  'invqweighted_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
-                  'avg_inice_radius_1_60': '$\mathrm{R_{\mu \ bundle}}$',
-                  'avg_inice_radius_Laputop': '$R_{\mathrm{core, Lap}}$',
-                  'FractionContainment_Laputop_InIce': '$C_{\mathrm{IC}}$',
-                  'FractionContainment_Laputop_IceTop': '$C_{\mathrm{IT}}$',
-                  'max_inice_radius': '$R_{\mathrm{max}}$',
-                  'invcharge_inice_radius': '$R_{\mathrm{q,core}}$',
-                  'lap_zenith': 'zenith',
-                  'NStations': 'NStations',
-                  'IceTop_charge': 'IT charge',
-                  'IceTop_charge_175m': 'Signal greater 175m',
-                  'log_IceTop_charge_175m': '$\log_{10}(Q_{IT, 175})$',
-                  'IT_charge_ratio': 'IT charge ratio',
-                  'refit_beta': '$\mathrm{\\beta_{refit}}$',
-                  'log_d4r_peak_energy': '$\mathrm{\log_{10}(E_{D4R})}$',
-                  'log_d4r_peak_sigma': '$\mathrm{\log_{10}(\sigma E_{D4R})}$',
-                  'd4r_N': 'D4R N',
-                  'median_inice_radius': 'Median InIce',
-                  'IceTopLLHRatio': 'IceTopLLHRatio',
-                  }
     dom_numbers = [1, 15, 30, 45, 60]
     for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
         key = 'NChannels_{}_{}'.format(min_DOM, max_DOM)
         label = 'NChannels {} {}'.format(min_DOM, max_DOM)
-        label_dict[key] = label
+        LABEL_DICT[key] = label
     min_DOM, max_DOM = 1, 60
     key = 'NChannels_{}_{}'.format(min_DOM, max_DOM)
     label = 'NChannels {} {}'.format(min_DOM, max_DOM)
-    label_dict[key] = label
+    LABEL_DICT[key] = label
 
     for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
         key = 'NHits_{}_{}'.format(min_DOM, max_DOM)
         label = 'NHits {} {}'.format(min_DOM, max_DOM)
-        label_dict[key] = label
+        LABEL_DICT[key] = label
     min_DOM, max_DOM = 1, 60
     key = 'NHits_{}_{}'.format(min_DOM, max_DOM)
     label = 'NHits {} {}'.format(min_DOM, max_DOM)
-    label_dict[key] = label
+    LABEL_DICT[key] = label
 
     min_dists = np.arange(0, 1125, 125)
     for min_dist in min_dists:
         key = 'IceTop_charge_beyond_{}m'.format(min_dist)
-        label_dict[key] = 'IT Q > {}m'.format(min_dist)
+        LABEL_DICT[key] = 'IT Q > {}m'.format(min_dist)
 
-    feature_labels = [label_dict[feature] for feature in feature_list]
+    feature_labels = [LABEL_DICT[feature] for feature in feature_list]
 
     return feature_list, feature_labels

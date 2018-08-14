@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import healpy as hp
 import matplotlib.pyplot as plt
-import seaborn.apionly as sns
+import seaborn as sns
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import ListedColormap
 from scipy import optimize

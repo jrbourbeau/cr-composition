@@ -5,22 +5,29 @@ pandas
 tables
 matplotlib
 dask[complete]
+dask-ml
 scikit-learn
 h5py
 ipython
 matplotlib
 seaborn
 jupyter
+jupyterlab
 xgboost
 scipy
 mlxtend
 pyprind
 pycondor
 pyunfold
-healpy
+healpy==1.11.0
+PyMySQL
+# Needed for dataio-pyshovel
+urwid
+
 # Testing requirements
 pytest
 flake8
+
 # Documentation requirements
 sphinx
 numpydoc

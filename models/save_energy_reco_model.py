@@ -13,14 +13,19 @@ if __name__ == '__main__':
 
     description='Saves trained energy reconstruction model for later use'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config', dest='config',
-                   choices=comp.simfunctions.get_sim_configs(),
-                   default='IC86.2012',
-                   help='Detector configuration')
+    parser.add_argument('-c', '--config',
+                        dest='config',
+                        choices=comp.simfunctions.get_sim_configs(),
+                        default='IC86.2012',
+                        help='Detector configuration')
+    parser.add_argument('--pipeline',
+                        dest='pipeline',
+                        default='RF',
+                        help='Energy regressor pipeline to use')
     args = parser.parse_args()
 
     # Load untrained model
-    pipeline_str = 'RF_energy_{}'.format(args.config)
+    pipeline_str = '{}_energy_{}'.format(args.pipeline, args.config)
     pipeline = comp.get_pipeline(pipeline_str)
     # Load training data and fit model
     feature_list, feature_labels = comp.get_training_features()

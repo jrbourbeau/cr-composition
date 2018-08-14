@@ -3,7 +3,7 @@ __version__ = '0.0.1'
 
 import os
 from .base import (get_paths, check_output_dir, ComputingEnvironemtError,
-                   get_energybins, get_training_features, partition)
+                   get_training_features, partition)
 from . import simfunctions
 from .simfunctions import level3_sim_file_batches, level3_sim_GCD_file
 from . import datafunctions
@@ -28,6 +28,8 @@ from .unfolding import (unfolded_counts_dist,
 # from .skymap import equatorial_to_healpy
 from .mapfunctions import (equatorial_to_healpy, smooth_map, mask_map,
                            plot_skymap)
+
+from .binning import get_energybins, get_comp_bins, get_zenith_bins, get_bins
 
 paths = get_paths()
 color_dict = get_color_dict()

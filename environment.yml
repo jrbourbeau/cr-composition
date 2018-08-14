@@ -12,6 +12,7 @@ dependencies:
   - pytables
   - matplotlib
   - dask
+  - dask-ml
   - scikit-learn
   - h5py
   - ipython
