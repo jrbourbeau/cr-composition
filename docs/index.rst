@@ -11,7 +11,7 @@
    :hidden:
 
    Overview <self>
-   installation
+   setup 
    comptools
 
 IceCube cosmic-ray composition analysis
