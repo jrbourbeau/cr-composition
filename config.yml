@@ -1,0 +1,8 @@
+paths:
+    metaproject: /data/user/jbourbeau/metaprojects/icerec/V05-01-05
+    comp_data_dir: /data/user/jbourbeau/composition
+    condor_data_dir: /data/user/jbourbeau/composition/condor
+    condor_scratch_dir: /scratch/jbourbeau/composition/condor
+    figures_dir: /home/jbourbeau/public_html/figures/composition
+    project_root: /home/jbourbeau/cr-composition
+    virtualenv_dir: /home/jbourbeau/cr-composition/.virtualenv

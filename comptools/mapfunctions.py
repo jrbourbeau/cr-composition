@@ -10,7 +10,7 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import ListedColormap
 from scipy import optimize
 
-from .base import get_paths, requires_icecube
+from .base import get_config_paths, requires_icecube
 
 try:
     from icecube import astro
@@ -249,7 +249,7 @@ def get_relint_err_map(data_map, ref_map, n_resamples=20):
 def get_skymap_file(config, n_side, composition='all'):
 
     # Setup global path names
-    mypaths = get_paths()
+    mypaths = get_config_paths()
 
     skymap_file = os.path.join(mypaths.comp_data_dir,
                                config + '_data', 'anisotropy',

@@ -1,5 +1,6 @@
 
 import os
+import numpy as np
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.ensemble import (RandomForestClassifier, RandomForestRegressor,
                               AdaBoostClassifier, GradientBoostingClassifier,
@@ -9,13 +10,8 @@ from sklearn.svm import SVC, LinearSVC, NuSVC
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.externals import joblib
 from xgboost import XGBClassifier, XGBRegressor
-
 from sklearn.linear_model import LogisticRegression, LinearRegression, SGDClassifier
 from mlxtend.classifier import StackingClassifier
-
-from .base import get_paths
-
-import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels

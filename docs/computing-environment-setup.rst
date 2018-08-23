@@ -1,10 +1,10 @@
-.. _installation:
+.. _computing-env:
 
 :github_url: https://github.com/jrbourbeau/cr-composition
 
-********************
-Installation & setup
-********************
+***************************
+Computing environment setup
+***************************
 
 This page walks through the initial setup and installation steps to configure the computing environment used for this analysis. It is assumed that you are currently logged onto one of the IceCube cobalt testbed machines.
 
