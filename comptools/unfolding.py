@@ -6,7 +6,7 @@ import pandas as pd
 import socket
 
 from .composition_encoding import get_comp_list
-from .base import get_energybins, get_paths, check_output_dir
+from .base import get_energybins, check_output_dir
 from .data_functions import ratio_error
 
 

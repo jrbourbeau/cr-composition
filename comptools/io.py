@@ -10,7 +10,7 @@ import dask.dataframe as dd
 from sklearn.model_selection import ShuffleSplit, train_test_split
 from sklearn.externals import joblib
 
-from .base import get_paths
+from .base import get_config_paths
 from .simfunctions import get_sim_configs
 from .datafunctions import get_data_configs
 
@@ -177,7 +177,7 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
 
     validate_datatype(datatype)
 
-    paths = get_paths()
+    paths = get_config_paths()
     # file_pattern = os.path.join(paths.comp_data_dir,
     #                             config,
     #                             datatype,
@@ -348,7 +348,7 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
 
 
 def load_tank_charges(config='IC79.2010', datatype='sim', return_dask=False):
-    paths = get_paths()
+    paths = get_config_paths()
     file_pattern = os.path.join(paths.comp_data_dir,
                                 '{}_{}'.format(config, datatype),
                                 'dataframe_files',
@@ -406,7 +406,7 @@ def load_trained_model(pipeline_str='BDT', return_metadata=False):
         Dictionary containing trained model as well as relevant metadata.
 
     """
-    paths = get_paths()
+    paths = get_config_paths()
     model_file = os.path.join(paths.project_root, 'models',
                               '{}.pkl'.format(pipeline_str))
     if not os.path.exists(model_file):

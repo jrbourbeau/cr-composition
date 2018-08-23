@@ -2,7 +2,7 @@
 __version__ = '0.0.1'
 
 import os
-from .base import (get_paths, check_output_dir, ComputingEnvironemtError,
+from .base import (get_config_paths, check_output_dir, ComputingEnvironemtError,
                    get_training_features, partition)
 from . import simfunctions
 from .simfunctions import level3_sim_file_batches, level3_sim_GCD_file
@@ -21,15 +21,12 @@ from .model_selection import (get_CV_frac_correct, cross_validate_comp,
 from .spectrumfunctions import (get_flux, model_flux, counts_to_flux,
                                 broken_power_law_flux)
 from .data_functions import ratio_error
-from .unfolding import (unfolded_counts_dist,
-                        response_matrix,
-                        # save_pyunfold_root_file,
-                        )
-# from .skymap import equatorial_to_healpy
+from .unfolding import unfolded_counts_dist, response_matrix
 from .mapfunctions import (equatorial_to_healpy, smooth_map, mask_map,
                            plot_skymap)
 
 from .binning import get_energybins, get_comp_bins, get_zenith_bins, get_bins
 
-paths = get_paths()
+
+paths = get_config_paths()
 color_dict = get_color_dict()

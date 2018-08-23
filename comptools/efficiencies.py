@@ -3,14 +3,14 @@ import os
 import numpy as np
 import pandas as pd
 
-from .base import get_paths, get_energybins
+from .base import get_config_paths, get_energybins
 from .simfunctions import get_sim_configs
 from .composition_encoding import get_comp_list
 
 
 def get_efficiencies_file(config, num_groups, sigmoid):
 
-    paths = get_paths()
+    paths = get_config_paths()
     efficiencies_file = os.path.join(paths.comp_data_dir,
                                      config,
                                      'efficiencies',

@@ -1,10 +1,10 @@
 
 from collections import namedtuple
 import os
-import getpass
 from functools import wraps
 from itertools import islice, count
 import numpy as np
+import yaml
 
 
 def requires_icecube(func):
@@ -25,23 +25,17 @@ def requires_icecube(func):
     return wrapper
 
 
-def get_paths(username=None):
-    '''Function to return paths used in this analysis
+def get_config_paths():
+    """ Function to return paths used in this analysis
 
     Specifically,
 
-    metaproject - Path to IceCube metaproject being used
-    comp_data_dir - Path to where data and simulation is stored
-    condor_data_dir - Path to where HTCondor error and output files are stored
-    condor_scratch_dir - Path to where HTCondor log and submit files are stored
-    figures_dir - Path to where figures are saved
-    project_root - Path to where cr-composition project is located
-
-    Parameters
-    ----------
-    username : str, optional
-        Username on the machine that will be used for analysis. This is used
-        to construct the paths for this analysis (default is getpass.getuser()).
+    metaproject: Path to IceCube metaproject being used
+    comp_data_dir: Path to where data and simulation is stored
+    condor_data_dir: Path to where HTCondor error and output files are stored
+    condor_scratch_dir: Path to where HTCondor log and submit files are stored
+    figures_dir: Path to where figures are saved
+    project_root: Path to where cr-composition project is located
 
     Returns
     -------
@@ -49,10 +43,13 @@ def get_paths(username=None):
         Namedtuple containing relavent paths (e.g. figures_dir is where
         figures will be saved, condor_data_dir is where data/simulation will
         be saved to / loaded from, etc).
+    """
 
-    '''
-    if username is None:
-        username = getpass.getuser()
+    here = os.path.abspath(os.path.dirname(__file__))
+    yaml_file = os.path.join(here, os.pardir, 'config.yml')
+
+    with open(yaml_file, 'r') as f:
+        config = yaml.load(f.read()) or {}
 
     # Create path namedtuple object
     path_names = ['metaproject',
@@ -65,28 +62,15 @@ def get_paths(username=None):
                   ]
     PathObject = namedtuple('PathType', path_names)
 
-    data_user_dir = os.path.abspath(os.path.join(os.sep, 'data', 'user', username))
-    home_dir = os.path.abspath(os.path.join(os.sep, 'home', username))
-    scratch_dir = os.path.abspath(os.path.join(os.sep, 'scratch', username))
-
-    metaproject = os.path.join(data_user_dir, 'metaprojects', 'icerec', 'V05-01-00')
-    comp_data_dir = os.path.join(data_user_dir, 'composition')
-    condor_data_dir = os.path.join(data_user_dir, 'composition', 'condor')
-    condor_scratch_dir = os.path.join(scratch_dir, 'composition', 'condor')
-
-    here = os.path.abspath(os.path.dirname(__file__))
-    project_root = os.path.normpath(os.path.join(here, '../'))
-    figures_dir = os.path.join(home_dir, 'public_html', 'figures', 'composition')
-    virtualenv_dir = os.path.join(project_root, '.env')
-
     # Create instance of PathObject with appropriate path information
-    paths = PathObject(metaproject=metaproject,
-                       comp_data_dir=comp_data_dir,
-                       condor_data_dir=condor_data_dir,
-                       condor_scratch_dir=condor_scratch_dir,
-                       figures_dir=figures_dir,
-                       project_root=project_root,
-                       virtualenv_dir=virtualenv_dir)
+    paths = PathObject(metaproject=config['paths']['metaproject'],
+                       comp_data_dir=config['paths']['comp_data_dir'],
+                       condor_data_dir=config['paths']['condor_data_dir'],
+                       condor_scratch_dir=config['paths']['condor_scratch_dir'],
+                       figures_dir=config['paths']['figures_dir'],
+                       project_root=config['paths']['project_root'],
+                       virtualenv_dir=config['paths']['virtualenv_dir'],
+                       )
 
     return paths
 
@@ -239,6 +223,7 @@ LABEL_DICT = {'reco_log_energy': '$\log_{10}(E_{\mathrm{reco}}/\mathrm{GeV})$',
               'median_inice_radius': 'Median InIce',
               'IceTopLLHRatio': 'IceTopLLHRatio',
               }
+
 
 def get_training_features(feature_list=None):
 
