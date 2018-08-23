@@ -56,7 +56,7 @@ def broken_power_law_flux(energy, gamma_before=-2.7, gamma_after=-3.1,
 
 def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
              eff_area=156390.673059, eff_area_err=None, livetime=27114012.0,
-             livetime_err=1, solid_angle=1., scalingindex=2.7):
+             livetime_err=1, solid_angle=1., scalingindex=None):
     # Calculate energ bin widths and midpoints
     energy_bin_widths = energybins[1:] - energybins[:-1]
     energy_midpoints = (energybins[1:] + energybins[:-1]) / 2
@@ -82,10 +82,11 @@ def get_flux(counts, counts_err=None, energybins=get_energybins().energy_bins,
     # Add time duration
     flux, flux_err = ratio_error(y, y_err, livetime, livetime_err)
     # Add energy scaling
-    scaled_flux = energy_midpoints**scalingindex * flux
-    scaled_flux_err = energy_midpoints**scalingindex * flux_err
+    if scalingindex is not None:
+        flux = energy_midpoints**scalingindex * flux
+        flux_err = energy_midpoints**scalingindex * flux_err
 
-    return scaled_flux, scaled_flux_err
+    return flux, flux_err
 
 
 counts_to_flux = get_flux
