@@ -8,18 +8,6 @@ import pycondor
 import comptools as comp
 from comptools import ComputingEnvironemtError
 
-# try:
-#     import icecube
-# except ImportError:
-#     raise ImportError(
-#             'Did not detect an active icecube software environment. '
-#             'Make sure source the env-shell.sh script in your '
-#             'icecube metaproject build directory before running '
-#             'process.py')
-#
-# if 'cvmfs' not in os.getenv('ROOTSYS'):
-#     raise ComputingEnvironemtError('CVMFS ROOT must be used for i3 file processing')
-
 # Define path to executables used in processing
 HERE = os.path.abspath(os.path.dirname(__file__))
 SAVE_HDF5_EX = os.path.join(HERE, 'save_hdf5.py')

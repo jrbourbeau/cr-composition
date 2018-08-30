@@ -83,14 +83,10 @@ def extract_dataframe(input_file, config, datatype):
             for key in ['x', 'y', 'energy', 'zenith', 'azimuth', 'type']:
                 series_dict['MC_{}'.format(key)] = store['MCPrimary'][key]
             # Add simulation set number and corresponding composition
-            # sim_num = int(os.path.splitext(input_file)[0].split('_')[-1])
             sim_num = int(os.path.basename(input_file).split('_')[1])
             series_dict['sim'] = pd.Series([sim_num] * series_size, dtype=int)
             composition = comp.simfunctions.sim_to_comp(sim_num)
             series_dict['MC_comp'] = pd.Series([composition] * series_size, dtype=str)
-            # Add composition class
-            MC_comp_class = 'light' if composition in ['PPlus', 'He4Nucleus'] else 'heavy'
-            series_dict['MC_comp_class'] = pd.Series([MC_comp_class] * series_size, dtype=str)
 
         # Get timing information
         series_dict['start_time_mjd'] = store['I3EventHeader']['time_start_mjd']
@@ -129,29 +125,23 @@ def extract_dataframe(input_file, config, datatype):
 
         series_dict['IceTopLLHRatio'] = store['IceTopLLHRatio']['LLH_Ratio']
 
-        # Construct unique index from run/event/subevent info in I3EventHeader
-        runs = store['I3EventHeader']['Run']
-        events = store['I3EventHeader']['Event']
-        sub_events = store['I3EventHeader']['SubEvent']
-        if datatype == 'sim':
-            index = ['{}_{}_{}_{}'.format(sim_num, run, event, sub_event)
-                     for run, event, sub_event in zip(runs, events, sub_events)]
-        else:
-            index = ['{}_{}_{}_{}'.format(config, run, event, sub_event)
-                     for run, event, sub_event in zip(runs, events, sub_events)]
+        # # Construct unique index from run/event/subevent info in I3EventHeader
+        # runs = store['I3EventHeader']['Run']
+        # events = store['I3EventHeader']['Event']
+        # sub_events = store['I3EventHeader']['SubEvent']
+        # if datatype == 'sim':
+        #     index = ['{}_{}_{}_{}'.format(sim_num, run, event, sub_event)
+        #              for run, event, sub_event in zip(runs, events, sub_events)]
+        # else:
+        #     index = ['{}_{}_{}_{}'.format(config, run, event, sub_event)
+        #              for run, event, sub_event in zip(runs, events, sub_events)]
 
         # tank_x = extract_vector_series(store, key='tank_x', sim=sim_num)
         # tank_y = extract_vector_series(store, key='tank_y', sim=sim_num)
         # tank_charge = extract_vector_series(store, key='tank_charge', sim=sim_num)
 
     df = pd.DataFrame(series_dict)
-    df.index = index
-
-    # print('tank_x (before) = {}'.format(tank_x))
-    # df['tank_x'] = tank_x
-    # df['tank_y'] = tank_y
-    # df['tank_charge'] = tank_charge
-    # print('tank_x (after) = {}'.format(df['tank_x']))
+    # df.index = index
 
     return df
 
@@ -229,26 +219,16 @@ if __name__ == "__main__":
                         help='Path to output hdf5 file')
     args = parser.parse_args()
 
-    # Validate input config
+    # Validate user input
     if args.type == 'sim' and args.config not in comp.simfunctions.get_sim_configs():
         raise ValueError('Invalid simulation config {} entered'.format(args.config))
     elif args.type == 'data' and args.config not in comp.datafunctions.get_data_configs():
         raise ValueError('Invalid data config {} entered'.format(args.config))
 
-    # # Check if running on condor. If so, write to a local directory on the
-    # # worker node and copy after output file is written.
-    # comp.check_output_dir(args.output)
-    # if os.getenv('_CONDOR_SCRATCH_DIR'):
-    #     on_condor = True
-    #     local_outdir = os.getenv('_CONDOR_SCRATCH_DIR')
-    #     outfile = os.path.join(local_outdir, os.path.basename(args.output))
-    # else:
-    #     on_condor = False
-    #     outfile = args.output
-
     comp.check_output_dir(args.output)
-    print('\ninput:\n{}'.format(args.input))
-    print('\noutput:\n{}'.format(args.output))
+
+    print('\ninput:\n\t{}'.format(args.input))
+    print('\noutput:\n\t{}'.format(args.output))
     with localized(inputs=args.input, output=args.output) as (inputs, output):
         print('local inputs:\n{}'.format(inputs))
         print('local output:\n{}'.format(output))
@@ -256,8 +236,3 @@ if __name__ == "__main__":
                             config=args.config,
                             datatype=args.type)
         df.to_hdf(output, key='dataframe', mode='w', format='table')
-
-    # # If on condor, transfer from worker machine to desired destination
-    # if on_condor:
-    #     comp.check_output_dir(args.output)
-    #     shutil.move(outfile, args.output)

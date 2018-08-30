@@ -3,11 +3,9 @@ from __future__ import print_function, division
 import os
 import numpy as np
 import pandas as pd
-import dask
-from dask import multiprocessing
 from dask.diagnostics import ProgressBar
 import dask.dataframe as dd
-from sklearn.model_selection import ShuffleSplit, train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
 
 from .base import get_config_paths
@@ -96,7 +94,7 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
         print('Returning without applying quality cuts')
         return df, cut_dict
     else:
-        selection_mask = np.array([True] * len(df))
+        selection_mask = np.ones(len(df), dtype=bool)
         if dataprocessing:
             standard_cut_keys = ['passed_IceTopQualityCuts',
                                  'FractionContainment_Laputop_InIce',
@@ -178,11 +176,6 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
     validate_datatype(datatype)
 
     paths = get_config_paths()
-    # file_pattern = os.path.join(paths.comp_data_dir,
-    #                             config,
-    #                             datatype,
-    #                             'processed_hdf',
-    #                             '*.hdf')
     files_record = os.path.join(paths.comp_data_dir,
                                 config,
                                 datatype,
@@ -194,25 +187,22 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
     files = [l.strip() for l in lines]
 
     chunksize = 10000
-    # ddf = dd.read_hdf(file_pattern,
     ddf = dd.read_hdf(files,
                       key='dataframe',
                       mode='r',
                       columns=columns,
                       chunksize=chunksize)
 
-    get = multiprocessing.get if n_jobs > 1 else dask.get
+    scheduler = 'processes' if n_jobs > 1 else 'synchronous'
     if verbose:
         with ProgressBar():
-            df = ddf.compute(get=get, num_workers=n_jobs)
+            df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
     else:
-        df = ddf.compute(get=get, num_workers=n_jobs)
+        df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
 
     if energy_reco:
         model_dict = load_trained_model('linearregression_energy_{}'.format(config),
                                         return_metadata=True)
-        # model_dict = load_trained_model('RF_energy_{}'.format(config),
-        #                                 return_metadata=True)
         pipeline = model_dict['pipeline']
         feature_list = list(model_dict['training_features'])
         df['reco_log_energy'] = pipeline.predict(df[feature_list].values)
