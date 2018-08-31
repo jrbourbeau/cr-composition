@@ -5,23 +5,28 @@ tests:
 	py.test -sv comptools
 
 processing-cluster:
+	python write_cluster_wrappers.py; \
 	python processing/process.py  --config IC86.2012 --type sim; \
 	python processing/process.py  --config IC86.2012 --type data; \
 
-processing:
-	# Models
+processing: models efficiencies livetime quality-cuts
+
+models:
 	echo 'Fitting energy reconstrucion model...'
 	python models/save_energy_reco_model.py --config IC86.2012 --pipeline linearregression; \
 	echo 'Fitting composition classification model...'
 	python models/save_composition_classifier.py --config IC86.2012 --num_groups 2 --pipeline xgboost; \
-	# Efficiencies
+
+efficiencies:
 	echo 'Calculating detector efficiencies...'
 	python processing/save_efficiencies.py --config IC86.2012 --num_groups 2 --sigmoid flat; \
 	python processing/save_efficiencies.py --config IC86.2012 --num_groups 2 --sigmoid slant; \
-	# Livetimes
+
+livetime:
 	echo 'Calculating detector livetimes...'
 	python processing/save_livetimes.py --config IC86.2012; \
-	# Processed data with quality cuts applied
+
+quality-cuts:
 	echo 'Saving processed dataset with quality cuts applied...'
 	python processing/save_processed_data.py; \
 

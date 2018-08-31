@@ -5,6 +5,8 @@ TODO*
 *_old.py
 *_2
 .virtualenv
+wrapper.sh
+wrapper_virtualenv.sh
 
 # data files
 *.csv
