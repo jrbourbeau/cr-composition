@@ -38,19 +38,13 @@ if __name__ == '__main__':
 
     config = args.config
     num_groups = args.num_groups
-
     comp_list = comp.get_comp_list(num_groups=num_groups)
-    energybins = comp.get_energybins(config=config)
-    log_energy_min = energybins.log_energy_min
-    log_energy_max = energybins.log_energy_max
 
     # Load training data and fit model
     df_sim_train, df_sim_test = comp.load_sim(config=config,
                                               energy_reco=False,
                                               log_energy_min=None,
                                               log_energy_max=None,
-                                              # log_energy_min=log_energy_min,
-                                              # log_energy_max=log_energy_max,
                                               test_size=0.5)
     feature_list, feature_labels = comp.get_training_features()
     X_train = df_sim_train[feature_list].values
@@ -65,7 +59,8 @@ if __name__ == '__main__':
         pipeline = comp.gridsearch_optimize(pipeline=pipeline,
                                             param_grid=param_grid,
                                             X_train=X_train,
-                                            y_train=y_train)
+                                            y_train=y_train,
+                                            scoring='accuracy')
     else:
         pipeline.fit(X_train, y_train)
 
@@ -77,5 +72,9 @@ if __name__ == '__main__':
                   'training_features': tuple(feature_list),
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
-    outfile = os.path.join(comp.paths.project_root, 'models', '{}.pkl'.format(pipeline_str))
+    outfile = os.path.join(comp.paths.comp_data_dir,
+                           config,
+                           'models',
+                           '{}.pkl'.format(pipeline_str))
+    comp.check_output_dir(outfile)
     joblib.dump(model_dict, outfile)

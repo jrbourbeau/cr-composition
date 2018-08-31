@@ -24,20 +24,19 @@ if __name__ == '__main__':
                         help='Energy regressor pipeline to use')
     args = parser.parse_args()
 
+    config = args.config
+
     # Load untrained model
-    pipeline_str = '{}_energy_{}'.format(args.pipeline, args.config)
+    pipeline_str = '{}_energy_{}'.format(args.pipeline, config)
     pipeline = comp.get_pipeline(pipeline_str)
     # Load training data and fit model
     feature_list, feature_labels = comp.get_training_features()
     columns = feature_list + ['MC_log_energy']
 
-    energybins = comp.get_energybins(config=args.config)
-    # log_energy_min = 5.0
-    # log_energy_max = None
+    energybins = comp.get_energybins(config=config)
 
-    df_sim_train, df_sim_test = comp.load_sim(config=args.config,
+    df_sim_train, df_sim_test = comp.load_sim(config=config,
                                               energy_reco=False,
-                                              # energy_cut_key='MC_log_energy',
                                               log_energy_min=None,
                                               log_energy_max=None,
                                               test_size=0.5)
@@ -53,7 +52,9 @@ if __name__ == '__main__':
                   'sklearn_version': sklearn.__version__,
                   'save_pipeline_code': os.path.realpath(__file__)}
     # Save trained model w/metadata to disk
-    outfile = os.path.join(comp.paths.project_root,
+    outfile = os.path.join(comp.paths.comp_data_dir,
+                           config,
                            'models',
                            '{}.pkl'.format(pipeline_str))
+    comp.check_output_dir(outfile)
     joblib.dump(model_dict, outfile)

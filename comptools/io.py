@@ -193,6 +193,27 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                       columns=columns,
                       chunksize=chunksize)
 
+    # Energy reconstruction
+    if energy_reco:
+        model_dict = load_trained_model('linearregression_energy_{}'.format(config),
+                                        return_metadata=True)
+        pipeline = model_dict['pipeline']
+        feature_list = list(model_dict['training_features'])
+
+        def add_reco_energy(partition):
+            partition['reco_log_energy'] = pipeline.predict(partition[feature_list])
+            partition['reco_energy'] = 10**partition['reco_log_energy']
+            return partition
+        ddf = ddf.map_partitions(add_reco_energy)
+
+    # Energy range cut
+    if log_energy_min is not None and log_energy_max is not None:
+        def apply_energy_cut(partition):
+            energy_mask = (partition[energy_cut_key] > log_energy_min) & (partition[energy_cut_key] < log_energy_max)
+            return partition.loc[energy_mask, :]
+
+        ddf = ddf.map_partitions(apply_energy_cut)
+
     scheduler = 'processes' if n_jobs > 1 else 'synchronous'
     if verbose:
         with ProgressBar():
@@ -200,30 +221,10 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
     else:
         df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
 
-    if energy_reco:
-        model_dict = load_trained_model('linearregression_energy_{}'.format(config),
-                                        return_metadata=True)
-        pipeline = model_dict['pipeline']
-        feature_list = list(model_dict['training_features'])
-        df['reco_log_energy'] = pipeline.predict(df[feature_list].values)
-        df['reco_energy'] = 10**df['reco_log_energy']
-
-    energy_mask = np.ones(df.shape[0], dtype=bool)
-    if log_energy_min is not None:
-        energy_mask = energy_mask & (df[energy_cut_key] > log_energy_min)
-    if log_energy_max is not None:
-        energy_mask = energy_mask & (df[energy_cut_key] < log_energy_max)
-
-    return df.loc[energy_mask, :]
+    return df
 
 
-def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
-             energy_reco=True, energy_cut_key='reco_log_energy',
-             log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
-             verbose=False):
-    """ Function to load processed simulation DataFrame
-
-    Parameters
+_load_parameters_docstring = """Parameters
     ----------
     df_file : path, optional
         If specified, the given path to a pandas.DataFrame will be loaded
@@ -252,15 +253,13 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
     n_jobs : int, optional
         Number of chunks to load in parallel (default is 1).
     verbose : bool, optional
-        Option for verbose progress bar output (default is True).
+        Option for verbose progress bar output (default is True)."""
 
-    Returns
-    -------
-    pandas.DataFrame, tuple of pandas.DataFrame
-        Return a single DataFrame if test_size is 0, otherwise return
-        a 2-tuple of training and testing DataFrame.
 
-    """
+def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
+             energy_reco=True, energy_cut_key='reco_log_energy',
+             log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
+             verbose=False):
 
     if config not in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
@@ -284,57 +283,71 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
 
     return output
 
+load_sim.__doc__ = """ Function to load processed simulation DataFrame
+
+    {_load_parameters_docstring}
+
+    Returns
+    -------
+    pandas.DataFrame, tuple of pandas.DataFrame
+        Return a single DataFrame if test_size is 0, otherwise return
+        a 2-tuple of training and testing DataFrame.
+    """.format(_load_parameters_docstring=_load_parameters_docstring)
+
 
 def load_data(df_file=None, config='IC86.2012', energy_reco=True,
               energy_cut_key='reco_log_energy', log_energy_min=6.0,
-              log_energy_max=8.0, columns=None, n_jobs=1, verbose=False):
-    """ Function to load processed data DataFrame
+              log_energy_max=8.0, columns=None, n_jobs=1, verbose=False,
+              processed=True):
 
-    Parameters
-    ----------
-    df_file : path, optional
-        If specified, the given path to a pandas.DataFrame will be loaded
-        (default is None, so the file path will be determined from the
-        datatype and config).
-    config : str, optional
-        Detector configuration (default is 'IC86.2012').
-    energy_reco : bool, optional
-        Option to perform energy reconstruction for each event
-        (default is True).
-    energy_cut_key : str, optional
-        Energy key to apply energy range cuts to (default is 'lap_log_energy').
-    log_energy_min : int, float, optional
-        Option to set a lower limit on the reconstructed log energy in GeV
-        (default is 6.0).
-    log_energy_max : int, float, optional
-        Option to set a upper limit on the reconstructed log energy in GeV
-        (default is 8.0).
-    columns : array_like, optional
-        Option to specify the columns that should be in the returned
-        DataFrame(s) (default is None, all columns are returned).
-    n_jobs : int, optional
-        Number of chunks to load in parallel (default is 1).
-    verbose : bool, optional
-        Option for verbose progress bar output (default is True).
+    if config not in get_data_configs():
+        raise ValueError('config must be in {}'.format(get_data_configs()))
+
+    if processed:
+        # Load processed dataset with quality cuts already applied
+        paths = get_config_paths()
+        data_file = os.path.join(paths.comp_data_dir,
+                                 config,
+                                 'data',
+                                 'data_dataframe_quality_cuts.hdf'
+                                 )
+
+        ddf = dd.read_hdf(data_file,
+                          key='dataframe',
+                          mode='r',
+                          columns=columns,
+                          chunksize=100000)
+        scheduler = 'synchronous'
+        if verbose:
+            with ProgressBar():
+                df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
+        else:
+            df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
+    else:
+        print('FYI: Loading non-processed dataset. This takes longer than '
+              'loading the processed dataset...')
+        df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
+                                   energy_reco=energy_reco,
+                                   energy_cut_key=energy_cut_key, columns=columns,
+                                   log_energy_min=log_energy_min,
+                                   log_energy_max=log_energy_max, n_jobs=n_jobs,
+                                   verbose=verbose)
+
+    return df
+
+
+load_data.__doc__ = """  Function to load processed data DataFrame
+
+    {_load_parameters_docstring}
+    processed : bool, optional
+        Whether to load processed (quality + energy cuts applied) or
+        pre-processed data (default is True).
 
     Returns
     -------
     pandas.DataFrame
         Return a DataFrame with processed data
-
-    """
-
-    if config not in get_data_configs():
-        raise ValueError('config must be in {}'.format(get_data_configs()))
-
-    df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
-                               energy_reco=energy_reco,
-                               energy_cut_key=energy_cut_key, columns=columns,
-                               log_energy_min=log_energy_min,
-                               log_energy_max=log_energy_max, n_jobs=n_jobs,
-                               verbose=verbose)
-
-    return df
+    """.format(_load_parameters_docstring=_load_parameters_docstring)
 
 
 def load_tank_charges(config='IC79.2010', datatype='sim', return_dask=False):
@@ -377,13 +390,16 @@ def dataframe_to_X_y(df, feature_list, target='comp_target_2', drop_null=True):
     return X, y
 
 
-def load_trained_model(pipeline_str='BDT', return_metadata=False):
-    """Function to load pre-trained model to avoid re-training
+def load_trained_model(pipeline_str='BDT', config='IC86.2012',
+                       return_metadata=False):
+    """ Function to load pre-trained model to avoid re-training
 
     Parameters
     ----------
     pipeline_str : str, optional
         Name of model to load (default is 'BDT').
+    config : str, optional
+        Detector configuration (default is 'IC86.2012').
     return_metadata : bool, optional
         Option to return metadata associated with saved model (e.g. list of
         training features used, scikit-learn version, etc) (default is False).
@@ -394,10 +410,12 @@ def load_trained_model(pipeline_str='BDT', return_metadata=False):
         Trained scikit-learn pipeline.
     model_dict : dict
         Dictionary containing trained model as well as relevant metadata.
-
     """
+
     paths = get_config_paths()
-    model_file = os.path.join(paths.project_root, 'models',
+    model_file = os.path.join(paths.comp_data_dir,
+                              config,
+                              'models',
                               '{}.pkl'.format(pipeline_str))
     if not os.path.exists(model_file):
         raise IOError('There is no saved model file {}'.format(model_file))

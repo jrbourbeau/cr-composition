@@ -1,6 +1,10 @@
 */dask-worker-space
 .pytest_cache/
 TODO*
+*old
+*_old.py
+*_2
+.virtualenv
 
 # data files
 *.csv

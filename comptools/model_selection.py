@@ -294,8 +294,8 @@ def get_param_grid(pipeline_name=None):
     return param_grid
 
 
-def gridsearch_optimize(pipeline, param_grid, X_train, y_train, n_jobs=1,
-                        return_gridsearch=False):
+def gridsearch_optimize(pipeline, param_grid, X_train, y_train,
+                        scoring='accuracy', n_jobs=1, return_gridsearch=False):
     """Runs a grid search to optimize hyperparameters
 
     Parameters
@@ -309,6 +309,8 @@ def gridsearch_optimize(pipeline, param_grid, X_train, y_train, n_jobs=1,
         Training features.
     y_train : array_like
         Training labels.
+    scoring : str
+        Scoring metric to use (default is 'accuracy').
     n_jobs : int, optional
         Number of jobs to run in parallel (default is 1).
     return_gridsearch : bool, optional
@@ -330,14 +332,14 @@ def gridsearch_optimize(pipeline, param_grid, X_train, y_train, n_jobs=1,
         pipeline.set_params(classifier__n_jobs=1)
 
     param_str = '\n\t'.join(['{}: {}'.format(key, value) for key, value in param_grid.iteritems()])
-    print('Running grid search over the following parameters:\n\t{}'.format(param_str))
+    print('Running grid search over the following hyperparameters:\n\t{}'.format(param_str))
     gridsearch = GridSearchCV(pipeline,
                               param_grid=param_grid,
                               cv=10,
-                              scoring='accuracy',
+                              scoring=scoring,
                               n_jobs=n_jobs,
                               return_train_score=True,
-                              verbose=1)
+                              verbose=2)
     gridsearch.fit(X_train, y_train)
     print('best GridSearchCV params = {}'.format(gridsearch.best_params_))
 
