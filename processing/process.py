@@ -6,7 +6,7 @@ import argparse
 import pycondor
 
 import comptools as comp
-from comptools import ComputingEnvironemtError
+
 
 # Define path to executables used in processing
 HERE = os.path.abspath(os.path.dirname(__file__))

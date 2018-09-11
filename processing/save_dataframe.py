@@ -9,7 +9,6 @@ import shutil
 import comptools as comp
 from comptools.composition_encoding import (composition_group_labels,
                                             encode_composition_groups)
-from file_localizer import localized
 
 
 def extract_vector_series(store, key, sim):
@@ -229,7 +228,7 @@ if __name__ == "__main__":
 
     print('\ninput:\n\t{}'.format(args.input))
     print('\noutput:\n\t{}'.format(args.output))
-    with localized(inputs=args.input, output=args.output) as (inputs, output):
+    with comp.localized(inputs=args.input, output=args.output) as (inputs, output):
         print('local inputs:\n{}'.format(inputs))
         print('local output:\n{}'.format(output))
         df = process_i3_hdf(input_file=inputs,

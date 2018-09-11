@@ -47,10 +47,10 @@ def get_good_file_list(files):
             test_tray.Execute()
             test_tray.Finish()
             good_file_list.append(i3file)
-        except:
+        except RuntimeError:
             icetray.logging.log_warn('File {} is truncated'.format(i3file))
-            pass
-        del test_tray
+        finally:
+            del test_tray
 
     return good_file_list
 

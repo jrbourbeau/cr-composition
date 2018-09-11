@@ -4,6 +4,7 @@ __version__ = '0.0.1'
 import os
 from .base import (get_config_paths, check_output_dir, ComputingEnvironemtError,
                    get_training_features, partition)
+from .cluster import localized
 from . import simfunctions
 from .simfunctions import level3_sim_file_batches, level3_sim_GCD_file
 from . import datafunctions
