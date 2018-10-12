@@ -13,15 +13,16 @@ from I3Tray import *
 from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
+from icecube.icetop_Level3_scripts.segments import level3_IceTop
+from icecube.icetop_Level3_scripts import icetop_globals
 
-from llh_ratio_scripts.llh_ratio_i3_module import IceTop_LLH_Ratio
+# from llh_ratio_scripts.llh_ratio_i3_module import IceTop_LLH_Ratio
 
 import comptools as comp
 import icetray_software
-from file_localizer import localized
 
-def get_good_file_list(files):
-    """Checks that input i3 files aren't corrupted
+def validate_i3_files(files):
+    """ Checks that input i3 files aren't corrupted
 
     Parameters
     ----------
@@ -33,15 +34,14 @@ def get_good_file_list(files):
     good_file_list : list
         List of i3 files (from input files) that were able to be
         succeessfully loaded.
-
     """
+    if isinstance(files, str):
+        files = [files]
+
     good_file_list = []
     for i3file in files:
         try:
             test_tray = I3Tray()
-            if 'cobalt' not in socket.gethostname():
-                test_tray.context['I3FileStager'] = dataio.get_stagers(
-                    staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
             test_tray.Add('I3Reader', FileName=i3file)
             test_tray.Add(uncompress, 'uncompress')
             test_tray.Execute()
@@ -56,7 +56,7 @@ def get_good_file_list(files):
 
 
 def check_keys(frame, *keys):
-    """Function to check if all keys are in frame
+    """ Function to check if all keys are in frame
 
     Parameters
     ----------
@@ -119,9 +119,10 @@ if __name__ == "__main__":
     # for i in ['1_60']:
     #     keys += ['avg_inice_radius_'+i, 'std_inice_radius_'+i,
     #              'qweighted_inice_radius_'+i, 'invqweighted_inice_radius_'+i]
-    min_dists = np.arange(0, 1125, 125)
-    for min_dist in min_dists:
-        keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
+
+    # min_dists = np.arange(0, 1125, 125)
+    # for min_dist in min_dists:
+    #     keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
 
     dom_numbers = [1, 15, 30, 45, 60]
     for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
@@ -142,9 +143,9 @@ if __name__ == "__main__":
              'FractionContainment_Laputop_InIce']
     keys += ['lap_fitstatus_ok']
     keys += ['passed_IceTopQualityCuts', 'passed_InIceQualityCuts']
-    for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
-                'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
-        keys += ['passed_{}'.format(cut)]
+    # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
+    #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
+    #     keys += ['passed_{}'.format(cut)]
     keys += ['angle_MCPrimary_Laputop']
     # keys += ['tank_charge_dist_Laputop']
     # keys += ['IceTop_charge_175m']
@@ -153,22 +154,22 @@ if __name__ == "__main__":
     # keys += ['NNcharges']
     # keys += ['tank_charge_v_dist']
     # keys += ['tank_x', 'tank_y', 'tank_charge']
-    keys += ['IceTopLLHRatio']
+    # keys += ['IceTopLLHRatio']
 
     t0 = time.time()
 
     icetray.set_log_level(icetray.I3LogLevel.LOG_WARN)
 
     comp.check_output_dir(args.outfile)
-    with localized(inputs=args.files, output=args.outfile) as (inputs, output):
+    with comp.localized(inputs=args.files, output=args.outfile) as (inputs, output):
         # Construct list of non-truncated files to process
-        good_file_list = get_good_file_list(inputs)
+        good_file_list = validate_i3_files(inputs)
 
         tray = I3Tray()
         # # If not running on cobalt (i.e. running a cluster job), add a file stager
-        # if 'cobalt' not in socket.gethostname():
+        # if os.getenv('_CONDOR_SCRATCH_DIR') is not None:
         #     tray.context['I3FileStager'] = dataio.get_stagers(
-        #         staging_directory=os.environ['_CONDOR_SCRATCH_DIR'])
+        #         staging_directory=os.getenv('_CONDOR_SCRATCH_DIR'))
         tray.Add('I3Reader', FileNameList=good_file_list)
         # Uncompress Level3 diff files
         tray.Add(uncompress, 'uncompress')
@@ -231,14 +232,14 @@ if __name__ == "__main__":
                  key='angle_MCPrimary_Laputop',
                  If=lambda frame: 'MCPrimary' in frame and 'Laputop' in frame)
 
-        pulses=['IceTopHLCSeedRTPulses', 'IceTopLaputopSeededSelectedSLC']
-        # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
-        tray.Add(icetray_software.add_IceTop_tankXYcharge,
-                 pulses=pulses,
-                 If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-        tray.Add(icetray_software.AddIceTopLogQLogR,
-                 pulses=pulses,
-                 If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+        # pulses=['IceTopHLCSeedRTPulses', 'IceTopLaputopSeededSelectedSLC']
+        # # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
+        # tray.Add(icetray_software.add_IceTop_tankXYcharge,
+        #          pulses=pulses,
+        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
+        # tray.Add(icetray_software.AddIceTopLogQLogR,
+        #          pulses=pulses,
+        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
 
         # outdir, tail = os.path.split(output)
         # root, ext  = os.path.splitext(tail)
@@ -255,21 +256,21 @@ if __name__ == "__main__":
         # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
         #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
-        for min_dist in min_dists:
-            tray.Add(icetray_software.AddIceTopChargeDistance,
-                     track='Laputop',
-                     pulses=pulses,
-                     min_dist=min_dist,
-                     If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
+        # for min_dist in min_dists:
+        #     tray.Add(icetray_software.AddIceTopChargeDistance,
+        #              track='Laputop',
+        #              pulses=pulses,
+        #              min_dist=min_dist,
+        #              If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
 
 
-        tray.AddModule(IceTop_LLH_Ratio, 'IceTopLLHRatio',
-                       Output='IceTopLLHRatio',
-    	               TwoDPDFPickleYear='2012',
-                	   GeometryHDF5='/data/user/zgriffith/llhratio_files/geometry.h5',
-                       highEbins=True,
-                       If=lambda frame: 'IceTopLaputopSeededSelectedSLC' in frame,
-                       )
+        # tray.AddModule(IceTop_LLH_Ratio, 'IceTopLLHRatio',
+        #                Output='IceTopLLHRatio',
+    	#                TwoDPDFPickleYear='2012',
+        #         	   GeometryHDF5='/data/user/zgriffith/llhratio_files/geometry.h5',
+        #                highEbins=True,
+        #                If=lambda frame: 'IceTopLaputopSeededSelectedSLC' in frame,
+        #                )
 
         #====================================================================
         # Finish
@@ -280,7 +281,10 @@ if __name__ == "__main__":
             keys['Laputop'] = [dataclasses.converters.I3ParticleConverter(),
                                astro.converters.I3AstroConverter()]
 
-        tray.Add(I3TableWriter, tableservice=hdf, keys=keys, SubEventStreams=['ice_top'])
+        tray.Add(I3TableWriter,
+                 tableservice=hdf,
+                 keys=keys,
+                 SubEventStreams=['ice_top'])
 
         tray.Execute()
         tray.Finish()

@@ -49,7 +49,7 @@ def level3_data_files(config=None, run=None):
 
 
 def level3_data_file_batches(config, run, size, max_batches=None):
-    """Generates level3 data file paths in batches
+    """ Generates level3 data file paths in batches
 
     Parameters
     ----------

@@ -6,10 +6,9 @@ tests:
 
 processing-cluster:
 	python write_cluster_wrappers.py; \
-	python processing/process.py  --config IC86.2012 --type sim; \
-	python processing/process.py  --config IC86.2012 --type data; \
+	python processing/process.py  --config IC86.2012 --sim --data; \
 
-processing: models efficiencies livetime quality-cuts
+processing: models efficiencies livetime quality-cuts vem-calibration-systematics
 
 models:
 	echo 'Fitting energy reconstrucion model...'
@@ -29,6 +28,10 @@ livetime:
 quality-cuts:
 	echo 'Saving processed dataset with quality cuts applied...'
 	python processing/save_processed_data.py; \
+
+vem-calibration-systematics:
+	echo 'Saving VEM calibration systematic datasets...'
+	python processing/systematics/save_vem_cal_systematic_data.py --n_jobs 10; \
 
 
 # Plotting commands

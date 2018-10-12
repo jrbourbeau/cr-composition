@@ -4,7 +4,6 @@ from collections import defaultdict
 import math
 import numpy as np
 import pandas as pd
-import h5py
 from scipy import optimize
 from I3Tray import NaN, Inf
 from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclasses

@@ -1,6 +1,7 @@
 
 from __future__ import print_function, division
 import os
+import glob
 import numpy as np
 import pandas as pd
 from dask.diagnostics import ProgressBar
@@ -22,9 +23,7 @@ def validate_datatype(datatype):
     assert datatype in ['sim', 'data'], 'datatype must be either \'sim\' or \'data\''
 
 
-def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
-                       dataprocessing=False, verbose=True, log_energy_min=None,
-                       log_energy_max=None):
+def apply_quality_cuts(df, datatype='sim', return_cut_dict=False, verbose=True):
 
     validate_dataframe(df)
     validate_datatype(datatype)
@@ -34,81 +33,29 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
     cut_dict = {}
     # IT specific cuts
     cut_dict['passed_IceTopQualityCuts'] = df['passed_IceTopQualityCuts'].astype(bool)
-    # cut_dict['lap_fitstatus_ok'] = df['lap_fitstatus_ok']
-    # cut_dict['FractionContainment_Laputop_IceTop'] = df[
-    #     'FractionContainment_Laputop_IceTop'] < 0.96
-    # cut_dict['lap_beta'] = (df['lap_beta'] < 9.5) & (df['lap_beta'] > 1.4)
-    # cut_dict['lap_rlogl'] = df['lap_rlogl'] < 2
-    # cut_dict['IceTopMaxSignalInEdge'] = ~df['IceTopMaxSignalInEdge'].astype(bool)
-    # cut_dict['IceTopMaxSignal'] = (df['IceTopMaxSignal'] >= 6)
-    # cut_dict['IceTopNeighbourMaxSignal'] = df['IceTopNeighbourMaxSignal'] >= 4
     cut_dict['NStations'] = df['NStations'] >= 5
-    # cut_dict['StationDensity'] = df['StationDensity'] >= 0.2
-
-    # Set up min/max energy cuts
-    cut_dict['min_energy_lap'] = np.ones(len(df['lap_energy']), dtype=bool)
-    cut_dict['max_energy_lap'] = np.ones(len(df['lap_energy']), dtype=bool)
-    if log_energy_min is not None:
-        cut_dict['min_energy_lap'] = df['lap_energy'] > 10**log_energy_min
-    if log_energy_max is not None:
-        cut_dict['max_energy_lap'] = df['lap_energy'] < 10**log_energy_max
-
-    # cut_dict['min_energy_lap'] = df['lap_energy'] > 10**6.0
-    # cut_dict['max_energy_lap'] = df['lap_energy'] < 10**8.0
-
-    # cut_dict['IceTop_charge_175m'] = np.logical_not(df['IceTop_charge_175m'].isnull())
-    # cut_dict['IceTop_charge'] = np.logical_not(df['IceTop_charge'].isnull()) & cut_dict['IceTop_charge_175m']
 
     # InIce specific cuts
     cut_dict['eloss_positive'] = df['eloss_1500_standard'] > 0
     cut_dict['passed_InIceQualityCuts'] = df['passed_InIceQualityCuts'].astype(bool) & cut_dict['eloss_positive']
-    # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
-    #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
-    #     cut_dict['passed_{}'.format(cut)] = df['passed_{}'.format(cut)].astype(bool)
     for i in ['1_60']:
         cut_dict['NChannels_' + i] = df['NChannels_' + i] >= 8
         cut_dict['max_qfrac_' + i] = df['max_qfrac_' + i] < 0.3
     cut_dict['FractionContainment_Laputop_InIce'] = df['FractionContainment_Laputop_InIce'] < 1.0
 
-    # # Millipede specific cuts
-    # cut_dict['mil_rlogl'] = df['mil_rlogl'] < 2.0
-    # cut_dict['mil_qtot_ratio'] = df['mil_qtot_predicted']/df['mil_qtot_measured'] > -0.03
-    # cut_dict['num_millipede_cascades'] = df['num_millipede_cascades'] >= 3
-
-    # Some conbined cuts
-    # cut_dict['lap_reco_success'] = cut_dict['lap_fitstatus_ok'] & cut_dict['lap_beta'] & cut_dict['lap_rlogl']
-    # cut_dict['num_hits_1_60'] = cut_dict['NChannels_1_60'] & cut_dict['NStations']
     for i in ['1_60']:
         cut_dict['num_hits_'+i] = cut_dict['NChannels_'+i] & cut_dict['NStations']
-    # cut_dict['lap_containment'] = cut_dict[
-    #     'FractionContainment_Laputop_IceTop'] & cut_dict['FractionContainment_Laputop_InIce']
-    # cut_dict['IT_signal'] = cut_dict['IceTopMaxSignalInEdge'] & cut_dict[
-    #     'IceTopMaxSignal'] & cut_dict['IceTopNeighbourMaxSignal']
-
-    cut_dict['reco_energy_range'] = cut_dict['min_energy_lap'] & cut_dict['max_energy_lap']
-    # cut_dict['lap_IT_containment'] = cut_dict['FractionContainment_Laputop_IceTop'] & cut_dict['IT_signal']
-    # cut_dict['mil_reco_success'] = cut_dict['mil_rlogl'] & cut_dict[
-    #     'mil_qtot_ratio'] & cut_dict['num_millipede_cascades']
 
     if return_cut_dict:
         print('Returning without applying quality cuts')
         return df, cut_dict
     else:
         selection_mask = np.ones(len(df), dtype=bool)
-        if dataprocessing:
-            standard_cut_keys = ['passed_IceTopQualityCuts',
-                                 'FractionContainment_Laputop_InIce',
-                                 'reco_energy_range',
-                                 'num_hits_1_60',
-                                 'max_qfrac_1_60',
-                                 ]
-        else:
-            standard_cut_keys = ['passed_IceTopQualityCuts',
-                                 'FractionContainment_Laputop_InIce',
-                                 'passed_InIceQualityCuts',
-                                 'num_hits_1_60',
-                                 'reco_energy_range',
-                                 ]
+        standard_cut_keys = ['passed_IceTopQualityCuts',
+                             'passed_InIceQualityCuts',
+                             'FractionContainment_Laputop_InIce',
+                             'num_hits_1_60',
+                             ]
         for key in standard_cut_keys:
             selection_mask *= cut_dict[key]
         # Print cut event flow
@@ -123,8 +70,8 @@ def apply_quality_cuts(df, datatype='sim', return_cut_dict=False,
                     cut_dict[key]) / n_total, np.sum(cumulative_cut_mask) / n_total))
             print('\n')
 
-        df_cut = df[selection_mask]
-        # df_cut = df[selection_mask].reset_index(drop=True)
+        # df_cut = df[selection_mask]
+        df_cut = df.loc[selection_mask, :].reset_index(drop=True)
 
         return df_cut
 
@@ -171,27 +118,26 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                           energy_reco=True, energy_cut_key='reco_log_energy',
                           log_energy_min=None, log_energy_max=None,
                           columns=None, n_jobs=1, verbose=False,
-                          return_dask=True):
+                          compute=True):
 
     validate_datatype(datatype)
 
-    paths = get_config_paths()
-    files_record = os.path.join(paths.comp_data_dir,
-                                config,
-                                datatype,
-                                'processed_hdf',
-                                'files.txt')
+    if df_file is not None:
+        files = df_file
+    else:
+        paths = get_config_paths()
+        file_pattern = os.path.join(paths.comp_data_dir,
+                                    config,
+                                    datatype,
+                                    'processed_hdf',
+                                    '*.hdf')
+        files = sorted(glob.glob(file_pattern))
 
-    with open(files_record, 'r') as f:
-        lines = f.readlines()
-    files = [l.strip() for l in lines]
-
-    chunksize = 10000
     ddf = dd.read_hdf(files,
                       key='dataframe',
                       mode='r',
                       columns=columns,
-                      chunksize=chunksize)
+                      chunksize=10000)
 
     # Energy reconstruction
     if energy_reco:
@@ -214,12 +160,15 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
 
         ddf = ddf.map_partitions(apply_energy_cut)
 
-    scheduler = 'processes' if n_jobs > 1 else 'synchronous'
-    if verbose:
-        with ProgressBar():
-            df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
-    else:
+    if compute:
+        if verbose:
+            pbar = ProgressBar()
+            pbar.register()
+        scheduler = 'processes' if n_jobs > 1 else 'synchronous'
         df = ddf.compute(scheduler=scheduler, num_workers=n_jobs)
+        df = df.reset_index(drop=True)
+    else:
+        df = ddf
 
     return df
 
@@ -256,10 +205,10 @@ _load_parameters_docstring = """Parameters
         Option for verbose progress bar output (default is True)."""
 
 
-def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
+def load_sim(df_file=None, config='IC86.2012', test_size=0.5,
              energy_reco=True, energy_cut_key='reco_log_energy',
              log_energy_min=6.0, log_energy_max=8.0, columns=None, n_jobs=1,
-             verbose=False):
+             verbose=False, compute=True):
 
     if config not in get_sim_configs():
         raise ValueError('config must be in {}'.format(get_sim_configs()))
@@ -271,7 +220,8 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.3,
                                energy_cut_key=energy_cut_key, columns=columns,
                                log_energy_min=log_energy_min,
                                log_energy_max=log_energy_max, n_jobs=n_jobs,
-                               verbose=verbose)
+                               verbose=verbose,
+                               compute=compute)
 
     # If specified, split into training and testing DataFrames
     if test_size > 0:
@@ -298,7 +248,7 @@ load_sim.__doc__ = """ Function to load processed simulation DataFrame
 def load_data(df_file=None, config='IC86.2012', energy_reco=True,
               energy_cut_key='reco_log_energy', log_energy_min=6.0,
               log_energy_max=8.0, columns=None, n_jobs=1, verbose=False,
-              processed=True):
+              compute=True, processed=True):
 
     if config not in get_data_configs():
         raise ValueError('config must be in {}'.format(get_data_configs()))
@@ -331,7 +281,8 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
                                    energy_cut_key=energy_cut_key, columns=columns,
                                    log_energy_min=log_energy_min,
                                    log_energy_max=log_energy_max, n_jobs=n_jobs,
-                                   verbose=verbose)
+                                   verbose=verbose,
+                                   compute=compute)
 
     return df
 

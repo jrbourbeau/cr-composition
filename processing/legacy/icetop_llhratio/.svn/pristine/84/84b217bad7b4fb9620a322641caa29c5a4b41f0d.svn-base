@@ -1,0 +1,132 @@
+
+
+# -*- coding: utf-8 -*-
+# 
+## copyright  (C) 2018
+# The Icecube Collaboration
+# 
+# $Id$
+# 
+# @version $Revision$
+# @date $LastChangedDate$
+# @author Hershal Pandya <hershal@udel.edu> Last changed by: $LastChangedBy$
+#
+#------------------------------------------
+# ICECUBE THINGS
+#------------------------------------------
+from icecube import icetray, dataclasses, dataio
+from I3Tray import I3Tray
+from icecube.tableio import I3TableWriter
+from icecube.hdfwriter import I3HDFTableService
+from icecube import recclasses,shield
+import sys, os
+from i3module import IceTop_LLHRatio
+from globals import rotate_to_shower_cs
+from optparse import OptionParser
+import numpy as np
+from globals import logEnergyBins, cosZenBins, logChargeBins, logDBins, logTBins
+from globals import  pulses1,  pulses2, pulses3, reco_track2, reco_track1
+
+
+parser=OptionParser()
+parser.add_option('--output',dest='outfile',
+                   help='outfile only created in case of CalcLLHR mode',
+                   type='str',default='output')
+parser.add_option('--PDF_File',dest='pdf_file',
+                  help='output PDF HDF5 only created in case of GeneratePDF mode',
+                  type='str',default='hist.hd5')
+parser.add_option('--RunMode',dest='RunMode',help='GeneratePDF/CalcLLHR',type='str',default=None)
+(options,inputfilelist)=parser.parse_args()
+#parser.print_help()
+
+def convert_unhits(frame,ShieldUnhitsName,
+                   OutPut,false_time,false_charge):
+    pulses=frame[ShieldUnhitsName]
+    new_pulses= recclasses.I3VectorShieldHitRecord()
+    for pulse in pulses:
+        new_pulse = pulse
+        new_pulse.charge = false_charge
+        new_pulse.time_residual = false_time
+        new_pulses.append(new_pulse)
+
+    frame[OutPut]=new_pulses
+    return
+
+def convert_excluded(frame,IceTopExcludedTanksList,
+                     OutPut,false_time,false_charge,
+                     RecoName, VertexName):
+
+    tanklist = frame[IceTopExcludedTanksList]
+    core = frame[VertexName]
+    origin = np.array([core.x,core.y,core.z])
+    geometry = frame['I3Geometry']
+    phi = frame[RecoName].dir.azimuth
+    theta = frame[RecoName].dir.zenith
+
+    new_pulses=recclasses.I3VectorShieldHitRecord()
+    for tank in tanklist:
+        new_pulse = recclasses.I3ShieldHitRecord()
+        new_pulse.DOMkey = tank.default_omkey
+        new_pulse.charge = false_charge
+        new_pulse.time_residual = false_time
+
+        position = geometry.omgeo[new_pulse.DOMkey].position
+
+        x=position.x
+        y=position.y
+        z=position.z
+
+        new_pulse.distance = rotate_to_shower_cs(x,y,z,phi,theta,core.x,core.y,core.z)
+        new_pulses.append(new_pulse)
+
+    frame[OutPut]=new_pulses
+    return
+
+
+tray = I3Tray()
+tray.Add(dataio.I3Reader, 'read', filenamelist=inputfilelist)
+tray.Add(convert_unhits, 'deal w unhits',
+         ShieldUnhitsName = pulses2,
+         OutPut = pulses2+'_llhr',
+         false_time = -1.0* 99999, #signed log time gives -5
+         false_charge = 1e-3)
+
+tray.Add(convert_excluded, 'ldeal w unhits',
+         IceTopExcludedTanksList = pulses3,
+         OutPut = pulses3+'_llhr',
+         false_time = -1.0* 99999, #signed log time gives -5
+         false_charge = 1e-3,
+         RecoName=reco_track2,
+         VertexName=reco_track2+'_vertex')
+
+if options.RunMode=='GeneratePDF':
+    tray.Add(IceTop_LLHRatio,'make_hist',
+             Hits_I3VectorShieldHitRecord=pulses1,
+             Unhits_I3VectorShieldHitRecord=pulses2+'_llhr',
+             Excluded_I3VectorShieldHitRecord=pulses3+'_llhr',
+             AngularReco_I3Particle=reco_track2,
+             EnergyReco_I3Particle=reco_track1,
+             OutputFileName='hist2.hd5',
+             BinEdges5D=[logEnergyBins,cosZenBins,logChargeBins,logTBins,logDBins],
+             DistinctRegionsBinEdges3D = [[logChargeBins,logTBins,logDBins]],
+             RunMode='GeneratePDF')
+
+if options.RunMode=='CalcLLHR':
+    tray.Add(IceTop_LLHRatio,'calc_llhr',
+             Hits_I3VectorShieldHitRecord=pulses1,
+             Unhits_I3VectorShieldHitRecord=pulses2+'_llhr',
+             Excluded_I3VectorShieldHitRecord=pulses3+'_llhr',
+             AngularReco_I3Particle=reco_track2,
+             EnergyReco_I3Particle=reco_track1,
+             SigPDFInputFileName='hist2.hd5',
+             BkgPDFInputFileName='hist.hd5',
+             RunMode='CalcLLHR',
+             SubtractEventFromPDF='Sig')
+
+    tray.Add("I3Writer","EventWriter",
+            Filename= options.outfile+".i3.zst",
+            streams = [icetray.I3Frame.DAQ, icetray.I3Frame.Physics],
+            DropOrphanStreams = [ icetray.I3Frame.DAQ ]
+            )
+
+tray.Execute(100)

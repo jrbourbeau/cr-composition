@@ -23,7 +23,7 @@ def extract_vector_series(store, key, sim):
     return series
 
 
-def extract_dataframe(input_file, config, datatype):
+def extract_dataframe(input_file, config, datatype, sim=None):
     with pd.HDFStore(input_file, mode='r') as store:
         series_size = store.get_storer('NStations').nrows
         # Dictionary of key: pd.Series pairs to get converted to pd.DataFrame
@@ -46,13 +46,13 @@ def extract_dataframe(input_file, config, datatype):
                       'frac_outside_two_std_inice_radius',
                       ]
 
-        for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
-                    'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
-            value_keys += ['passed_{}'.format(cut)]
+        # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
+        #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
+        #     value_keys += ['passed_{}'.format(cut)]
 
-        min_dists = np.arange(0, 1125, 125)
-        for min_dist in min_dists:
-            value_keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
+        # min_dists = np.arange(0, 1125, 125)
+        # for min_dist in min_dists:
+        #     value_keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
 
         dom_numbers = [1, 15, 30, 45, 60]
         for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
@@ -82,9 +82,8 @@ def extract_dataframe(input_file, config, datatype):
             for key in ['x', 'y', 'energy', 'zenith', 'azimuth', 'type']:
                 series_dict['MC_{}'.format(key)] = store['MCPrimary'][key]
             # Add simulation set number and corresponding composition
-            sim_num = int(os.path.basename(input_file).split('_')[1])
-            series_dict['sim'] = pd.Series([sim_num] * series_size, dtype=int)
-            composition = comp.simfunctions.sim_to_comp(sim_num)
+            series_dict['sim'] = pd.Series([sim] * series_size, dtype=int)
+            composition = comp.simfunctions.sim_to_comp(sim)
             series_dict['MC_comp'] = pd.Series([composition] * series_size, dtype=str)
 
         # Get timing information
@@ -93,12 +92,13 @@ def extract_dataframe(input_file, config, datatype):
 
         # Get Laputop information
         laputop = store['Laputop']
-        laputop_params = store['LaputopParams']
         lap_keys = ['zenith', 'azimuth', 'x', 'y']
         if datatype == 'data':
             lap_keys += ['ra', 'dec']
         for key in lap_keys:
             series_dict['lap_{}'.format(key)] = laputop[key]
+        # Get LaputopParams information
+        laputop_params = store['LaputopParams']
         lap_param_keys = ['s50', 's80', 's125', 's180', 's250', 's500',
                           'ndf', 'beta', 'rlogl']
         for key in lap_param_keys:
@@ -106,6 +106,10 @@ def extract_dataframe(input_file, config, datatype):
         series_dict['lap_energy'] = laputop_params['e_h4a']
         series_dict['lap_chi2'] = laputop_params['chi2'] / laputop_params['ndf']
         series_dict['lap_fitstatus_ok'] = store['lap_fitstatus_ok']['value'].astype(bool)
+        # # VEM calibration systematic error
+        # if datatype == 'data':
+        #     series_dict['lap_vem_cal_3_up_s125'] = 1.03 * laputop_params['s125']
+        #     series_dict['lap_vem_cal_3_down_s125'] = 0.97 * laputop_params['s125']
 
         # # Get DDDDR information
         # d4r_params = store['I3MuonEnergyLaputopParams']
@@ -122,7 +126,7 @@ def extract_dataframe(input_file, config, datatype):
         series_dict['mil_qtot_measured'] = store['MillipedeFitParams']['qtotal']
         series_dict['mil_qtot_predicted'] = store['MillipedeFitParams']['predicted_qtotal']
 
-        series_dict['IceTopLLHRatio'] = store['IceTopLLHRatio']['LLH_Ratio']
+        # series_dict['IceTopLLHRatio'] = store['IceTopLLHRatio']['LLH_Ratio']
 
         # # Construct unique index from run/event/subevent info in I3EventHeader
         # runs = store['I3EventHeader']['Run']
@@ -146,8 +150,7 @@ def extract_dataframe(input_file, config, datatype):
 
 
 def add_extra_columns(df, datatype='sim'):
-    '''
-    Function to add to new columns to DataFrame that are commonly used
+    """ Function to add to new columns to DataFrame that are commonly used
 
     Parameters
     ----------
@@ -161,17 +164,20 @@ def add_extra_columns(df, datatype='sim'):
     -------
     df : pandas.DataFrame
         Returns DataFrame with added columns
-    '''
+    """
     if datatype == 'sim':
         df['MC_log_energy'] = np.nan_to_num(np.log10(df['MC_energy']))
         # Add composition group labels
         for num_groups in [2, 3, 4]:
+            print('num_groups = {}'.format(num_groups))
             label_key = 'comp_group_{}'.format(num_groups)
             df[label_key] = composition_group_labels(df['MC_comp'],
                                                      num_groups=num_groups)
+            print('df[label_key] = {}'.format(df[label_key]))
             target_key = 'comp_target_{}'.format(num_groups)
             df[target_key] = encode_composition_groups(df[label_key],
                                                        num_groups=num_groups)
+            print('df[target_key] = {}'.format(df[target_key]))
     # Add log-scale columns to df
     df['lap_log_energy'] = np.nan_to_num(np.log10(df['lap_energy']))
     df['lap_cos_zenith'] = np.cos(df['lap_zenith'])
@@ -179,24 +185,27 @@ def add_extra_columns(df, datatype='sim'):
         df['log_s'+dist] = np.log10(df['lap_s'+dist])
     df['log_dEdX'] = np.log10(df['eloss_1500_standard'])
 
+    # if datatype == 'data':
+    #     df['log_lap_vem_cal_3_up_s125'] = np.log10(df['lap_vem_cal_3_up_s125'])
+    #     df['log_lap_vem_cal_3_down_s125'] = np.log10(df['lap_vem_cal_3_down_s125'])
+
     return df
 
 
-def process_i3_hdf(input_file, config, datatype):
+def process_i3_hdf(input_file, config, datatype, sim=None):
     df = extract_dataframe(input_file=input_file,
                            config=config,
-                           datatype=datatype)
+                           datatype=datatype,
+                           sim=sim)
     df = comp.io.apply_quality_cuts(df,
                                     datatype=datatype,
-                                    log_energy_min=None,
-                                    log_energy_max=None,
                                     verbose=False)
     df = add_extra_columns(df, datatype=datatype)
 
     return df
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     description = ('Converts input hdf5 files (from save_hdf.py) to a '
                    'well-formatted pandas dataframe object')
@@ -210,6 +219,11 @@ if __name__ == "__main__":
                         choices=['data', 'sim'],
                         default='sim',
                         help='Option to process simulation or data')
+    parser.add_argument('--sim',
+                        dest='sim',
+                        type=int,
+                        default=None,
+                        help='Simulation dataset number')
     parser.add_argument('-i', '--input',
                         dest='input',
                         help='Path to input hdf5 file')
@@ -224,6 +238,10 @@ if __name__ == "__main__":
     elif args.type == 'data' and args.config not in comp.datafunctions.get_data_configs():
         raise ValueError('Invalid data config {} entered'.format(args.config))
 
+    if args.sim is not None and args.type == 'data':
+        raise ValueError('Cannot process detector data when a simulation '
+                         'dataset is specified')
+
     comp.check_output_dir(args.output)
 
     print('\ninput:\n\t{}'.format(args.input))
@@ -233,5 +251,6 @@ if __name__ == "__main__":
         print('local output:\n{}'.format(output))
         df = process_i3_hdf(input_file=inputs,
                             config=args.config,
-                            datatype=args.type)
+                            datatype=args.type,
+                            sim=args.sim)
         df.to_hdf(output, key='dataframe', mode='w', format='table')

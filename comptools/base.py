@@ -76,7 +76,7 @@ def get_config_paths():
 
 
 def check_output_dir(outfile, makedirs=True):
-    '''Function to check if the directory for an output file exists
+    """ Function to check if the directory for an output file exists
 
     This function will check whether the output directory containing the
     outfile specified exists. If the output directory doesn't exist, then
@@ -94,7 +94,7 @@ def check_output_dir(outfile, makedirs=True):
     Returns
     -------
     None
-    '''
+    """
     # Ensure that outfile is an absolute path
     outfile = os.path.abspath(outfile)
     outdir = os.path.dirname(outfile)
@@ -109,7 +109,7 @@ def check_output_dir(outfile, makedirs=True):
 
 
 def partition(seq, size, max_batches=None):
-    '''Generates partitions of length ``size`` from the iterable ``seq``
+    """ Generates partitions of length ``size`` from the iterable ``seq``
 
     Parameters
     ----------
@@ -132,7 +132,7 @@ def partition(seq, size, max_batches=None):
     >>> list(partition(range(10), 3))
     [(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]
 
-    '''
+    """
     if not isinstance(max_batches, (int, type(None))):
         raise TypeError('max_batches must either be an integer or None, '
                         'got {}'.format(type(max_batches)))
