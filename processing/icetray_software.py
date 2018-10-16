@@ -7,8 +7,10 @@ import pandas as pd
 from scipy import optimize
 from I3Tray import NaN, Inf
 from icecube import icetray, dataio, dataclasses, toprec, phys_services, recclasses
-from icecube.icetop_Level3_scripts import icetop_globals
 from icecube.icetop_Level3_scripts.functions import count_stations
+from icecube.icetop_Level3_scripts.segments import level2_IceTop, IceTopQualityCuts
+from icecube.icetop_Level3_scripts.modules import SnowCorrectPulses
+from icecube.icetop_Level3_scripts import icetop_globals
 
 from comptools.LDFfunctions import fit_DLP_params
 
@@ -526,3 +528,102 @@ class AddInIceCharge(icetray.I3ConditionalModule):
 
     def Finish(self):
         return
+
+
+
+def rerun_reconstructions_snow_lambda(tray, snow_lambda):
+    """Copied and modified from the official icetop_Level3_scripts
+    """
+
+    SnowFactor = snow_lambda
+    name = 'processing'
+
+    # Remove the L2 reconstructions
+    tray.Add(level2_IceTop.RemoveOldLevel2, 'RemoveOldLevel2')
+    extra_keys = ['LaputopSnowDiagnostics',
+                    'IceTopHLCSeedRTPulses_SnowCorrected',
+                    'StationDensity',
+                    'IceTopMaxSignalTank',
+                    'IceTopMaxSignalString',
+                    'IceTopMaxSignal',
+                    'IceTopMaxSignalInEdge',
+                    'IceTopNeighbourMaxSignal',
+                    'Laputop_OnionContainment',
+                    'Laputop_FractionContainment',
+                    'Laputop_NearestStationIsInfill',
+                    ]
+    tray.Add('Delete', keys=extra_keys)
+
+    CleanHLCTankPulses=icetop_globals.icetop_HLCseed_clean_hlc_pulses
+    ExcludedHLCTanks=icetop_globals.icetop_HLCseed_excluded_tanks 
+    tray.Add(level2_IceTop.OfflineIceTopReco,
+             name+'_RTOfflineIceTopReco',
+             Pulses=CleanHLCTankPulses,
+             Excluded=ExcludedHLCTanks,
+             SnowFactor=SnowFactor,
+             Detector='IC86.2012'
+             )
+    reco_track='Laputop'
+
+    # Creates:
+    # *IceTopLaputopSeededSelectedHLC
+    # *IceTopLaputopSeededSelectedSLC
+    # *IceTopLaputopSeededRejectedHLC
+    # *IceTopLaputopSeededRejectedSLC
+    # *IceTopLaputopSeededAfterPulsesSLC
+    # *IceTopLaputopSeededAfterPulsesSLC
+    from icecube import icetop_Level3_scripts
+
+    try:
+        from icecube.topeventcleaning.segments import SelectPulsesFromSeed
+    except:
+        from icecube.icetop_tank_select.segments import SelectPulsesFromSeed
+
+    it_tank_select_seed = 'Laputop'
+    tray.AddSegment(SelectPulsesFromSeed, name+'_SelectPulsesFromSeed',
+                    Seed=it_tank_select_seed,
+                    HLCPulses=icetop_globals.icetop_hlc_pulses,
+                    SLCPulses=icetop_globals.icetop_slc_pulses,
+                    debug=True,
+                    tag='IceTopLaputopSeeded',
+                    If=lambda fr: "Laputop" in fr and fr["Laputop"].fit_status_string=="OK")
+
+    #if small events to be included, then you want SelectPulsesFromSeed using laputopsmall for small events.
+    it_tank_select_seed = 'LaputopSmall'
+    tray.AddSegment(SelectPulsesFromSeed, name+'_SelectPulsesFromSeedSmall',
+                    Seed=it_tank_select_seed,
+                    HLCPulses=icetop_globals.icetop_hlc_pulses,
+                    SLCPulses=icetop_globals.icetop_slc_pulses,
+                    debug=True,
+                    tag='IceTopLaputopSmallSeeded',
+                    If=lambda fr: "LaputopSmall" in fr and fr["Laputop"].fit_status_string!="OK")
+
+    # "Snow correct" the pulses which are used for the laputop reconstruction.
+    # Extra pulses with "_SnowCorrected" added will be created.
+    # These can be used later on for checks, but NOT for a new reconstruction, since this is a non-perfect correction!
+    # The reconstruction should do its own snow correction.
+    # These snow corrected pulses do can be used for Quality cuts (like maximal signal etc.)
+    snow_correction = toprec.I3SimpleSnowCorrectionService("snow_correction", SnowFactor)
+    tray.AddModule(SnowCorrectPulses,
+                   name+'SnowCorrrect',
+                   Pulses=[CleanHLCTankPulses],
+                   Track=reco_track,
+                   SnowService=snow_correction,
+                   If=lambda fr: "Laputop" in fr and fr["Laputop"].fit_status_string=="OK")
+
+    tray.AddModule(SnowCorrectPulses,
+                   name+'SnowCorrrectSmall',
+                   Pulses=[CleanHLCTankPulses],
+                   Track=reco_track+"Small",
+                   SnowService=snow_correction,
+                   If=lambda fr: "LaputopSmall" in fr and fr["Laputop"].fit_status_string!="OK")
+
+    # Do the cuts
+    tray.AddSegment(IceTopQualityCuts,
+                    name+'_IceTopQualityCuts',
+                    pulses=CleanHLCTankPulses+"_SnowCorrected",
+                    detector='IC86.2012',
+                    removeOrNot=False,
+                    reco_track=reco_track, 
+                    isMC=True)
+    return tray

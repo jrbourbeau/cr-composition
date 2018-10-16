@@ -110,8 +110,8 @@ def make_comp_frac_histogram(x, y, proton_mask, iron_mask, bins, ax):
     return im
 
 
-def plot_steps(edges, y, yerr=None, color=None, lw=1, ls='-', alpha=1.0,
-               fillalpha=0.2, label=None, ax=None):
+def plot_steps(edges, y, yerr=None, color=None, fillcolor=None, lw=1, ls='-', 
+               alpha=1.0, fillalpha=0.2, label=None, ax=None):
 
     # Ensure we're dealing with numpy.ndarray objects
     edges = np.asarray(edges)
@@ -121,6 +121,10 @@ def plot_steps(edges, y, yerr=None, color=None, lw=1, ls='-', alpha=1.0,
 
     if ax is None:
         ax = plt.gca()
+
+    # Backwards compatability
+    if fillcolor is None and color is not None:
+        fillcolor = color
 
     ax.step(edges[:-1], y, where='post',
             marker='None', color=color, linewidth=lw,
@@ -134,8 +138,8 @@ def plot_steps(edges, y, yerr=None, color=None, lw=1, ls='-', alpha=1.0,
         err_upper = y + yerr if yerr.ndim == 1 else y + yerr[1]
 
         ax.fill_between(edges[:-1], err_lower, err_upper, step='post',
-                        alpha=fillalpha, color=color, linewidth=0)
-        ax.fill_between(edges[-2:], 2*[(y-yerr)[-1]], 2*[(y+yerr)[-1]],
-                        step='post', alpha=fillalpha, color=color, linewidth=0)
+                        alpha=fillalpha, color=fillcolor, linewidth=0)
+        ax.fill_between(edges[-2:], 2*[err_lower[-1]], 2*[err_upper[-1]],
+                        step='post', alpha=fillalpha, color=fillcolor, linewidth=0)
 
     return ax

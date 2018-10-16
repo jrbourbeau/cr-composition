@@ -13,13 +13,10 @@ from I3Tray import *
 from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
-from icecube.icetop_Level3_scripts.segments import level3_IceTop
-from icecube.icetop_Level3_scripts import icetop_globals
-
-# from llh_ratio_scripts.llh_ratio_i3_module import IceTop_LLH_Ratio
 
 import comptools as comp
 import icetray_software
+
 
 def validate_i3_files(files):
     """ Checks that input i3 files aren't corrupted
@@ -69,25 +66,50 @@ def check_keys(frame, *keys):
     -------
     boolean
         Whether or not all the keys in keys are in frame
-
     """
     return all([key in frame for key in keys])
 
 
-if __name__ == "__main__":
+def delete_keys(frame, keys):
+    """ Deletes existing keys in an I3Frame
+
+    Parameters
+    ----------
+    frame : I3Frame
+        I3Frame
+    keys:
+        Iterable of keys to delete
+    """
+    if isinstance(keys, str):
+        keys = [keys]
+    for key in keys:
+        if key in frame:
+            frame.Delete(key)
+
+
+if __name__ == '__main__':
 
     description='Runs extra modules over a given fileList'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-f', '--files', dest='files', nargs='*',
-                   help='Files to run over')
-    parser.add_argument('--type', dest='type',
-                   choices=['data', 'sim'],
-                   default='sim',
-                   help='Option to process simulation or data')
-    parser.add_argument('--sim', dest='sim',
-                   help='Simulation dataset')
-    parser.add_argument('-o', '--outfile', dest='outfile',
-                   help='Output file')
+    parser.add_argument('-f', '--files',
+                        dest='files',
+                        nargs='*',
+                        help='Files to run over')
+    parser.add_argument('--type', 
+                        dest='type',
+                        choices=['data', 'sim'],
+                        default='sim',
+                        help='Option to process simulation or data')
+    parser.add_argument('--sim',
+                        dest='sim',
+                        help='Simulation dataset')
+    parser.add_argument('--snow_lambda', 
+                        dest='snow_lambda',
+                        type=float,
+                        help='Snow lambda to use with Laputop reconstruction')
+    parser.add_argument('-o', '--outfile',
+                        dest='outfile',
+                        help='Output file')
     args = parser.parse_args()
 
     # Starting parameters
@@ -99,8 +121,6 @@ if __name__ == "__main__":
         keys += ['FractionContainment_MCPrimary_IceTop',
                  'FractionContainment_MCPrimary_InIce']
         keys += ['tanks_charge_Laputop', 'tanks_dist_Laputop']
-        # keys += ['tanks_x', 'tanks_y', 'tanks_charge']
-        # keys += ['inice_dom_dists_1_60', 'inice_dom_charges_1_60']
 
     # Keys read directly from level3 processed i3 files
     keys += ['I3EventHeader']
@@ -116,17 +136,9 @@ if __name__ == "__main__":
     keys += ['avg_inice_radius', 'std_inice_radius', 'median_inice_radius',
              'frac_outside_one_std_inice_radius',
              'frac_outside_two_std_inice_radius']
-    # for i in ['1_60']:
-    #     keys += ['avg_inice_radius_'+i, 'std_inice_radius_'+i,
-    #              'qweighted_inice_radius_'+i, 'invqweighted_inice_radius_'+i]
-
-    # min_dists = np.arange(0, 1125, 125)
-    # for min_dist in min_dists:
-    #     keys += ['IceTop_charge_beyond_{}m'.format(min_dist)]
 
     dom_numbers = [1, 15, 30, 45, 60]
     for min_DOM, max_DOM in zip(dom_numbers[:-1], dom_numbers[1:]):
-    # for i in ['1_60']:
         key = '{}_{}'.format(min_DOM, max_DOM)
         keys += ['NChannels_'+key,
                  'NHits_'+key,
@@ -143,18 +155,7 @@ if __name__ == "__main__":
              'FractionContainment_Laputop_InIce']
     keys += ['lap_fitstatus_ok']
     keys += ['passed_IceTopQualityCuts', 'passed_InIceQualityCuts']
-    # for cut in ['MilliNCascAbove2', 'MilliQtotRatio', 'MilliRloglBelow2',
-    #             'NCh_CoincLaputopCleanedPulsesAbove7', 'StochRecoSucceeded']:
-    #     keys += ['passed_{}'.format(cut)]
     keys += ['angle_MCPrimary_Laputop']
-    # keys += ['tank_charge_dist_Laputop']
-    # keys += ['IceTop_charge_175m']
-
-    # keys += ['refit_beta', 'refit_log_s125']
-    # keys += ['NNcharges']
-    # keys += ['tank_charge_v_dist']
-    # keys += ['tank_x', 'tank_y', 'tank_charge']
-    # keys += ['IceTopLLHRatio']
 
     t0 = time.time()
 
@@ -166,13 +167,14 @@ if __name__ == "__main__":
         good_file_list = validate_i3_files(inputs)
 
         tray = I3Tray()
-        # # If not running on cobalt (i.e. running a cluster job), add a file stager
-        # if os.getenv('_CONDOR_SCRATCH_DIR') is not None:
-        #     tray.context['I3FileStager'] = dataio.get_stagers(
-        #         staging_directory=os.getenv('_CONDOR_SCRATCH_DIR'))
         tray.Add('I3Reader', FileNameList=good_file_list)
         # Uncompress Level3 diff files
         tray.Add(uncompress, 'uncompress')
+
+        if args.snow_lambda is not None:
+            # Re-run Laputop reconstruction with specified snow correction lambda value
+            tray = icetray_software.rerun_reconstructions_snow_lambda(tray, 
+                                                                      snow_lambda=args.snow_lambda)
 
         if args.type == 'data':
             # Filter out all events that don't pass standard IceTop cuts
@@ -201,11 +203,6 @@ if __name__ == "__main__":
                  min_DOM=1,
                  max_DOM=60,
                  If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
-        # tray.Add(icetray_software.AddInIceCharge,
-        #          pulses=inice_pulses,
-        #          min_DOM=1,
-        #          max_DOM=60,
-        #          If=lambda frame: 'I3Geometry' in frame and inice_pulses in frame)
 
         # Add InIce muon radius to frame
         tray.Add(icetray_software.AddInIceMuonRadius,
@@ -231,46 +228,6 @@ if __name__ == "__main__":
                  particle1='MCPrimary', particle2='Laputop',
                  key='angle_MCPrimary_Laputop',
                  If=lambda frame: 'MCPrimary' in frame and 'Laputop' in frame)
-
-        # pulses=['IceTopHLCSeedRTPulses', 'IceTopLaputopSeededSelectedSLC']
-        # # tray.Add(i3modules.add_icetop_charge, pulses=pulses)
-        # tray.Add(icetray_software.add_IceTop_tankXYcharge,
-        #          pulses=pulses,
-        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-        # tray.Add(icetray_software.AddIceTopLogQLogR,
-        #          pulses=pulses,
-        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-
-        # outdir, tail = os.path.split(output)
-        # root, ext  = os.path.splitext(tail)
-        # charge_dist_outfile = root + '_charge-dist' + ext
-        # charge_dist_outfile = os.path.join(outdir, charge_dist_outfile)
-        # tray.Add(icetray_software.AddIceTopTankXYCharge,
-        #          pulses=pulses,
-        #          # outfile=charge_dist_outfile,
-        #          # sim=args.sim,
-        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses) and all(frame['IT73AnalysisIceTopQualityCuts'].values()))
-
-        # tray.Add(icetray_software.AddIceTopNNCharges, pulses=pulses,
-        #          If=lambda frame: check_keys(frame, 'I3Geometry', *pulses))
-        # tray.Add(icetray_software.AddIceTopChargeDistance, track='Laputop', pulses=pulses,
-        #          If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
-
-        # for min_dist in min_dists:
-        #     tray.Add(icetray_software.AddIceTopChargeDistance,
-        #              track='Laputop',
-        #              pulses=pulses,
-        #              min_dist=min_dist,
-        #              If=lambda frame: check_keys(frame, 'I3Geometry', 'Laputop', *pulses))
-
-
-        # tray.AddModule(IceTop_LLH_Ratio, 'IceTopLLHRatio',
-        #                Output='IceTopLLHRatio',
-    	#                TwoDPDFPickleYear='2012',
-        #         	   GeometryHDF5='/data/user/zgriffith/llhratio_files/geometry.h5',
-        #                highEbins=True,
-        #                If=lambda frame: 'IceTopLaputopSeededSelectedSLC' in frame,
-        #                )
 
         #====================================================================
         # Finish

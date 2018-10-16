@@ -130,6 +130,7 @@ def _load_basic_dataframe(df_file=None, datatype='sim', config='IC86.2012',
                                     config,
                                     datatype,
                                     'processed_hdf',
+                                    'nominal' if datatype == 'sim' else '',
                                     '*.hdf')
         files = sorted(glob.glob(file_pattern))
 

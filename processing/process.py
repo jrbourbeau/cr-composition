@@ -39,13 +39,21 @@ dag : pycondor.Dagman
 """
 
 
-def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False):
+def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False,
+                              snow_lambda=None):
     base_dir = os.path.join(comp.paths.comp_data_dir,
                             config,
                             'sim',
                             'test' if test else '')
-    i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf')
-    df_hdf_outdir = os.path.join(base_dir, 'processed_hdf')
+    if snow_lambda is None:
+        i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf', 'nominal')
+        df_hdf_outdir = os.path.join(base_dir, 'processed_hdf', 'nominal')
+    else:
+        # snow_lambda_str = str(snow_lambda).replace('.', '-')
+        i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf',
+                                     'snow_lambda_{}'.format(snow_lambda))
+        df_hdf_outdir = os.path.join(base_dir, 'processed_hdf',
+                                     'snow_lambda_{}'.format(snow_lambda))
 
     # Create data processing Jobs / Dagman
     dag_name = 'sim_processing_{}'.format(args.config.replace('.', '-'))
@@ -97,6 +105,8 @@ def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False):
             process_i3_arg = process_i3_arg_template.format(ex=PROCESS_I3_EX,
                                                             i3_files=files_str,
                                                             outfile=process_i3_outfile)
+            if snow_lambda is not None: 
+                process_i3_arg += ' --snow_lambda {}'.format(snow_lambda)
             process_i3_job.add_arg(process_i3_arg, retry=3)
             # Set up save_df_job arguments
             save_df_outfile = os.path.join(df_hdf_outdir, outfile_basename)
@@ -220,6 +230,10 @@ if __name__ == '__main__':
                         type=int,
                         default=50,
                         help='Number of files to run per batch for data processing')
+    parser.add_argument('--snow_lambda',
+                        dest='snow_lambda',
+                        type=float,
+                        help='Snow lambda to use with Laputop reconstruction')
     parser.add_argument('--test',
                         dest='test',
                         action='store_true',
@@ -232,7 +246,8 @@ if __name__ == '__main__':
     if args.sim:
         sim_dag = simulation_processing_dag(config=args.config,
                                             batch_size=args.batch_size_sim,
-                                            test=args.test)
+                                            test=args.test,
+                                            snow_lambda=args.snow_lambda)
         dags.append(sim_dag)
 
     if args.data:
