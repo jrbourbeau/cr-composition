@@ -1,0 +1,312 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Computing environment setup &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Filesystem path setup" href="path-setup.html" />
+    <link rel="prev" title="Installation &amp; setup" href="setup.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="setup.html">Installation &amp; setup</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Computing environment setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cloning-the-analysis-repository">Cloning the analysis repository</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#setting-up-the-cvmfs-toolset">Setting up the CVMFS toolset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-a-virtual-environment">Creating a virtual environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-python-dependencies">Installing Python dependencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#building-the-icecube-software">Building the IceCube software</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="path-setup.html">Filesystem path setup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="setup.html">Installation &amp; setup</a> &raquo;</li>
+        
+      <li>Computing environment setup</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            
+              <!-- User defined GitHub URL -->
+              <a href="https://github.com/jrbourbeau/cr-composition" class="fa fa-github"> Edit on GitHub</a>
+            
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="computing-environment-setup">
+<h1>Computing environment setup<a class="headerlink" href="#computing-environment-setup" title="Permalink to this headline">¶</a></h1>
+<p>This page walks through the initial setup and installation steps to configure the computing environment used for this analysis. It is assumed that you are currently logged onto one of the IceCube cobalt testbed machines.</p>
+<div class="section" id="cloning-the-analysis-repository">
+<h2>Cloning the analysis repository<a class="headerlink" href="#cloning-the-analysis-repository" title="Permalink to this headline">¶</a></h2>
+<p>The code for this analysis is hosted on <a class="reference external" href="https://github.com/jrbourbeau/cr-composition">GitHub</a>. A copy of the analysis repository can be cloned to your local machine using <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/jrbourbeau/cr-composition.git
+</pre></div>
+</div>
+<p>This will create a <code class="docutils literal notranslate"><span class="pre">cr-composition/</span></code> directory containing the analysis code which you can then <code class="docutils literal notranslate"><span class="pre">cd</span></code> into.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> cr-composition
+</pre></div>
+</div>
+</div>
+<div class="section" id="setting-up-the-cvmfs-toolset">
+<h2>Setting up the CVMFS toolset<a class="headerlink" href="#setting-up-the-cvmfs-toolset" title="Permalink to this headline">¶</a></h2>
+<p>To configure the system level dependencies we’ll use the <code class="docutils literal notranslate"><span class="pre">py2-v3</span></code> toolset in the <a class="reference external" href="http://software.icecube.wisc.edu/documentation/info/cvmfs.html">IceCube CVMFS</a></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">eval</span> <span class="k">$(</span>/cvmfs/icecube.opensciencegrid.org/py2-v3/setup.sh<span class="k">)</span>
+</pre></div>
+</div>
+<p>This will set up many system-wide tools for us to use (e.g. Python 2.7.13).</p>
+</div>
+<div class="section" id="creating-a-virtual-environment">
+<h2>Creating a virtual environment<a class="headerlink" href="#creating-a-virtual-environment" title="Permalink to this headline">¶</a></h2>
+<p>Next we’ll set up a virtual Python environment using <code class="docutils literal notranslate"><span class="pre">virtualenv</span></code> to install our Python dependencies.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>virtualenv --prompt<span class="o">=</span><span class="s2">&quot;(cr-composition) &quot;</span> /path/to/virtualenv
+<span class="nb">source</span> /path/to/virtualenv/bin/activate
+</pre></div>
+</div>
+<p>Here, <code class="docutils literal notranslate"><span class="pre">/path/to/virtualenv</span></code> should be replaced with wherever you’d like your virtual environment to be installed. To activate the virtual environment, use</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> /path/to/virtualenv/bin/activate
+</pre></div>
+</div>
+</div>
+<div class="section" id="installing-python-dependencies">
+<h2>Installing Python dependencies<a class="headerlink" href="#installing-python-dependencies" title="Permalink to this headline">¶</a></h2>
+<p>The Python dependencies for this analysis are listed in <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>. They, along with the <code class="docutils literal notranslate"><span class="pre">comptools</span></code> Python pacakge, can be installed using <code class="docutils literal notranslate"><span class="pre">pip</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install -e .
+</pre></div>
+</div>
+</div>
+<div class="section" id="building-the-icecube-software">
+<h2>Building the IceCube software<a class="headerlink" href="#building-the-icecube-software" title="Permalink to this headline">¶</a></h2>
+<p>We’ll make use of the <a class="reference external" href="http://code.icecube.wisc.edu/projects/icecube/browser/IceCube/meta-projects/icerec/releases/V05-01-05">icerec metaproject</a> in conjunction with the <a class="reference external" href="http://code.icecube.wisc.edu/projects/icecube/browser/IceCube/projects/weighting/releases/V00-02-01">weighting</a> and <a class="reference external" href="http://code.icecube.wisc.edu/projects/icecube/browser/IceCube/projects/corsika-reader/releases/V00-01-02">corsika-reader</a> projects. The specific version used are listed below.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="61%" />
+<col width="39%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Project name</th>
+<th class="head">Version</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>icerec</td>
+<td>V05-01-05</td>
+</tr>
+<tr class="row-odd"><td>weighting</td>
+<td>V00-02-01</td>
+</tr>
+<tr class="row-even"><td>corsika-reader</td>
+<td>V00-01-02</td>
+</tr>
+</tbody>
+</table>
+<p>The source code for these projects can be retrieved from the IceCube SVN repository using the following commands</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir /path/to/icecube/software
+<span class="nb">cd</span> /path/to/icecube/software
+svn co http://code.icecube.wisc.edu/svn/meta-projects/icerec/releases/V05-01-05 src
+svn co http://code.icecube.wisc.edu/svn/projects/weighting/releases/V00-02-01 src/weighting
+svn co http://code.icecube.wisc.edu/svn/projects/corsika-reader/releases/V00-01-02 src/corsika-reader
+</pre></div>
+</div>
+<p>Above <code class="docutils literal notranslate"><span class="pre">/path/to/icecube/software</span></code> should be replaced with wherever you’d like the IceCube software to be installed. The source code can be compiled into the <code class="docutils literal notranslate"><span class="pre">build/</span></code> directory via</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir build
+<span class="nb">cd</span> build
+cmake -DCMAKE_CXX_STANDARD<span class="o">=</span><span class="m">11</span> ../src
+make
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="path-setup.html" class="btn btn-neutral float-right" title="Filesystem path setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="setup.html" class="btn btn-neutral" title="Installation &amp; setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

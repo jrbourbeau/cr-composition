@@ -1,0 +1,1512 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools API &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Filesystem path setup" href="path-setup.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.LDFfunctions">comptools.LDFfunctions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.base">comptools.base module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.composition_encoding">comptools.composition_encoding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.data_functions">comptools.data_functions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.datafunctions">comptools.datafunctions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.effective_area">comptools.effective_area module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.io">comptools.io module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.livetime">comptools.livetime module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.model_selection">comptools.model_selection module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.pipelines">comptools.pipelines module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.plotting">comptools.plotting module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.serialize">comptools.serialize module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.simfunctions">comptools.simfunctions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.spectrumfunctions">comptools.spectrumfunctions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-comptools.unfolding">comptools.unfolding module</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/comptools.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="comptools-api">
+<h1><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API<a class="headerlink" href="#comptools-api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-comptools.LDFfunctions">
+<span id="comptools-ldffunctions-module"></span><h2>comptools.LDFfunctions module<a class="headerlink" href="#module-comptools.LDFfunctions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.LDFfunctions.DLP">
+<code class="descclassname">comptools.LDFfunctions.</code><code class="descname">DLP</code><span class="sig-paren">(</span><em>dists</em>, <em>log_s125</em>, <em>beta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/LDFfunctions.html#DLP"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.LDFfunctions.DLP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Double Logarithmic Parabola (DLP) function to parameterize air showers</p>
+<p>For a reference see IceCube internal report 200702001, ‘A Lateral
+Distribution Function and Fluctuation Parametrisation for IceTop’
+by Stefan Klepser.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>dists</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float, array-like</span></dt>
+<dd><p class="first last">Tank distance(s), in meters, from the shower core.</p>
+</dd>
+<dt><strong>log_s125</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><p class="first last">Base-10 logarithm of the signal deposited 125m away from the shower
+core.</p>
+</dd>
+<dt><strong>beta</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><p class="first last">Slope of the DLP function. Related to the air shower age.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>float, numpy.array</strong></dt>
+<dd><p class="first last">Returns the base-10 logarithm of the signal deposited at a distance,
+dists, away from the shower core.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.LDFfunctions.fit_DLP_params">
+<code class="descclassname">comptools.LDFfunctions.</code><code class="descname">fit_DLP_params</code><span class="sig-paren">(</span><em>charges</em>, <em>distances</em>, <em>lap_log_s125</em>, <em>lap_beta</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/LDFfunctions.html#fit_DLP_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.LDFfunctions.fit_DLP_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.LDFfunctions.top_ldf_sigma">
+<code class="descclassname">comptools.LDFfunctions.</code><code class="descname">top_ldf_sigma</code><span class="sig-paren">(</span><em>r</em>, <em>logq</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/LDFfunctions.html#top_ldf_sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.LDFfunctions.top_ldf_sigma" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.base">
+<span id="comptools-base-module"></span><h2>comptools.base module<a class="headerlink" href="#module-comptools.base" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="comptools.base.ComputingEnvironemtError">
+<em class="property">exception </em><code class="descclassname">comptools.base.</code><code class="descname">ComputingEnvironemtError</code><a class="reference internal" href="_modules/comptools/base.html#ComputingEnvironemtError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.ComputingEnvironemtError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">exceptions.Exception</span></code></p>
+<p>Custom exception that should be raised when a problem related to the
+computing environment is found</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.check_output_dir">
+<code class="descclassname">comptools.base.</code><code class="descname">check_output_dir</code><span class="sig-paren">(</span><em>outfile</em>, <em>makedirs=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#check_output_dir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.check_output_dir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to check if the directory for an output file exists</p>
+<p>This function will check whether the output directory containing the
+outfile specified exists. If the output directory doesn’t exist, then
+there is an option to create the output directory. Otherwise, this
+function will raise an IOError.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>outfile</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Path to output file.</p>
+</dd>
+<dt><strong>makedirs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option to create the output directory containing the output file if
+it doesn’t already exist (default: True)</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>None</strong></dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.get_config_paths">
+<code class="descclassname">comptools.base.</code><code class="descname">get_config_paths</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#get_config_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.get_config_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to return paths used in this analysis</p>
+<p>Specifically,</p>
+<p>metaproject: Path to IceCube metaproject being used
+comp_data_dir: Path to where data and simulation is stored
+condor_data_dir: Path to where HTCondor error and output files are stored
+condor_scratch_dir: Path to where HTCondor log and submit files are stored
+figures_dir: Path to where figures are saved
+project_root: Path to where cr-composition project is located</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>paths</strong> <span class="classifier-delimiter">:</span> <span class="classifier">collections.namedtuple</span></dt>
+<dd><p class="first last">Namedtuple containing relavent paths (e.g. figures_dir is where
+figures will be saved, condor_data_dir is where data/simulation will
+be saved to / loaded from, etc).</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.get_energybins">
+<code class="descclassname">comptools.base.</code><code class="descname">get_energybins</code><span class="sig-paren">(</span><em>config='IC86.2012'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#get_energybins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.get_energybins" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.get_training_features">
+<code class="descclassname">comptools.base.</code><code class="descname">get_training_features</code><span class="sig-paren">(</span><em>feature_list=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#get_training_features"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.get_training_features" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.partition">
+<code class="descclassname">comptools.base.</code><code class="descname">partition</code><span class="sig-paren">(</span><em>seq</em>, <em>size</em>, <em>max_batches=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#partition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.partition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates partitions of length <code class="docutils literal notranslate"><span class="pre">size</span></code> from the iterable <code class="docutils literal notranslate"><span class="pre">seq</span></code></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>seq</strong> <span class="classifier-delimiter">:</span> <span class="classifier">iterable</span></dt>
+<dd><p class="first last">Iterable object to be partitioned.</p>
+</dd>
+<dt><strong>size</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd><p class="first last">Number of items to have in each partition.</p>
+</dd>
+<dt><strong>max_batches</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Limit the number of partitions to yield (default is to yield all
+partitions).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Yields:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>batch</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
+<dd><p class="first last">Partition of <code class="docutils literal notranslate"><span class="pre">seq</span></code> that is (at most) <code class="docutils literal notranslate"><span class="pre">size</span></code> items long.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">comptools</span> <span class="k">import</span> <span class="n">partition</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">partition</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="mi">3</span><span class="p">))</span>
+<span class="go">[(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.base.requires_icecube">
+<code class="descclassname">comptools.base.</code><code class="descname">requires_icecube</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/base.html#requires_icecube"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.base.requires_icecube" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to wrap functions that require any icecube software</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-comptools.composition_encoding">
+<span id="comptools-composition-encoding-module"></span><h2>comptools.composition_encoding module<a class="headerlink" href="#module-comptools.composition_encoding" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.composition_encoding.comp_to_label">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">comp_to_label</code><span class="sig-paren">(</span><em>composition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#comp_to_label"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.comp_to_label" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.composition_encoding.composition_group_labels">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">composition_group_labels</code><span class="sig-paren">(</span><em>compositions</em>, <em>num_groups=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#composition_group_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.composition_group_labels" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.composition_encoding.decode_composition_groups">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">decode_composition_groups</code><span class="sig-paren">(</span><em>labels</em>, <em>num_groups=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#decode_composition_groups"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.decode_composition_groups" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.composition_encoding.encode_composition_groups">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">encode_composition_groups</code><span class="sig-paren">(</span><em>groups</em>, <em>num_groups=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#encode_composition_groups"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.encode_composition_groups" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.composition_encoding.get_comp_list">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">get_comp_list</code><span class="sig-paren">(</span><em>num_groups=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#get_comp_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.get_comp_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.composition_encoding.label_to_comp">
+<code class="descclassname">comptools.composition_encoding.</code><code class="descname">label_to_comp</code><span class="sig-paren">(</span><em>label</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/composition_encoding.html#label_to_comp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.composition_encoding.label_to_comp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.data_functions">
+<span id="comptools-data-functions-module"></span><h2>comptools.data_functions module<a class="headerlink" href="#module-comptools.data_functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.data_functions.averaging_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">averaging_error</code><span class="sig-paren">(</span><em>values</em>, <em>errors</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#averaging_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.averaging_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_bin_mids">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_bin_mids</code><span class="sig-paren">(</span><em>bins</em>, <em>infvalue=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_bin_mids"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_bin_mids" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_cumprob_sigma">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_cumprob_sigma</code><span class="sig-paren">(</span><em>values</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_cumprob_sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_cumprob_sigma" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_difference_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_difference_error</code><span class="sig-paren">(</span><em>errors</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_difference_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_difference_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_median_std">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_median_std</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_median_std"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_median_std" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that returns the median and standard deviation stats.binned_statistic</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_medians">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_medians</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_medians"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_medians" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_ratio_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_ratio_error</code><span class="sig-paren">(</span><em>num</em>, <em>num_err</em>, <em>den</em>, <em>den_err</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_ratio_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_ratio_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_resolution">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_resolution</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_resolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_resolution" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.get_summation_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">get_summation_error</code><span class="sig-paren">(</span><em>errors</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#get_summation_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.get_summation_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.product_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">product_error</code><span class="sig-paren">(</span><em>term1</em>, <em>term1_err</em>, <em>term2</em>, <em>term2_err</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#product_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.product_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.data_functions.ratio_error">
+<code class="descclassname">comptools.data_functions.</code><code class="descname">ratio_error</code><span class="sig-paren">(</span><em>num</em>, <em>num_err</em>, <em>den</em>, <em>den_err</em>, <em>nan_to_num=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/data_functions.html#ratio_error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.data_functions.ratio_error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.datafunctions">
+<span id="comptools-datafunctions-module"></span><h2>comptools.datafunctions module<a class="headerlink" href="#module-comptools.datafunctions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.datafunctions.get_data_configs">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">get_data_configs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#get_data_configs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.get_data_configs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.get_level3_livetime_hist">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">get_level3_livetime_hist</code><span class="sig-paren">(</span><em>config=None</em>, <em>month=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#get_level3_livetime_hist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.get_level3_livetime_hist" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.get_run_list">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">get_run_list</code><span class="sig-paren">(</span><em>config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#get_run_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.get_run_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.it_stream">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">it_stream</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#it_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.it_stream" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.level3_data_GCD_file">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">level3_data_GCD_file</code><span class="sig-paren">(</span><em>config</em>, <em>run</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#level3_data_GCD_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.level3_data_GCD_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.level3_data_file_batches">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">level3_data_file_batches</code><span class="sig-paren">(</span><em>config</em>, <em>run</em>, <em>size</em>, <em>max_batches=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#level3_data_file_batches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.level3_data_file_batches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates level3 data file paths in batches</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>config</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Detector configuration</p>
+</dd>
+<dt><strong>run</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Number of data taking run</p>
+</dd>
+<dt><strong>size: int</strong></dt>
+<dd><p class="first last">Number of files in each batch</p>
+</dd>
+<dt><strong>max_batches</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Option to only yield <code class="docutils literal notranslate"><span class="pre">max_batches</span></code> number of file batches (default
+is to yield all batches)</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>generator</strong></dt>
+<dd><p class="first last">Generator that yields batches of data files</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>Basic usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">comptools.datafunctions</span> <span class="k">import</span> <span class="n">level3_data_file_batches</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">level3_data_file_batches</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="s1">&#39;IC86.2012&#39;</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="s1">&#39;00122174&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="go">[(&#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000050.i3.bz2&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000110.i3.bz2&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000000.i3.bz2&#39;),</span>
+<span class="go"> (&#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000330.i3.bz2&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000150.i3.bz2&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000240.i3.bz2&#39;)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.level3_data_files">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">level3_data_files</code><span class="sig-paren">(</span><em>config=None</em>, <em>run=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#level3_data_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.level3_data_files" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.null_stream">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">null_stream</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#null_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.null_stream" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.reco_pulses">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">reco_pulses</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#reco_pulses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.reco_pulses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.datafunctions.run_generator">
+<code class="descclassname">comptools.datafunctions.</code><code class="descname">run_generator</code><span class="sig-paren">(</span><em>config=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/datafunctions.html#run_generator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.datafunctions.run_generator" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.effective_area">
+<span id="comptools-effective-area-module"></span><h2>comptools.effective_area module<a class="headerlink" href="#module-comptools.effective_area" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.effective_area.calculate_effective_area_vs_energy">
+<code class="descclassname">comptools.effective_area.</code><code class="descname">calculate_effective_area_vs_energy</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/effective_area.html#calculate_effective_area_vs_energy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.effective_area.calculate_effective_area_vs_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculated effective area vs. energy from simulation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>df_sim</strong> <span class="classifier-delimiter">:</span> <span class="classifier">pandas.DataFrame</span></dt>
+<dd><p class="first last">Simulation DataFrame returned from comptools.load_sim.</p>
+</dd>
+<dt><strong>energy_bins</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array-like</span></dt>
+<dd><p class="first last">Energy bins (in GeV) that will be used for calculation.</p>
+</dd>
+<dt><strong>verbose</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option for verbose output (default is True).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>eff_area</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Effective area for each bin in energy_bins</p>
+</dd>
+<dt><strong>eff_area_error</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Statistical ucertainty on the effective area for each bin in
+energy_bins.</p>
+</dd>
+<dt><strong>energy_midpoints</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Midpoints of energy_bins. Useful for plotting effective area versus
+energy.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.effective_area.effective_area">
+<code class="descclassname">comptools.effective_area.</code><code class="descname">effective_area</code><span class="sig-paren">(</span><em>df</em>, <em>log_energy_bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/effective_area.html#effective_area"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.effective_area.effective_area" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.effective_area.get_effective_area_fit">
+<code class="descclassname">comptools.effective_area.</code><code class="descname">get_effective_area_fit</code><span class="sig-paren">(</span><em>config='IC86.2012'</em>, <em>fit_func=&lt;function sigmoid_slant&gt;</em>, <em>energy_points=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/effective_area.html#get_effective_area_fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.effective_area.get_effective_area_fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculated effective area from simulation</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>config</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Detector configuration (default is IC86.2012).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>avg</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><p class="first last">Effective area</p>
+</dd>
+<dt><strong>avg_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><p class="first last">Statistical error on effective area</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.effective_area.sigmoid_flat">
+<code class="descclassname">comptools.effective_area.</code><code class="descname">sigmoid_flat</code><span class="sig-paren">(</span><em>energy</em>, <em>p0</em>, <em>p1</em>, <em>p2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/effective_area.html#sigmoid_flat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.effective_area.sigmoid_flat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.effective_area.sigmoid_slant">
+<code class="descclassname">comptools.effective_area.</code><code class="descname">sigmoid_slant</code><span class="sig-paren">(</span><em>energy</em>, <em>p0</em>, <em>p1</em>, <em>p2</em>, <em>p3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/effective_area.html#sigmoid_slant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.effective_area.sigmoid_slant" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.io">
+<span id="comptools-io-module"></span><h2>comptools.io module<a class="headerlink" href="#module-comptools.io" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.io.add_convenience_variables">
+<code class="descclassname">comptools.io.</code><code class="descname">add_convenience_variables</code><span class="sig-paren">(</span><em>df</em>, <em>datatype='sim'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#add_convenience_variables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.add_convenience_variables" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.apply_quality_cuts">
+<code class="descclassname">comptools.io.</code><code class="descname">apply_quality_cuts</code><span class="sig-paren">(</span><em>df</em>, <em>datatype='sim'</em>, <em>return_cut_dict=False</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#apply_quality_cuts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.apply_quality_cuts" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.dataframe_to_X_y">
+<code class="descclassname">comptools.io.</code><code class="descname">dataframe_to_X_y</code><span class="sig-paren">(</span><em>df</em>, <em>feature_list</em>, <em>target='comp_target_2'</em>, <em>drop_null=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#dataframe_to_X_y"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.dataframe_to_X_y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.dataframe_to_array">
+<code class="descclassname">comptools.io.</code><code class="descname">dataframe_to_array</code><span class="sig-paren">(</span><em>df</em>, <em>columns</em>, <em>drop_null=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#dataframe_to_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.dataframe_to_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.load_data">
+<code class="descclassname">comptools.io.</code><code class="descname">load_data</code><span class="sig-paren">(</span><em>df_file=None</em>, <em>config='IC86.2012'</em>, <em>energy_reco=True</em>, <em>energy_cut_key='reco_log_energy'</em>, <em>log_energy_min=6.0</em>, <em>log_energy_max=8.0</em>, <em>columns=None</em>, <em>n_jobs=1</em>, <em>verbose=False</em>, <em>compute=True</em>, <em>processed=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.load_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to load processed data DataFrame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>df_file</strong> <span class="classifier-delimiter">:</span> <span class="classifier">path, optional</span></dt>
+<dd><p class="first last">If specified, the given path to a pandas.DataFrame will be loaded
+(default is None, so the file path will be determined from the
+datatype and config).</p>
+</dd>
+<dt><strong>config</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Detector configuration (default is ‘IC86.2012’).</p>
+</dd>
+<dt><strong>test_size</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Fraction or number of events to be split off into a seperate testing
+set (default is 0.3). test_size will be passed to
+sklearn.model_selection.ShuffleSplit.</p>
+</dd>
+<dt><strong>energy_reco</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option to perform energy reconstruction for each event
+(default is True).</p>
+</dd>
+<dt><strong>energy_cut_key</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Energy key to apply energy range cuts to (default is ‘lap_log_energy’).</p>
+</dd>
+<dt><strong>log_energy_min</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Option to set a lower limit on the reconstructed log energy in GeV
+(default is 6.0).</p>
+</dd>
+<dt><strong>log_energy_max</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Option to set a upper limit on the reconstructed log energy in GeV
+(default is 8.0).</p>
+</dd>
+<dt><strong>columns</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like, optional</span></dt>
+<dd><p class="first last">Option to specify the columns that should be in the returned
+DataFrame(s) (default is None, all columns are returned).</p>
+</dd>
+<dt><strong>n_jobs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of chunks to load in parallel (default is 1).</p>
+</dd>
+<dt><strong>verbose</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option for verbose progress bar output (default is True).</p>
+</dd>
+<dt><strong>processed</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Whether to load processed (quality + energy cuts applied) or
+pre-processed data (default is True).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>pandas.DataFrame</strong></dt>
+<dd><p class="first last">Return a DataFrame with processed data</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.load_sim">
+<code class="descclassname">comptools.io.</code><code class="descname">load_sim</code><span class="sig-paren">(</span><em>df_file=None</em>, <em>config='IC86.2012'</em>, <em>test_size=0.5</em>, <em>energy_reco=True</em>, <em>energy_cut_key='reco_log_energy'</em>, <em>log_energy_min=6.0</em>, <em>log_energy_max=8.0</em>, <em>columns=None</em>, <em>n_jobs=1</em>, <em>verbose=False</em>, <em>compute=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#load_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.load_sim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to load processed simulation DataFrame</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>df_file</strong> <span class="classifier-delimiter">:</span> <span class="classifier">path, optional</span></dt>
+<dd><p class="first last">If specified, the given path to a pandas.DataFrame will be loaded
+(default is None, so the file path will be determined from the
+datatype and config).</p>
+</dd>
+<dt><strong>config</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Detector configuration (default is ‘IC86.2012’).</p>
+</dd>
+<dt><strong>test_size</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Fraction or number of events to be split off into a seperate testing
+set (default is 0.3). test_size will be passed to
+sklearn.model_selection.ShuffleSplit.</p>
+</dd>
+<dt><strong>energy_reco</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option to perform energy reconstruction for each event
+(default is True).</p>
+</dd>
+<dt><strong>energy_cut_key</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Energy key to apply energy range cuts to (default is ‘lap_log_energy’).</p>
+</dd>
+<dt><strong>log_energy_min</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Option to set a lower limit on the reconstructed log energy in GeV
+(default is 6.0).</p>
+</dd>
+<dt><strong>log_energy_max</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, float, optional</span></dt>
+<dd><p class="first last">Option to set a upper limit on the reconstructed log energy in GeV
+(default is 8.0).</p>
+</dd>
+<dt><strong>columns</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like, optional</span></dt>
+<dd><p class="first last">Option to specify the columns that should be in the returned
+DataFrame(s) (default is None, all columns are returned).</p>
+</dd>
+<dt><strong>n_jobs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of chunks to load in parallel (default is 1).</p>
+</dd>
+<dt><strong>verbose</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option for verbose progress bar output (default is True).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>pandas.DataFrame, tuple of pandas.DataFrame</strong></dt>
+<dd><p class="first last">Return a single DataFrame if test_size is 0, otherwise return
+a 2-tuple of training and testing DataFrame.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.load_tank_charges">
+<code class="descclassname">comptools.io.</code><code class="descname">load_tank_charges</code><span class="sig-paren">(</span><em>config='IC79.2010'</em>, <em>datatype='sim'</em>, <em>return_dask=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#load_tank_charges"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.load_tank_charges" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.load_trained_model">
+<code class="descclassname">comptools.io.</code><code class="descname">load_trained_model</code><span class="sig-paren">(</span><em>pipeline_str='BDT'</em>, <em>config='IC86.2012'</em>, <em>return_metadata=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#load_trained_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.load_trained_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to load pre-trained model to avoid re-training</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>pipeline_str</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Name of model to load (default is ‘BDT’).</p>
+</dd>
+<dt><strong>config</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Detector configuration (default is ‘IC86.2012’).</p>
+</dd>
+<dt><strong>return_metadata</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option to return metadata associated with saved model (e.g. list of
+training features used, scikit-learn version, etc) (default is False).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>pipeline</strong> <span class="classifier-delimiter">:</span> <span class="classifier">sklearn.Pipeline</span></dt>
+<dd><p class="first last">Trained scikit-learn pipeline.</p>
+</dd>
+<dt><strong>model_dict</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary containing trained model as well as relevant metadata.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.validate_dataframe">
+<code class="descclassname">comptools.io.</code><code class="descname">validate_dataframe</code><span class="sig-paren">(</span><em>df</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#validate_dataframe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.validate_dataframe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.io.validate_datatype">
+<code class="descclassname">comptools.io.</code><code class="descname">validate_datatype</code><span class="sig-paren">(</span><em>datatype</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/io.html#validate_datatype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.io.validate_datatype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.livetime">
+<span id="comptools-livetime-module"></span><h2>comptools.livetime module<a class="headerlink" href="#module-comptools.livetime" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.livetime.get_detector_livetime">
+<code class="descclassname">comptools.livetime.</code><code class="descname">get_detector_livetime</code><span class="sig-paren">(</span><em>config=None</em>, <em>months=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/livetime.html#get_detector_livetime"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.livetime.get_detector_livetime" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.livetime.get_livetime_file">
+<code class="descclassname">comptools.livetime.</code><code class="descname">get_livetime_file</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/livetime.html#get_livetime_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.livetime.get_livetime_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.model_selection">
+<span id="comptools-model-selection-module"></span><h2>comptools.model_selection module<a class="headerlink" href="#module-comptools.model_selection" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.model_selection.cross_validate_comp">
+<code class="descclassname">comptools.model_selection.</code><code class="descname">cross_validate_comp</code><span class="sig-paren">(</span><em>df_train</em>, <em>df_test</em>, <em>pipeline_str</em>, <em>param_name</em>, <em>param_values</em>, <em>feature_list=None</em>, <em>target='comp_target_2'</em>, <em>scoring='accuracy'</em>, <em>num_groups=2</em>, <em>n_splits=10</em>, <em>n_jobs=1</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/model_selection.html#cross_validate_comp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.model_selection.cross_validate_comp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates stratified k-fold CV scores for a given hyperparameter value</p>
+<p>Similar to sklearn.model_selection.cross_validate, but returns results
+for individual composition groups as well as the combined CV result.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>df_train</strong> <span class="classifier-delimiter">:</span> <span class="classifier">pandas.DataFrame</span></dt>
+<dd><p class="first last">Training DataFrame (see comptools.load_sim()).</p>
+</dd>
+<dt><strong>df_test</strong> <span class="classifier-delimiter">:</span> <span class="classifier">pandas.DataFrame</span></dt>
+<dd><p class="first last">Testing DataFrame (see comptools.load_sim()).</p>
+</dd>
+<dt><strong>pipeline_str</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Name of pipeline to use (e.g. ‘BDT’, ‘RF_energy’, etc.).</p>
+</dd>
+<dt><strong>param_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Name of hyperparameter (e.g. ‘max_depth’, ‘learning_rate’, etc.).</p>
+</dd>
+<dt><strong>param_values</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array-like</span></dt>
+<dd><p class="first last">Values to set hyperparameter to.</p>
+</dd>
+<dt><strong>feature_list</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list, optional</span></dt>
+<dd><p class="first last">List of training feature columns to use (default is to use
+comptools.get_training_features()).</p>
+</dd>
+<dt><strong>target</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Training target to use (default is ‘comp_target_2’).</p>
+</dd>
+<dt><strong>scoring</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Scoring metric to calculate for each CV fold (default is ‘accuracy’).</p>
+</dd>
+<dt><strong>num_groups</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of composition class groups to use (default is 2).</p>
+</dd>
+<dt><strong>n_splits</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of folds to use in (KFold) cross-validation
+(default is 10).</p>
+</dd>
+<dt><strong>n_jobs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of jobs to run in parallel (default is 1).</p>
+</dd>
+<dt><strong>verbose</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Option to print a progress bar (default is False).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>df_cv</strong> <span class="classifier-delimiter">:</span> <span class="classifier">pandas.DataFrame</span></dt>
+<dd><p class="first last">Returns a DataFrame with average scores as well as CV errors
+on those scores for each composition.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.model_selection.get_CV_frac_correct">
+<code class="descclassname">comptools.model_selection.</code><code class="descname">get_CV_frac_correct</code><span class="sig-paren">(</span><em>df_train</em>, <em>feature_list</em>, <em>target</em>, <em>pipeline_str</em>, <em>num_groups</em>, <em>log_energy_bins</em>, <em>n_splits=10</em>, <em>n_jobs=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/model_selection.html#get_CV_frac_correct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.model_selection.get_CV_frac_correct" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.model_selection.get_param_grid">
+<code class="descclassname">comptools.model_selection.</code><code class="descname">get_param_grid</code><span class="sig-paren">(</span><em>pipeline_name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/model_selection.html#get_param_grid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.model_selection.get_param_grid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns dictionary with hyperparameter values to search</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>pipeline_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
+<dd><p class="first last">Pipeline name. Should be formatted as
+&lt;name&gt;_comp_&lt;config&gt;_&lt;num_groups&gt;-groups. For example,
+pipeline_name=BDT_comp_IC86.2012_2-groups (default is None).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>param_grid</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary with hyperparameter names / values to be passed to
+GridSearchCV.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.model_selection.gridsearch_optimize">
+<code class="descclassname">comptools.model_selection.</code><code class="descname">gridsearch_optimize</code><span class="sig-paren">(</span><em>pipeline</em>, <em>param_grid</em>, <em>X_train</em>, <em>y_train</em>, <em>scoring='accuracy'</em>, <em>n_jobs=1</em>, <em>return_gridsearch=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/model_selection.html#gridsearch_optimize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.model_selection.gridsearch_optimize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs a grid search to optimize hyperparameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>pipeline</strong> <span class="classifier-delimiter">:</span> <span class="classifier">sklearn.model_selection.Pipeline</span></dt>
+<dd><p class="first last">Pipeline to fit.</p>
+</dd>
+<dt><strong>param_grid</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary with hyperparameter names / values to be passed to
+GridSearchCV.</p>
+</dd>
+<dt><strong>X_train</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Training features.</p>
+</dd>
+<dt><strong>y_train</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Training labels.</p>
+</dd>
+<dt><strong>scoring</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd><p class="first last">Scoring metric to use (default is ‘accuracy’).</p>
+</dd>
+<dt><strong>n_jobs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of jobs to run in parallel (default is 1).</p>
+</dd>
+<dt><strong>return_gridsearch</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
+<dd><p class="first last">Whether to return the fitted GridSearchCV object, or the
+<a href="#id1"><span class="problematic" id="id2">best_estimator_</span></a> object (default is False, so will return the
+<a href="#id3"><span class="problematic" id="id4">best_estimator_</span></a>).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>best_pipeline</strong> <span class="classifier-delimiter">:</span> <span class="classifier">sklearn.model_selection.Pipeline</span></dt>
+<dd><p class="first last">Pipeline with optimal hyperparameter values that has been trained on
+the entire training dataset (X_train, y_train).</p>
+</dd>
+<dt><strong>gridsearch</strong> <span class="classifier-delimiter">:</span> <span class="classifier">sklearn.model_selection.GridSearchCV</span></dt>
+<dd><p class="first last">Fitted GridSearchCV object.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-comptools.pipelines">
+<span id="comptools-pipelines-module"></span><h2>comptools.pipelines module<a class="headerlink" href="#module-comptools.pipelines" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="comptools.pipelines.CustomClassifier">
+<em class="property">class </em><code class="descclassname">comptools.pipelines.</code><code class="descname">CustomClassifier</code><span class="sig-paren">(</span><em>p=0.8</em>, <em>neighbor_weight=2.0</em>, <em>num_groups=4</em>, <em>random_state=2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#CustomClassifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.CustomClassifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.ClassifierMixin</span></code></p>
+<dl class="method">
+<dt id="comptools.pipelines.CustomClassifier.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>X</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#CustomClassifier.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.CustomClassifier.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="comptools.pipelines.CustomClassifier.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#CustomClassifier.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.CustomClassifier.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs random composition classification</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="comptools.pipelines.LineCutClassifier">
+<em class="property">class </em><code class="descclassname">comptools.pipelines.</code><code class="descname">LineCutClassifier</code><span class="sig-paren">(</span><em>demo_param='demo'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#LineCutClassifier"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.LineCutClassifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.BaseEstimator</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">sklearn.base.ClassifierMixin</span></code></p>
+<dl class="method">
+<dt id="comptools.pipelines.LineCutClassifier.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>X</em>, <em>y</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#LineCutClassifier.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.LineCutClassifier.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="comptools.pipelines.LineCutClassifier.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>X</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#LineCutClassifier.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.LineCutClassifier.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.pipelines.get_pipeline">
+<code class="descclassname">comptools.pipelines.</code><code class="descname">get_pipeline</code><span class="sig-paren">(</span><em>classifier_name='BDT'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#get_pipeline"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.get_pipeline" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to get classifier pipeline.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.pipelines.line">
+<code class="descclassname">comptools.pipelines.</code><code class="descname">line</code><span class="sig-paren">(</span><em>x</em>, <em>x1</em>, <em>y1</em>, <em>x2</em>, <em>y2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/pipelines.html#line"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.pipelines.line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.plotting">
+<span id="comptools-plotting-module"></span><h2>comptools.plotting module<a class="headerlink" href="#module-comptools.plotting" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.plotting.colorbar">
+<code class="descclassname">comptools.plotting.</code><code class="descname">colorbar</code><span class="sig-paren">(</span><em>mappable</em>, <em>label=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#colorbar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.colorbar" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.get_color">
+<code class="descclassname">comptools.plotting.</code><code class="descname">get_color</code><span class="sig-paren">(</span><em>composition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#get_color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.get_color" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.get_color_dict">
+<code class="descclassname">comptools.plotting.</code><code class="descname">get_color_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#get_color_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.get_color_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.get_colormap">
+<code class="descclassname">comptools.plotting.</code><code class="descname">get_colormap</code><span class="sig-paren">(</span><em>composition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#get_colormap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.get_colormap" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.histogram_2D">
+<code class="descclassname">comptools.plotting.</code><code class="descname">histogram_2D</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>bins</em>, <em>weights=None</em>, <em>log_counts=False</em>, <em>make_prob=False</em>, <em>colorbar=True</em>, <em>logx=False</em>, <em>logy=False</em>, <em>vmin=None</em>, <em>vmax=None</em>, <em>cmap='viridis'</em>, <em>ax=None</em>, <em>**opts</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#histogram_2D"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.histogram_2D" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.make_comp_frac_histogram">
+<code class="descclassname">comptools.plotting.</code><code class="descname">make_comp_frac_histogram</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>proton_mask</em>, <em>iron_mask</em>, <em>bins</em>, <em>ax</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#make_comp_frac_histogram"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.make_comp_frac_histogram" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.plotting.plot_steps">
+<code class="descclassname">comptools.plotting.</code><code class="descname">plot_steps</code><span class="sig-paren">(</span><em>edges</em>, <em>y</em>, <em>yerr=None</em>, <em>color=None</em>, <em>fillcolor=None</em>, <em>lw=1</em>, <em>ls='-'</em>, <em>alpha=1.0</em>, <em>fillalpha=0.2</em>, <em>label=None</em>, <em>ax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/plotting.html#plot_steps"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.plotting.plot_steps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.serialize">
+<span id="comptools-serialize-module"></span><h2>comptools.serialize module<a class="headerlink" href="#module-comptools.serialize" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.serialize.deserialize_SFS">
+<code class="descclassname">comptools.serialize.</code><code class="descname">deserialize_SFS</code><span class="sig-paren">(</span><em>infile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/serialize.html#deserialize_SFS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.serialize.deserialize_SFS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.serialize.serialize_SFS">
+<code class="descclassname">comptools.serialize.</code><code class="descname">serialize_SFS</code><span class="sig-paren">(</span><em>sfs</em>, <em>outfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/serialize.html#serialize_SFS"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.serialize.serialize_SFS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.simfunctions">
+<span id="comptools-simfunctions-module"></span><h2>comptools.simfunctions module<a class="headerlink" href="#module-comptools.simfunctions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.simfunctions.comp2mass">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">comp2mass</code><span class="sig-paren">(</span><em>composition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#comp2mass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.comp2mass" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.config_to_sim">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">config_to_sim</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#config_to_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.config_to_sim" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.filter_mask">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">filter_mask</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#filter_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.filter_mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.get_level3_sim_files_iterator">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">get_level3_sim_files_iterator</code><span class="sig-paren">(</span><em>sim_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#get_level3_sim_files_iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.get_level3_sim_files_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to return an iterable of simulation files</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>sim_list</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, array-like</span></dt>
+<dd><p class="first last">Simulation(s) sets to get i3 files for (e.g. 12360 or
+[12360, 12362, 12630, 12631]).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>file_iter</strong> <span class="classifier-delimiter">:</span> <span class="classifier">itertools.chain</span></dt>
+<dd><p class="first last">Iterable of simulation i3 files.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.get_sim_configs">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">get_sim_configs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#get_sim_configs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.get_sim_configs" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.get_sim_dict">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">get_sim_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#get_sim_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.get_sim_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.it_stream">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">it_stream</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#it_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.it_stream" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.level3_sim_GCD_file">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">level3_sim_GCD_file</code><span class="sig-paren">(</span><em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#level3_sim_GCD_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.level3_sim_GCD_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.level3_sim_file_batches">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">level3_sim_file_batches</code><span class="sig-paren">(</span><em>sim</em>, <em>size</em>, <em>max_batches=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#level3_sim_file_batches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.level3_sim_file_batches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates level3 simulation file paths in batches</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>sim</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd><p class="first last">Simulation dataset (e.g. 7006, 7241)</p>
+</dd>
+<dt><strong>size: int</strong></dt>
+<dd><p class="first last">Number of files in each batch</p>
+</dd>
+<dt><strong>max_batches</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Option to only yield <code class="docutils literal notranslate"><span class="pre">max_batches</span></code> number of file batches (default
+is to yield all batches)</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>generator</strong></dt>
+<dd><p class="first last">Generator that yields batches of simulation files</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<p>Basic usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">comptools.simfunctions</span> <span class="k">import</span> <span class="n">level3_sim_file_batches</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">level3_sim_file_batches</span><span class="p">(</span><span class="mi">7241</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="go">[(&#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005347.i3.gz&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005393.i3.gz&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run009678.i3.gz&#39;),</span>
+<span class="go"> (&#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run001015.i3.gz&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run002597.i3.gz&#39;,</span>
+<span class="go">  &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run007939.i3.gz&#39;)]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.level3_sim_files">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">level3_sim_files</code><span class="sig-paren">(</span><em>sim</em>, <em>files_per_batch=None</em>, <em>max_batches=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#level3_sim_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.level3_sim_files" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.null_stream">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">null_stream</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#null_stream"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.null_stream" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.reco_pulses">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">reco_pulses</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#reco_pulses"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.reco_pulses" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.run_to_energy_bin">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">run_to_energy_bin</code><span class="sig-paren">(</span><em>run</em>, <em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#run_to_energy_bin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.run_to_energy_bin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gives the CORSIKA energy bin for a given simulation run</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>run</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd><p class="first last">Run number for a simulation set.</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>energy_bin</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd><p class="first last">Corresponding CORSIKA energy bin for run.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.sim_to_comp">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">sim_to_comp</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#sim_to_comp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.sim_to_comp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.sim_to_config">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">sim_to_config</code><span class="sig-paren">(</span><em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#sim_to_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.sim_to_config" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.sim_to_energy_bins">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">sim_to_energy_bins</code><span class="sig-paren">(</span><em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#sim_to_energy_bins"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.sim_to_energy_bins" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.simfunctions.sim_to_thinned">
+<code class="descclassname">comptools.simfunctions.</code><code class="descname">sim_to_thinned</code><span class="sig-paren">(</span><em>sim</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/simfunctions.html#sim_to_thinned"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.simfunctions.sim_to_thinned" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.spectrumfunctions">
+<span id="comptools-spectrumfunctions-module"></span><h2>comptools.spectrumfunctions module<a class="headerlink" href="#module-comptools.spectrumfunctions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.spectrumfunctions.broken_power_law_flux">
+<code class="descclassname">comptools.spectrumfunctions.</code><code class="descname">broken_power_law_flux</code><span class="sig-paren">(</span><em>energy</em>, <em>gamma_before=-2.7</em>, <em>gamma_after=-3.1</em>, <em>energy_break=3000000.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/spectrumfunctions.html#broken_power_law_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.spectrumfunctions.broken_power_law_flux" title="Permalink to this definition">¶</a></dt>
+<dd><p>Broken power law flux</p>
+<p>This is a “realistic” flux (simple broken power law with a knee &#64; 3PeV)
+to weight simulation to. More information can be found on the
+IT73-IC79 data-MC comparison wiki page
+<a class="reference external" href="https://wiki.icecube.wisc.edu/index.php/IT73-IC79_Data-MC_Comparison">https://wiki.icecube.wisc.edu/index.php/IT73-IC79_Data-MC_Comparison</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>energy</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Energy values (in GeV) to calculate the flux for.</p>
+</dd>
+<dt><strong>gamma_before</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd><p class="first last">Spectral index before break point (default is -2.7).</p>
+</dd>
+<dt><strong>gamma_after</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd><p class="first last">Spectral index after break point (default is -3.1).</p>
+</dd>
+<dt><strong>energy_break</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd><p class="first last">Energy (in GeV) at which the spectral index break occurs
+(default is 3e6, or 3 PeV).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>flux</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Broken power law evaluated at energy points.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.spectrumfunctions.counts_to_flux">
+<code class="descclassname">comptools.spectrumfunctions.</code><code class="descname">counts_to_flux</code><span class="sig-paren">(</span><em>counts</em>, <em>counts_err=None</em>, <em>energybins=array([ 1258925.41179417</em>, <em>1584893.19246111</em>, <em>1995262.31496887</em>, <em>2511886.43150957</em>, <em>3162277.66016837</em>, <em>3981071.70553495</em>, <em>5011872.33627269</em>, <em>6309573.44480189</em>, <em>7943282.34724276</em>, <em>9999999.99999992</em>, <em>12589254.11794156</em>, <em>15848931.92461098</em>, <em>19952623.14968858</em>, <em>25118864.31509551</em>, <em>31622776.6016834</em>, <em>39810717.0553492</em>, <em>50118723.36272653</em>, <em>63095734.44801839</em>, <em>79432823.47242692</em>, <em>99999999.99999836])</em>, <em>eff_area=156390.673059</em>, <em>eff_area_err=None</em>, <em>livetime=27114012.0</em>, <em>livetime_err=1</em>, <em>solid_angle=1.0</em>, <em>scalingindex=None</em><span class="sig-paren">)</span><a class="headerlink" href="#comptools.spectrumfunctions.counts_to_flux" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.spectrumfunctions.get_flux">
+<code class="descclassname">comptools.spectrumfunctions.</code><code class="descname">get_flux</code><span class="sig-paren">(</span><em>counts</em>, <em>counts_err=None</em>, <em>energybins=array([ 1258925.41179417</em>, <em>1584893.19246111</em>, <em>1995262.31496887</em>, <em>2511886.43150957</em>, <em>3162277.66016837</em>, <em>3981071.70553495</em>, <em>5011872.33627269</em>, <em>6309573.44480189</em>, <em>7943282.34724276</em>, <em>9999999.99999992</em>, <em>12589254.11794156</em>, <em>15848931.92461098</em>, <em>19952623.14968858</em>, <em>25118864.31509551</em>, <em>31622776.6016834</em>, <em>39810717.0553492</em>, <em>50118723.36272653</em>, <em>63095734.44801839</em>, <em>79432823.47242692</em>, <em>99999999.99999836])</em>, <em>eff_area=156390.673059</em>, <em>eff_area_err=None</em>, <em>livetime=27114012.0</em>, <em>livetime_err=1</em>, <em>solid_angle=1.0</em>, <em>scalingindex=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/spectrumfunctions.html#get_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.spectrumfunctions.get_flux" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.spectrumfunctions.model_flux">
+<code class="descclassname">comptools.spectrumfunctions.</code><code class="descname">model_flux</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/spectrumfunctions.html#model_flux"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.spectrumfunctions.model_flux" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-comptools.unfolding">
+<span id="comptools-unfolding-module"></span><h2>comptools.unfolding module<a class="headerlink" href="#module-comptools.unfolding" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="comptools.unfolding.column_normalize">
+<code class="descclassname">comptools.unfolding.</code><code class="descname">column_normalize</code><span class="sig-paren">(</span><em>res</em>, <em>res_err</em>, <em>efficiencies</em>, <em>efficiencies_err</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/unfolding.html#column_normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.unfolding.column_normalize" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="comptools.unfolding.response_hist">
+<code class="descclassname">comptools.unfolding.</code><code class="descname">response_hist</code><span class="sig-paren">(</span><em>true_energy</em>, <em>reco_energy</em>, <em>true_target</em>, <em>pred_target</em>, <em>energy_bins=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/unfolding.html#response_hist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.unfolding.response_hist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes energy-composition response matrix</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>true_energy</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of true (MC) energies.</p>
+</dd>
+<dt><strong>reco_energy</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of reconstructed energies.</p>
+</dd>
+<dt><strong>true_target</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of true compositions that are encoded to numerical values.</p>
+</dd>
+<dt><strong>pred_target</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of predicted compositions that are encoded to numerical values.</p>
+</dd>
+<dt><strong>energy_bins</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like, optional</span></dt>
+<dd><p class="first last">Energy bins to be used for constructing response matrix (default is
+to use energy bins from comptools.get_energybins() function).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>res</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Response matrix.</p>
+</dd>
+<dt><strong>res_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Uncerainty of the response matrix.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.unfolding.response_matrix">
+<code class="descclassname">comptools.unfolding.</code><code class="descname">response_matrix</code><span class="sig-paren">(</span><em>true_energy</em>, <em>reco_energy</em>, <em>true_target</em>, <em>pred_target</em>, <em>efficiencies</em>, <em>efficiencies_err</em>, <em>energy_bins=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/unfolding.html#response_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.unfolding.response_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes normalized energy-composition response matrix</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>true_energy</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of true (MC) energies.</p>
+</dd>
+<dt><strong>reco_energy</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of reconstructed energies.</p>
+</dd>
+<dt><strong>true_target</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of true compositions that are encoded to numerical values.</p>
+</dd>
+<dt><strong>pred_target</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Array of predicted compositions that are encoded to numerical values.</p>
+</dd>
+<dt><strong>efficiencies</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Detection efficiencies (should be in a PyUnfold-compatable form).</p>
+</dd>
+<dt><strong>efficiencies_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like</span></dt>
+<dd><p class="first last">Detection efficiencies uncertainties (should be in a
+PyUnfold-compatable form).</p>
+</dd>
+<dt><strong>energy_bins</strong> <span class="classifier-delimiter">:</span> <span class="classifier">array_like, optional</span></dt>
+<dd><p class="first last">Energy bins to be used for constructing response matrix (default is
+to use energy bins from comptools.get_energybins() function).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>res_normalized</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Normalized response matrix.</p>
+</dd>
+<dt><strong>res_normalized_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
+<dd><p class="first last">Uncerainty of the normalized response matrix.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="comptools.unfolding.unfolded_counts_dist">
+<code class="descclassname">comptools.unfolding.</code><code class="descname">unfolded_counts_dist</code><span class="sig-paren">(</span><em>unfolding_df</em>, <em>iteration=-1</em>, <em>num_groups=4</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/comptools/unfolding.html#unfolded_counts_dist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#comptools.unfolding.unfolded_counts_dist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert unfolded distributions DataFrame from PyUnfold counts arrays
+to a dictionary containing a counts array for each composition.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>unfolding_df</strong> <span class="classifier-delimiter">:</span> <span class="classifier">pandas.DataFrame</span></dt>
+<dd><p class="first last">Unfolding DataFrame returned from PyUnfold.</p>
+</dd>
+<dt><strong>iteration</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Specific unfolding iteration to retrieve unfolded counts
+(default is -1, the last iteration).</p>
+</dd>
+<dt><strong>num_groups</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int, optional</span></dt>
+<dd><p class="first last">Number of composition groups (default is 4).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>counts</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary with composition-counts key-value pairs.</p>
+</dd>
+<dt><strong>counts_sys_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary with composition-systematic error key-value pairs.</p>
+</dd>
+<dt><strong>counts_stat_err</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
+<dd><p class="first last">Dictionary with composition-statistical error key-value pairs.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="path-setup.html" class="btn btn-neutral" title="Filesystem path setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

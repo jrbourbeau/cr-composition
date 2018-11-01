@@ -1,0 +1,306 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools.data_functions &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>comptools.data_functions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for comptools.data_functions</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">stats</span>
+
+
+<div class="viewcode-block" id="get_summation_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_summation_error">[docs]</a><span class="k">def</span> <span class="nf">get_summation_error</span><span class="p">(</span><span class="n">errors</span><span class="p">):</span>
+    <span class="n">sum_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">err</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">sum_error</span></div>
+
+
+<div class="viewcode-block" id="get_difference_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_difference_error">[docs]</a><span class="k">def</span> <span class="nf">get_difference_error</span><span class="p">(</span><span class="n">errors</span><span class="p">):</span>
+    <span class="n">diff_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">err</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">diff_error</span></div>
+
+
+<div class="viewcode-block" id="get_ratio_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_ratio_error">[docs]</a><span class="k">def</span> <span class="nf">get_ratio_error</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">num_err</span><span class="p">,</span> <span class="n">den</span><span class="p">,</span> <span class="n">den_err</span><span class="p">):</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">num</span><span class="o">/</span><span class="n">den</span>
+    <span class="n">ratio_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">ratio</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">num_err</span> <span class="o">/</span> <span class="n">num</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">den_err</span> <span class="o">/</span> <span class="n">den</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ratio_err</span></div>
+
+
+<div class="viewcode-block" id="ratio_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.ratio_error">[docs]</a><span class="k">def</span> <span class="nf">ratio_error</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">num_err</span><span class="p">,</span> <span class="n">den</span><span class="p">,</span> <span class="n">den_err</span><span class="p">,</span> <span class="n">nan_to_num</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">num</span><span class="o">/</span><span class="n">den</span>
+    <span class="n">ratio_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">ratio</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">num_err</span> <span class="o">/</span> <span class="n">num</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">den_err</span> <span class="o">/</span> <span class="n">den</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">nan_to_num</span><span class="p">:</span>
+        <span class="n">ratio_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">ratio_err</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ratio</span><span class="p">,</span> <span class="n">ratio_err</span></div>
+
+
+<div class="viewcode-block" id="product_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.product_error">[docs]</a><span class="k">def</span> <span class="nf">product_error</span><span class="p">(</span><span class="n">term1</span><span class="p">,</span> <span class="n">term1_err</span><span class="p">,</span> <span class="n">term2</span><span class="p">,</span> <span class="n">term2_err</span><span class="p">):</span>
+    <span class="n">product</span> <span class="o">=</span> <span class="n">term1</span> <span class="o">*</span> <span class="n">term2</span>
+    <span class="n">product_err</span> <span class="o">=</span> <span class="n">product</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">term1_err</span> <span class="o">/</span> <span class="n">term1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">term2_err</span> <span class="o">/</span> <span class="n">term2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">product</span><span class="p">,</span> <span class="n">product_err</span></div>
+
+
+<div class="viewcode-block" id="averaging_error"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.averaging_error">[docs]</a><span class="k">def</span> <span class="nf">averaging_error</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">errors</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">errors</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span>
+    <span class="n">sum_value</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">sum_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">error</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">sum_value</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">sum_error</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_bin_mids"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_bin_mids">[docs]</a><span class="k">def</span> <span class="nf">get_bin_mids</span><span class="p">(</span><span class="n">bins</span><span class="p">,</span> <span class="n">infvalue</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">abins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">infvalue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">abins</span><span class="p">[</span><span class="n">abins</span> <span class="o">==</span> <span class="n">infvalue</span><span class="p">]</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="n">steps</span> <span class="o">=</span> <span class="p">(</span><span class="n">abins</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">abins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">mids</span> <span class="o">=</span> <span class="n">abins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">steps</span> <span class="o">/</span> <span class="mf">2.</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">steps</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+        <span class="n">mids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">abins</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">steps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">steps</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+        <span class="n">mids</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">abins</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">steps</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="mf">2.</span>
+    <span class="k">return</span> <span class="n">mids</span></div>
+
+
+<div class="viewcode-block" id="get_medians"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_medians">[docs]</a><span class="k">def</span> <span class="nf">get_medians</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+    <span class="n">bin_medians</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">binnumber</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">err_up</span><span class="p">,</span> <span class="n">err_up_edges</span><span class="p">,</span> <span class="n">err_up_binnum</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">84</span><span class="p">),</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">err_down</span><span class="p">,</span> <span class="n">err_down_edges</span><span class="p">,</span> <span class="n">err_down_binnum</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">error</span> <span class="o">=</span> <span class="p">[</span><span class="n">bin_medians</span> <span class="o">-</span> <span class="n">err_down</span><span class="p">,</span> <span class="n">err_up</span> <span class="o">-</span> <span class="n">bin_medians</span><span class="p">]</span>
+    <span class="c1"># bin_centers = bin_edges[:-1] + (bin_edges[1]-bin_edges[0])/2.</span>
+    <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">get_bin_mids</span><span class="p">(</span><span class="n">bin_edges</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">bin_centers</span><span class="p">,</span> <span class="n">bin_medians</span><span class="p">,</span> <span class="n">error</span></div>
+
+
+<div class="viewcode-block" id="get_median_std"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_median_std">[docs]</a><span class="k">def</span> <span class="nf">get_median_std</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Function that returns the median and standard deviation stats.binned_statistic</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">averages</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="s1">&#39;median&#39;</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">standard_devs</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">err_up</span><span class="p">,</span> <span class="n">err_up_edges</span><span class="p">,</span> <span class="n">err_up_binnum</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">84</span><span class="p">),</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">err_down</span><span class="p">,</span> <span class="n">err_down_edges</span><span class="p">,</span> <span class="n">err_down_binnum</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">averages</span><span class="p">,</span> <span class="n">standard_devs</span><span class="p">,</span> <span class="n">bin_edges</span></div>
+    <span class="c1"># return averages, err_up-err_down, bin_edges</span>
+
+
+<div class="viewcode-block" id="get_cumprob_sigma"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_cumprob_sigma">[docs]</a><span class="k">def</span> <span class="nf">get_cumprob_sigma</span><span class="p">(</span><span class="n">values</span><span class="p">):</span>
+
+    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="mi">200</span><span class="p">)</span>
+    <span class="n">bin_midpoints</span> <span class="o">=</span> <span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="n">binned_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">cumulative_prob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">binned_counts</span><span class="p">)</span><span class="o">/</span><span class="n">binned_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">sigma_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cumulative_prob</span> <span class="o">&lt;</span> <span class="mf">0.68</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">sigma_containment</span> <span class="o">=</span> <span class="n">bin_midpoints</span><span class="p">[</span><span class="n">sigma_index</span><span class="p">]</span><span class="o">/</span><span class="mf">1.51</span>
+
+    <span class="k">return</span> <span class="n">sigma_containment</span></div>
+
+
+<div class="viewcode-block" id="get_resolution"><a class="viewcode-back" href="../../comptools.html#comptools.data_functions.get_resolution">[docs]</a><span class="k">def</span> <span class="nf">get_resolution</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+    <span class="n">binned_statistic</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">binnumber</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">statistic</span><span class="o">=</span><span class="n">get_cumprob_sigma</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">binned_statistic</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

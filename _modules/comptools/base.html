@@ -1,0 +1,466 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools.base &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>comptools.base</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for comptools.base</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">islice</span><span class="p">,</span> <span class="n">count</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+
+<div class="viewcode-block" id="requires_icecube"><a class="viewcode-back" href="../../comptools.html#comptools.base.requires_icecube">[docs]</a><span class="k">def</span> <span class="nf">requires_icecube</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Decorator to wrap functions that require any icecube software</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">icecube</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;The function </span><span class="si">{}</span><span class="s1"> requires icecube software. &#39;</span>
+                       <span class="s1">&#39;Make sure the env-shell.sh script has been &#39;</span>
+                       <span class="s1">&#39;run.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+<div class="viewcode-block" id="get_config_paths"><a class="viewcode-back" href="../../comptools.html#comptools.base.get_config_paths">[docs]</a><span class="k">def</span> <span class="nf">get_config_paths</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot; Function to return paths used in this analysis</span>
+
+<span class="sd">    Specifically,</span>
+
+<span class="sd">    metaproject: Path to IceCube metaproject being used</span>
+<span class="sd">    comp_data_dir: Path to where data and simulation is stored</span>
+<span class="sd">    condor_data_dir: Path to where HTCondor error and output files are stored</span>
+<span class="sd">    condor_scratch_dir: Path to where HTCondor log and submit files are stored</span>
+<span class="sd">    figures_dir: Path to where figures are saved</span>
+<span class="sd">    project_root: Path to where cr-composition project is located</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    paths : collections.namedtuple</span>
+<span class="sd">        Namedtuple containing relavent paths (e.g. figures_dir is where</span>
+<span class="sd">        figures will be saved, condor_data_dir is where data/simulation will</span>
+<span class="sd">        be saved to / loaded from, etc).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">here</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span>
+    <span class="n">yaml_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">here</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">pardir</span><span class="p">,</span> <span class="s1">&#39;config.yml&#39;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">yaml_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span> <span class="ow">or</span> <span class="p">{}</span>
+
+    <span class="c1"># Create path namedtuple object</span>
+    <span class="n">path_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;metaproject&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;comp_data_dir&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;condor_data_dir&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;condor_scratch_dir&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;figures_dir&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;project_root&#39;</span><span class="p">,</span>
+                  <span class="s1">&#39;virtualenv_dir&#39;</span><span class="p">,</span>
+                  <span class="p">]</span>
+    <span class="n">PathObject</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;PathType&#39;</span><span class="p">,</span> <span class="n">path_names</span><span class="p">)</span>
+
+    <span class="c1"># Create instance of PathObject with appropriate path information</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">PathObject</span><span class="p">(</span><span class="n">metaproject</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;metaproject&#39;</span><span class="p">],</span>
+                       <span class="n">comp_data_dir</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;comp_data_dir&#39;</span><span class="p">],</span>
+                       <span class="n">condor_data_dir</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;condor_data_dir&#39;</span><span class="p">],</span>
+                       <span class="n">condor_scratch_dir</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;condor_scratch_dir&#39;</span><span class="p">],</span>
+                       <span class="n">figures_dir</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;figures_dir&#39;</span><span class="p">],</span>
+                       <span class="n">project_root</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;project_root&#39;</span><span class="p">],</span>
+                       <span class="n">virtualenv_dir</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">][</span><span class="s1">&#39;virtualenv_dir&#39;</span><span class="p">],</span>
+                       <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">paths</span></div>
+
+
+<div class="viewcode-block" id="check_output_dir"><a class="viewcode-back" href="../../comptools.html#comptools.base.check_output_dir">[docs]</a><span class="k">def</span> <span class="nf">check_output_dir</span><span class="p">(</span><span class="n">outfile</span><span class="p">,</span> <span class="n">makedirs</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Function to check if the directory for an output file exists</span>
+
+<span class="sd">    This function will check whether the output directory containing the</span>
+<span class="sd">    outfile specified exists. If the output directory doesn&#39;t exist, then</span>
+<span class="sd">    there is an option to create the output directory. Otherwise, this</span>
+<span class="sd">    function will raise an IOError.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outfile : str</span>
+<span class="sd">        Path to output file.</span>
+<span class="sd">    makedirs : bool, optional</span>
+<span class="sd">        Option to create the output directory containing the output file if</span>
+<span class="sd">        it doesn&#39;t already exist (default: True)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Ensure that outfile is an absolute path</span>
+    <span class="n">outfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+    <span class="n">outdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">outfile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">makedirs</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The directory </span><span class="si">{}</span><span class="s1"> doesn</span><span class="se">\&#39;</span><span class="s1">t exist. Creating it...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outdir</span><span class="p">))</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;The directory </span><span class="si">{}</span><span class="s1"> doesn</span><span class="se">\&#39;</span><span class="s1">t exist&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">outdir</span><span class="p">))</span>
+
+    <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="partition"><a class="viewcode-back" href="../../comptools.html#comptools.base.partition">[docs]</a><span class="k">def</span> <span class="nf">partition</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Generates partitions of length ``size`` from the iterable ``seq``</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    seq : iterable</span>
+<span class="sd">        Iterable object to be partitioned.</span>
+<span class="sd">    size : int</span>
+<span class="sd">        Number of items to have in each partition.</span>
+<span class="sd">    max_batches : int, optional</span>
+<span class="sd">        Limit the number of partitions to yield (default is to yield all</span>
+<span class="sd">        partitions).</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    -------</span>
+<span class="sd">    batch : list</span>
+<span class="sd">        Partition of ``seq`` that is (at most) ``size`` items long.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from comptools import partition</span>
+<span class="sd">    &gt;&gt;&gt; list(partition(range(10), 3))</span>
+<span class="sd">    [(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">max_batches</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">))):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;max_batches must either be an integer or None, &#39;</span>
+                        <span class="s1">&#39;got </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">max_batches</span><span class="p">)))</span>
+
+    <span class="n">seq_iter</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">seq</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">num_batches</span> <span class="ow">in</span> <span class="n">islice</span><span class="p">(</span><span class="n">count</span><span class="p">(),</span> <span class="n">max_batches</span><span class="p">):</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">islice</span><span class="p">(</span><span class="n">seq_iter</span><span class="p">,</span> <span class="n">size</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">batch</span></div>
+
+
+<div class="viewcode-block" id="ComputingEnvironemtError"><a class="viewcode-back" href="../../comptools.html#comptools.base.ComputingEnvironemtError">[docs]</a><span class="k">class</span> <span class="nc">ComputingEnvironemtError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom exception that should be raised when a problem related to the</span>
+<span class="sd">    computing environment is found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="get_energybins"><a class="viewcode-back" href="../../comptools.html#comptools.base.get_energybins">[docs]</a><span class="k">def</span> <span class="nf">get_energybins</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="s1">&#39;IC86.2012&#39;</span><span class="p">):</span>
+    <span class="kn">from</span> <span class="nn">.binning</span> <span class="k">import</span> <span class="n">get_energybins</span> <span class="k">as</span> <span class="n">get_ebins</span>
+    <span class="k">return</span> <span class="n">get_ebins</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<span class="n">LABEL_DICT</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;reco_log_energy&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(E_{\mathrm</span><span class="si">{reco}</span><span class="s1">}/\mathrm</span><span class="si">{GeV}</span><span class="s1">)$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_log_energy&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(E_{\mathrm</span><span class="si">{Lap}</span><span class="s1">}/\mathrm</span><span class="si">{GeV}</span><span class="s1">)$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s50&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{50}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s80&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{80}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s125&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{125}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s180&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{180}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s250&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{250}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_s500&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(S_{\mathrm</span><span class="si">{500}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_rlogl&#39;</span><span class="p">:</span> <span class="s1">&#39;$r\log_</span><span class="si">{10}</span><span class="s1">(l)$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_beta&#39;</span><span class="p">:</span> <span class="s1">&#39;lap beta&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_log_charge_1_60&#39;</span><span class="p">:</span> <span class="s1">&#39;InIce charge&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_log_charge_1_45&#39;</span><span class="p">:</span> <span class="s1">&#39;InIce charge (top 75\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_charge_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;InIce charge (top 50\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_log_charge_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(InIce charge (top 50))$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_log_charge_1_15&#39;</span><span class="p">:</span> <span class="s1">&#39;InIce charge (top 25\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;InIce_log_charge_1_6&#39;</span><span class="p">:</span> <span class="s1">&#39;InIce charge (top 10\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;reco_cos_zenith&#39;</span><span class="p">:</span> <span class="s1">&#39;$\cos(</span><span class="se">\\</span><span class="s1">theta_{\mathrm</span><span class="si">{reco}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_cos_zenith&#39;</span><span class="p">:</span> <span class="s1">&#39;$\cos(</span><span class="se">\\</span><span class="s1">theta)$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;LLHlap_cos_zenith&#39;</span><span class="p">:</span> <span class="s1">&#39;$\cos(</span><span class="se">\\</span><span class="s1">theta_{\mathrm</span><span class="si">{Lap}</span><span class="s1">})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;LLHLF_cos_zenith&#39;</span><span class="p">:</span> <span class="s1">&#39;$\cos(</span><span class="se">\\</span><span class="s1">theta_{\mathrm{LLH+COG}})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_chi2&#39;</span><span class="p">:</span> <span class="s1">&#39;$\chi^2_{\mathrm</span><span class="si">{Lap}</span><span class="s1">}/\mathrm</span><span class="si">{n.d.f}</span><span class="s1">$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NChannels_1_60&#39;</span><span class="p">:</span> <span class="s1">&#39;NChannels&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NChannels_1_45&#39;</span><span class="p">:</span> <span class="s1">&#39;NChannels (top 75\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NChannels_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;NChannels (top 50\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NChannels_1_15&#39;</span><span class="p">:</span> <span class="s1">&#39;NChannels (top 25\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NChannels_1_6&#39;</span><span class="p">:</span> <span class="s1">&#39;NChannels (top 10\%)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_NChannels_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">$(NChannels (top 50\%))&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;StationDensity&#39;</span><span class="p">:</span> <span class="s1">&#39;StationDensity&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;charge_nchannels_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;Charge/NChannels&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;stationdensity_charge_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;StationDensity/Charge&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NHits_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;NHits&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_NHits_1_30&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">$(NHits (top 50\%))&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;charge_nhits_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;Charge/NHits&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;nhits_nchannels_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;NHits/NChannels&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;stationdensity_nchannels_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;StationDensity/NChannels&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;stationdensity_nhits_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;StationDensity/NHits&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;llhratio&#39;</span><span class="p">:</span> <span class="s1">&#39;llhratio&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;n_he_stoch_standard&#39;</span><span class="p">:</span> <span class="s1">&#39;Num HE stochastics (standard)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;n_he_stoch_strong&#39;</span><span class="p">:</span> <span class="s1">&#39;Num HE stochastics (strong)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;eloss_1500_standard&#39;</span><span class="p">:</span> <span class="s1">&#39;dE/dX (standard)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_dEdX&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{\log_</span><span class="si">{10}</span><span class="s1">(dE/dX)}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;eloss_1500_strong&#39;</span><span class="p">:</span> <span class="s1">&#39;dE/dX (strong)&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;num_millipede_particles&#39;</span><span class="p">:</span> <span class="s1">&#39;$N_{\mathrm</span><span class="si">{mil}</span><span class="s1">}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;avg_inice_radius&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{\langle R_{\mu} </span><span class="se">\\</span><span class="s1">rangle }$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;invqweighted_inice_radius_1_60&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{R_{\mu \ bundle}}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;avg_inice_radius_1_60&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{R_{\mu \ bundle}}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;avg_inice_radius_Laputop&#39;</span><span class="p">:</span> <span class="s1">&#39;$R_{\mathrm{core, Lap}}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;FractionContainment_Laputop_InIce&#39;</span><span class="p">:</span> <span class="s1">&#39;$C_{\mathrm</span><span class="si">{IC}</span><span class="s1">}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;FractionContainment_Laputop_IceTop&#39;</span><span class="p">:</span> <span class="s1">&#39;$C_{\mathrm</span><span class="si">{IT}</span><span class="s1">}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;max_inice_radius&#39;</span><span class="p">:</span> <span class="s1">&#39;$R_{\mathrm</span><span class="si">{max}</span><span class="s1">}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;invcharge_inice_radius&#39;</span><span class="p">:</span> <span class="s1">&#39;$R_{\mathrm{q,core}}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;lap_zenith&#39;</span><span class="p">:</span> <span class="s1">&#39;zenith&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;NStations&#39;</span><span class="p">:</span> <span class="s1">&#39;NStations&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;IceTop_charge&#39;</span><span class="p">:</span> <span class="s1">&#39;IT charge&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;IceTop_charge_175m&#39;</span><span class="p">:</span> <span class="s1">&#39;Signal greater 175m&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_IceTop_charge_175m&#39;</span><span class="p">:</span> <span class="s1">&#39;$\log_</span><span class="si">{10}</span><span class="s1">(Q_{IT, 175})$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;IT_charge_ratio&#39;</span><span class="p">:</span> <span class="s1">&#39;IT charge ratio&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;refit_beta&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{</span><span class="se">\\</span><span class="s1">beta_</span><span class="si">{refit}</span><span class="s1">}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_d4r_peak_energy&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{\log_</span><span class="si">{10}</span><span class="s1">(E_</span><span class="si">{D4R}</span><span class="s1">)}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;log_d4r_peak_sigma&#39;</span><span class="p">:</span> <span class="s1">&#39;$\mathrm{\log_</span><span class="si">{10}</span><span class="s1">(\sigma E_</span><span class="si">{D4R}</span><span class="s1">)}$&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;d4r_N&#39;</span><span class="p">:</span> <span class="s1">&#39;D4R N&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;median_inice_radius&#39;</span><span class="p">:</span> <span class="s1">&#39;Median InIce&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;IceTopLLHRatio&#39;</span><span class="p">:</span> <span class="s1">&#39;IceTopLLHRatio&#39;</span><span class="p">,</span>
+              <span class="p">}</span>
+
+
+<div class="viewcode-block" id="get_training_features"><a class="viewcode-back" href="../../comptools.html#comptools.base.get_training_features">[docs]</a><span class="k">def</span> <span class="nf">get_training_features</span><span class="p">(</span><span class="n">feature_list</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="c1"># Features used in the 3-year analysis</span>
+    <span class="k">if</span> <span class="n">feature_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">feature_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;lap_cos_zenith&#39;</span><span class="p">,</span> <span class="s1">&#39;log_s125&#39;</span><span class="p">,</span> <span class="s1">&#39;log_dEdX&#39;</span><span class="p">]</span>
+        <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;avg_inice_radius&#39;]</span>
+        <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;log_d4r_peak_energy&#39;, &#39;log_d4r_peak_sigma&#39;]</span>
+        <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;median_inice_radius&#39;, &#39;d4r_peak_energy&#39;]</span>
+        <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;FractionContainment_Laputop_InIce&#39;]</span>
+        <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;avg_inice_radius&#39;]</span>
+    <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;max_inice_radius&#39;]</span>
+    <span class="c1"># feature_list = [&#39;lap_cos_zenith&#39;, &#39;log_s125&#39;, &#39;log_dEdX&#39;, &#39;avg_inice_radius&#39;]</span>
+
+    <span class="n">dom_numbers</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">60</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dom_numbers</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dom_numbers</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;NChannels_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;NChannels </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+        <span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+    <span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">60</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;NChannels_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;NChannels </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+    <span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+
+    <span class="k">for</span> <span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dom_numbers</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dom_numbers</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;NHits_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;NHits </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+        <span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+    <span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">60</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;NHits_</span><span class="si">{}</span><span class="s1">_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;NHits </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_DOM</span><span class="p">,</span> <span class="n">max_DOM</span><span class="p">)</span>
+    <span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">label</span>
+
+    <span class="n">min_dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1125</span><span class="p">,</span> <span class="mi">125</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">min_dist</span> <span class="ow">in</span> <span class="n">min_dists</span><span class="p">:</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;IceTop_charge_beyond_</span><span class="si">{}</span><span class="s1">m&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_dist</span><span class="p">)</span>
+        <span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;IT Q &gt; </span><span class="si">{}</span><span class="s1">m&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">min_dist</span><span class="p">)</span>
+
+    <span class="n">feature_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">LABEL_DICT</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">feature_list</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">feature_list</span><span class="p">,</span> <span class="n">feature_labels</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

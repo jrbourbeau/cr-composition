@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools.datafunctions &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>comptools.datafunctions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for comptools.datafunctions</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">islice</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="n">partition</span>
+
+
+<div class="viewcode-block" id="get_data_configs"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.get_data_configs">[docs]</a><span class="k">def</span> <span class="nf">get_data_configs</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;IC79.2010&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86.2011&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86.2012&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86.2013&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86.2014&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;IC86.2015&#39;</span><span class="p">]</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Detector configuration not specified...&#39;</span><span class="p">)</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;/data/ana/CosmicRay/IceTop_level3/exp/</span><span class="si">{}</span><span class="s1">/&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">prefix</span>
+
+
+<div class="viewcode-block" id="run_generator"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.run_generator">[docs]</a><span class="k">def</span> <span class="nf">run_generator</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;????/????/Run*&#39;</span><span class="p">)</span>
+    <span class="n">run_gen</span> <span class="o">=</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Run&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">file_pattern</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">run_gen</span></div>
+
+
+<div class="viewcode-block" id="get_run_list"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.get_run_list">[docs]</a><span class="k">def</span> <span class="nf">get_run_list</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">run_generator</span><span class="p">(</span><span class="n">config</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="level3_data_files"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.level3_data_files">[docs]</a><span class="k">def</span> <span class="nf">level3_data_files</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">get_data_configs</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid configuration, </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">))</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">data_file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="n">prefix</span><span class="p">,</span>
+                            <span class="s1">&#39;????/????/Run</span><span class="si">{}</span><span class="s1">/Level3_</span><span class="si">{}</span><span class="s1">_data_Run</span><span class="si">{}</span><span class="s1">_Subrun*.i3.bz2&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">))</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">data_file_pattern</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">files</span></div>
+
+
+<div class="viewcode-block" id="level3_data_file_batches"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.level3_data_file_batches">[docs]</a><span class="k">def</span> <span class="nf">level3_data_file_batches</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Generates level3 data file paths in batches</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config : str</span>
+<span class="sd">        Detector configuration</span>
+<span class="sd">    run : str</span>
+<span class="sd">        Number of data taking run</span>
+<span class="sd">    size: int</span>
+<span class="sd">        Number of files in each batch</span>
+<span class="sd">    max_batches : int, optional</span>
+<span class="sd">        Option to only yield ``max_batches`` number of file batches (default</span>
+<span class="sd">        is to yield all batches)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    generator</span>
+<span class="sd">        Generator that yields batches of data files</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Basic usage:</span>
+
+<span class="sd">    &gt;&gt;&gt; from comptools.datafunctions import level3_data_file_batches</span>
+<span class="sd">    &gt;&gt;&gt; list(level3_data_file_batches(config=&#39;IC86.2012&#39;, run=&#39;00122174&#39;, size=3, max_batches=2))</span>
+<span class="sd">    [(&#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000050.i3.bz2&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000110.i3.bz2&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000000.i3.bz2&#39;),</span>
+<span class="sd">     (&#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000330.i3.bz2&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000150.i3.bz2&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/exp/IC86.2012/2013/0413/Run00122174/Level3_IC86.2012_data_Run00122174_Subrun00000240.i3.bz2&#39;)]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">data_file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;????&#39;</span><span class="p">,</span> <span class="s1">&#39;????&#39;</span><span class="p">,</span>
+                                     <span class="s1">&#39;Run</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run</span><span class="p">),</span>
+                                     <span class="s1">&#39;Level3_</span><span class="si">{}</span><span class="s1">_data_Run</span><span class="si">{}</span><span class="s1">_Subrun*.i3.bz2&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">))</span>
+    <span class="n">files_iter</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">data_file_pattern</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">partition</span><span class="p">(</span><span class="n">files_iter</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="n">max_batches</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="level3_data_GCD_file"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.level3_data_GCD_file">[docs]</a><span class="k">def</span> <span class="nf">level3_data_GCD_file</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">get_data_configs</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid configuration, </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">))</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">gcd_file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;????/????/Run</span><span class="si">{}</span><span class="s1">/*GCD*&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run</span><span class="p">))</span>
+    <span class="c1"># Don&#39;t want to make any assumptions about how many files will be found</span>
+    <span class="c1"># when globing --&gt; use iglob + next()</span>
+    <span class="n">gcd_gen</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">gcd_file_pattern</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">gcd_file</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">gcd_gen</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not find a GCD file for </span><span class="si">{}</span><span class="s1"> run </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">second_gcd_file</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">gcd_gen</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Found more than one GCD file for </span><span class="si">{}</span><span class="s1"> run </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">run</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">return</span> <span class="n">gcd_file</span></div>
+
+
+<div class="viewcode-block" id="get_level3_livetime_hist"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.get_level3_livetime_hist">[docs]</a><span class="k">def</span> <span class="nf">get_level3_livetime_hist</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">month</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">month</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Month must be an integer, got </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">month</span><span class="p">))</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">_get_data_path_prefix</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;????/</span><span class="si">{:02d}</span><span class="s1">??/Run*/*livetime.pickle&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">month</span><span class="p">))</span>
+    <span class="n">file_gen</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">file_pattern</span><span class="p">)</span>
+
+    <span class="n">bin_values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">livetime_pickle</span> <span class="ow">in</span> <span class="n">file_gen</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="n">livetime_pickle</span><span class="p">)</span>
+        <span class="n">prod_hist</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Livetime&#39;</span><span class="p">]</span>
+        <span class="n">bin_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prod_hist</span><span class="o">.</span><span class="n">bin_values</span><span class="p">)</span>
+
+    <span class="n">bin_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">bin_values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">summed_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">bin_values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">summed_counts</span></div>
+
+
+<div class="viewcode-block" id="reco_pulses"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.reco_pulses">[docs]</a><span class="k">def</span> <span class="nf">reco_pulses</span><span class="p">():</span>
+
+    <span class="n">IT_pulses</span> <span class="o">=</span> <span class="s1">&#39;IceTopHLCSeedRTPulses&#39;</span>
+    <span class="n">inice_pulses</span> <span class="o">=</span> <span class="s1">&#39;SRTCoincPulses&#39;</span>
+
+    <span class="k">return</span> <span class="n">IT_pulses</span><span class="p">,</span> <span class="n">inice_pulses</span></div>
+
+
+<div class="viewcode-block" id="null_stream"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.null_stream">[docs]</a><span class="k">def</span> <span class="nf">null_stream</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">nullstream</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">nullstream</span><span class="p">[</span><span class="s1">&#39;IT73&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;nullsplit&#39;</span>
+    <span class="n">nullstream</span><span class="p">[</span><span class="s1">&#39;IT81&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;in_ice&#39;</span>
+    <span class="k">return</span> <span class="n">nullstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="it_stream"><a class="viewcode-back" href="../../comptools.html#comptools.datafunctions.it_stream">[docs]</a><span class="k">def</span> <span class="nf">it_stream</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+
+    <span class="n">itstream</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">itstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ice_top&#39;</span>
+
+    <span class="k">return</span> <span class="n">itstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

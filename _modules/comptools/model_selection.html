@@ -1,0 +1,549 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools.model_selection &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>comptools.model_selection</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for comptools.model_selection</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">dask</span>
+<span class="kn">from</span> <span class="nn">dask</span> <span class="k">import</span> <span class="n">delayed</span><span class="p">,</span> <span class="n">multiprocessing</span><span class="p">,</span> <span class="n">threaded</span>
+<span class="kn">from</span> <span class="nn">dask.diagnostics</span> <span class="k">import</span> <span class="n">ProgressBar</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">StratifiedKFold</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">GridSearchCV</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">get_scorer</span>
+
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="n">get_training_features</span>
+<span class="kn">from</span> <span class="nn">.io</span> <span class="k">import</span> <span class="n">dataframe_to_X_y</span>
+<span class="kn">from</span> <span class="nn">.composition_encoding</span> <span class="k">import</span> <span class="n">get_comp_list</span>
+<span class="kn">from</span> <span class="nn">.data_functions</span> <span class="k">import</span> <span class="n">ratio_error</span>
+<span class="kn">from</span> <span class="nn">.pipelines</span> <span class="k">import</span> <span class="n">get_pipeline</span>
+
+
+<span class="k">def</span> <span class="nf">_get_frac_correct</span><span class="p">(</span><span class="n">df_train</span><span class="p">,</span> <span class="n">df_test</span><span class="p">,</span> <span class="n">feature_columns</span><span class="p">,</span> <span class="n">num_groups</span><span class="p">,</span>
+                      <span class="n">pipeline_str</span><span class="p">,</span> <span class="n">comp_list</span><span class="p">,</span> <span class="n">log_energy_bins</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculates the fraction of correctly identified samples in each energy bin</span>
+<span class="sd">    for each composition in comp_list. In addition, the statisitcal error for the</span>
+<span class="sd">    fraction correctly identified is calculated.&#39;&#39;&#39;</span>
+
+    <span class="c1"># Fit pipeline and get mask for correctly identified events</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;comp_target_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num_groups</span><span class="p">)</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">get_pipeline</span><span class="p">(</span><span class="n">pipeline_str</span><span class="p">)</span>
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">df_train</span><span class="p">[</span><span class="n">feature_columns</span><span class="p">],</span> <span class="n">df_train</span><span class="p">[</span><span class="n">target</span><span class="p">])</span>
+    <span class="n">test_predictions</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">df_test</span><span class="p">[</span><span class="n">feature_columns</span><span class="p">])</span>
+    <span class="n">correctly_identified_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">test_predictions</span> <span class="o">==</span> <span class="n">df_test</span><span class="p">[</span><span class="n">target</span><span class="p">])</span>
+
+    <span class="c1"># Construct MC composition masks</span>
+    <span class="n">MC_comp_mask</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">composition</span> <span class="ow">in</span> <span class="n">comp_list</span><span class="p">:</span>
+        <span class="n">MC_comp_mask</span><span class="p">[</span><span class="n">composition</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_test</span><span class="p">[</span><span class="s1">&#39;comp_group_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num_groups</span><span class="p">)]</span> <span class="o">==</span> <span class="n">composition</span>
+    <span class="n">MC_comp_mask</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_test</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">composition</span> <span class="ow">in</span> <span class="n">comp_list</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]:</span>
+        <span class="n">comp_mask</span> <span class="o">=</span> <span class="n">MC_comp_mask</span><span class="p">[</span><span class="n">composition</span><span class="p">]</span>
+        <span class="c1"># Get number of MC comp in each reco energy bin</span>
+        <span class="n">num_MC_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">df_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp_mask</span><span class="p">,</span> <span class="s1">&#39;MC_log_energy&#39;</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="n">log_energy_bins</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">num_MC_energy_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num_MC_energy</span><span class="p">)</span>
+
+        <span class="c1"># Get number of correctly identified comp in each reco energy bin</span>
+        <span class="n">num_reco_energy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">df_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">comp_mask</span> <span class="o">&amp;</span> <span class="n">correctly_identified_mask</span><span class="p">,</span> <span class="s1">&#39;MC_log_energy&#39;</span><span class="p">],</span>
+                                       <span class="n">bins</span><span class="o">=</span><span class="n">log_energy_bins</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">num_reco_energy_err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num_reco_energy</span><span class="p">)</span>
+
+        <span class="c1"># Calculate correctly identified fractions as a function of MC energy</span>
+        <span class="n">frac_correct</span><span class="p">,</span> <span class="n">frac_correct_err</span> <span class="o">=</span> <span class="n">ratio_error</span><span class="p">(</span>
+            <span class="n">num_reco_energy</span><span class="p">,</span> <span class="n">num_reco_energy_err</span><span class="p">,</span>
+            <span class="n">num_MC_energy</span><span class="p">,</span> <span class="n">num_MC_energy_err</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;frac_correct_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">composition</span><span class="p">)]</span> <span class="o">=</span> <span class="n">frac_correct</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;frac_correct_err_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">composition</span><span class="p">)]</span> <span class="o">=</span> <span class="n">frac_correct_err</span>
+
+    <span class="k">return</span> <span class="n">data</span>
+
+
+<div class="viewcode-block" id="get_CV_frac_correct"><a class="viewcode-back" href="../../comptools.html#comptools.model_selection.get_CV_frac_correct">[docs]</a><span class="k">def</span> <span class="nf">get_CV_frac_correct</span><span class="p">(</span><span class="n">df_train</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">pipeline_str</span><span class="p">,</span> <span class="n">num_groups</span><span class="p">,</span>
+                        <span class="n">log_energy_bins</span><span class="p">,</span> <span class="n">n_splits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+
+    <span class="n">skf</span> <span class="o">=</span> <span class="n">StratifiedKFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">n_splits</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">comp_list</span> <span class="o">=</span> <span class="n">get_comp_list</span><span class="p">(</span><span class="n">num_groups</span><span class="o">=</span><span class="n">num_groups</span><span class="p">)</span>
+    <span class="n">comp_target</span> <span class="o">=</span> <span class="n">target</span>
+
+    <span class="c1"># Set up get_frac_correct to run on each CV fold</span>
+    <span class="n">folds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span> <span class="ow">in</span> <span class="n">skf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">df_train</span><span class="p">,</span> <span class="n">df_train</span><span class="p">[</span><span class="n">comp_target</span><span class="p">]):</span>
+        <span class="n">df_train_fold</span> <span class="o">=</span> <span class="n">df_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_index</span><span class="p">]</span>
+        <span class="n">df_test_fold</span> <span class="o">=</span> <span class="n">df_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_index</span><span class="p">]</span>
+        <span class="n">frac_correct</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="n">_get_frac_correct</span><span class="p">)(</span>
+                    <span class="n">df_train_fold</span><span class="p">,</span> <span class="n">df_test_fold</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span> <span class="n">num_groups</span><span class="p">,</span>
+                    <span class="n">pipeline_str</span><span class="p">,</span> <span class="n">comp_list</span><span class="p">,</span> <span class="n">log_energy_bins</span><span class="p">)</span>
+        <span class="n">folds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frac_correct</span><span class="p">)</span>
+
+    <span class="n">df_cv</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">)(</span><span class="n">folds</span><span class="p">)</span>
+
+    <span class="c1"># Run get_frac_correct on each fold in parallel</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running </span><span class="si">{}</span><span class="s1">-fold CV model evaluation...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n_splits</span><span class="p">))</span>
+    <span class="k">with</span> <span class="n">ProgressBar</span><span class="p">():</span>
+        <span class="n">get</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">get</span> <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">dask</span><span class="o">.</span><span class="n">get</span>
+        <span class="n">df_cv</span> <span class="o">=</span> <span class="n">df_cv</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">get</span><span class="p">,</span> <span class="n">num_works</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df_cv</span></div>
+
+
+<span class="nd">@delayed</span>
+<span class="k">def</span> <span class="nf">_cross_validate_comp</span><span class="p">(</span><span class="n">df_train</span><span class="p">,</span> <span class="n">df_test</span><span class="p">,</span> <span class="n">pipeline_str</span><span class="p">,</span> <span class="n">param_name</span><span class="p">,</span>
+                         <span class="n">param_value</span><span class="p">,</span> <span class="n">feature_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">target</span><span class="o">=</span><span class="s1">&#39;comp_target_2&#39;</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="s1">&#39;r2&#39;</span><span class="p">,</span> <span class="n">num_groups</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                         <span class="n">n_splits</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculates stratified k-fold CV scores for a given hyperparameter value</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df_train : pandas.DataFrame</span>
+<span class="sd">        Training DataFrame (see comptools.load_sim()).</span>
+<span class="sd">    df_test : pandas.DataFrame</span>
+<span class="sd">        Testing DataFrame (see comptools.load_sim()).</span>
+<span class="sd">    pipeline_str : str</span>
+<span class="sd">        Name of pipeline to use (e.g. &#39;BDT&#39;, &#39;RF_energy&#39;, etc.).</span>
+<span class="sd">    param_name : str</span>
+<span class="sd">        Name of hyperparameter (e.g. &#39;max_depth&#39;, &#39;learning_rate&#39;, etc.).</span>
+<span class="sd">    param_value : int, float, str</span>
+<span class="sd">        Value to set hyperparameter to.</span>
+<span class="sd">    feature_list : list, optional</span>
+<span class="sd">        List of training feature columns to use (default is to use</span>
+<span class="sd">        comptools.get_training_features()).</span>
+<span class="sd">    target : str, optional</span>
+<span class="sd">        Training target to use (default is &#39;comp_target_2&#39;).</span>
+<span class="sd">    scoring : {&#39;r2&#39;, &#39;mse&#39;, &#39;accuracy&#39;}</span>
+<span class="sd">        Scoring metric to calculate for each CV fold (default is &#39;r2&#39;).</span>
+<span class="sd">    num_groups : int, optional</span>
+<span class="sd">        Number of composition class groups to use (default is 2).</span>
+<span class="sd">    n_splits : int, optional</span>
+<span class="sd">        Number of folds to use in (KFold) cross-validation</span>
+<span class="sd">        (default is 10).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        data_dict : dict</span>
+<span class="sd">            Return a dictionary with average scores as well as CV errors on those scores.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="c1"># assert scoring in [&#39;accuracy&#39;, &#39;mse&#39;, &#39;r2&#39;], &#39;Invalid scoring parameter&#39;</span>
+    <span class="n">comp_list</span> <span class="o">=</span> <span class="n">get_comp_list</span><span class="p">(</span><span class="n">num_groups</span><span class="o">=</span><span class="n">num_groups</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">feature_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">feature_list</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_training_features</span><span class="p">()</span>
+
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">get_pipeline</span><span class="p">(</span><span class="n">pipeline_str</span><span class="p">)</span>
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">named_steps</span><span class="p">[</span><span class="s1">&#39;classifier&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">param_name</span><span class="p">:</span> <span class="n">param_value</span><span class="p">})</span>
+    <span class="c1"># Only run on a single core</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">named_steps</span><span class="p">[</span><span class="s1">&#39;classifier&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="s1">&#39;n_jobs&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="n">data_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;classifier&#39;</span><span class="p">:</span> <span class="n">pipeline_str</span><span class="p">,</span> <span class="s1">&#39;param_name&#39;</span><span class="p">:</span> <span class="n">param_name</span><span class="p">,</span>
+                 <span class="s1">&#39;param_value&#39;</span><span class="p">:</span> <span class="n">param_value</span><span class="p">,</span> <span class="s1">&#39;n_splits&#39;</span><span class="p">:</span> <span class="n">n_splits</span><span class="p">}</span>
+
+    <span class="n">train_scores</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">test_scores</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="n">kf</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">n_splits</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">scorer</span> <span class="o">=</span> <span class="n">get_scorer</span><span class="p">(</span><span class="n">scoring</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span> <span class="ow">in</span> <span class="n">kf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">df_train</span><span class="o">.</span><span class="n">values</span><span class="p">):</span>
+
+        <span class="n">df_train_fold</span> <span class="o">=</span> <span class="n">df_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_index</span><span class="p">]</span>
+        <span class="n">df_test_fold</span> <span class="o">=</span> <span class="n">df_train</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_index</span><span class="p">]</span>
+        <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">dataframe_to_X_y</span><span class="p">(</span><span class="n">df_train_fold</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span>
+                                            <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">)</span>
+        <span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">dataframe_to_X_y</span><span class="p">(</span><span class="n">df_test_fold</span><span class="p">,</span> <span class="n">feature_list</span><span class="p">,</span>
+                                          <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="n">pipeline</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+
+        <span class="n">train_pred</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+        <span class="n">train_score</span> <span class="o">=</span> <span class="n">scorer</span><span class="p">(</span><span class="n">y_train</span><span class="p">,</span> <span class="n">train_pred</span><span class="p">)</span>
+        <span class="n">train_scores</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_score</span><span class="p">)</span>
+
+        <span class="n">test_pred</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+        <span class="n">test_score</span> <span class="o">=</span> <span class="n">scorer</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">test_pred</span><span class="p">)</span>
+        <span class="n">test_scores</span><span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_score</span><span class="p">)</span>
+
+        <span class="c1"># Get testing/training scores for each composition group</span>
+        <span class="k">for</span> <span class="n">composition</span> <span class="ow">in</span> <span class="n">comp_list</span><span class="p">:</span>
+            <span class="n">comp_key</span> <span class="o">=</span> <span class="s1">&#39;comp_group_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">num_groups</span><span class="p">)</span>
+
+            <span class="n">comp_mask_train</span> <span class="o">=</span> <span class="n">df_train_fold</span><span class="p">[</span><span class="n">comp_key</span><span class="p">]</span> <span class="o">==</span> <span class="n">composition</span>
+            <span class="n">comp_score_train</span> <span class="o">=</span> <span class="n">scorer</span><span class="p">(</span><span class="n">y_train</span><span class="p">[</span><span class="n">comp_mask_train</span><span class="p">],</span>
+                                      <span class="n">train_pred</span><span class="p">[</span><span class="n">comp_mask_train</span><span class="p">])</span>
+            <span class="n">train_scores</span><span class="p">[</span><span class="n">composition</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp_score_train</span><span class="p">)</span>
+
+            <span class="n">comp_mask_test</span> <span class="o">=</span> <span class="n">df_test_fold</span><span class="p">[</span><span class="n">comp_key</span><span class="p">]</span> <span class="o">==</span> <span class="n">composition</span>
+            <span class="n">comp_score_test</span> <span class="o">=</span> <span class="n">scorer</span><span class="p">(</span><span class="n">y_test</span><span class="p">[</span><span class="n">comp_mask_test</span><span class="p">],</span>
+                                     <span class="n">test_pred</span><span class="p">[</span><span class="n">comp_mask_test</span><span class="p">])</span>
+            <span class="n">test_scores</span><span class="p">[</span><span class="n">composition</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp_score_test</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">comp_list</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;total&#39;</span><span class="p">]:</span>
+        <span class="n">data_dict</span><span class="p">[</span><span class="s1">&#39;train_mean_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">train_scores</span><span class="p">[</span><span class="n">label</span><span class="p">])</span>
+        <span class="n">data_dict</span><span class="p">[</span><span class="s1">&#39;train_std_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">train_scores</span><span class="p">[</span><span class="n">label</span><span class="p">])</span>
+        <span class="n">data_dict</span><span class="p">[</span><span class="s1">&#39;test_mean_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">test_scores</span><span class="p">[</span><span class="n">label</span><span class="p">])</span>
+        <span class="n">data_dict</span><span class="p">[</span><span class="s1">&#39;test_std_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">label</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">test_scores</span><span class="p">[</span><span class="n">label</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">data_dict</span>
+
+
+<div class="viewcode-block" id="cross_validate_comp"><a class="viewcode-back" href="../../comptools.html#comptools.model_selection.cross_validate_comp">[docs]</a><span class="k">def</span> <span class="nf">cross_validate_comp</span><span class="p">(</span><span class="n">df_train</span><span class="p">,</span> <span class="n">df_test</span><span class="p">,</span> <span class="n">pipeline_str</span><span class="p">,</span> <span class="n">param_name</span><span class="p">,</span>
+                        <span class="n">param_values</span><span class="p">,</span> <span class="n">feature_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">target</span><span class="o">=</span><span class="s1">&#39;comp_target_2&#39;</span><span class="p">,</span> <span class="n">scoring</span><span class="o">=</span><span class="s1">&#39;accuracy&#39;</span><span class="p">,</span>
+                        <span class="n">num_groups</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_splits</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Calculates stratified k-fold CV scores for a given hyperparameter value</span>
+
+<span class="sd">    Similar to sklearn.model_selection.cross_validate, but returns results</span>
+<span class="sd">    for individual composition groups as well as the combined CV result.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df_train : pandas.DataFrame</span>
+<span class="sd">        Training DataFrame (see comptools.load_sim()).</span>
+<span class="sd">    df_test : pandas.DataFrame</span>
+<span class="sd">        Testing DataFrame (see comptools.load_sim()).</span>
+<span class="sd">    pipeline_str : str</span>
+<span class="sd">        Name of pipeline to use (e.g. &#39;BDT&#39;, &#39;RF_energy&#39;, etc.).</span>
+<span class="sd">    param_name : str</span>
+<span class="sd">        Name of hyperparameter (e.g. &#39;max_depth&#39;, &#39;learning_rate&#39;, etc.).</span>
+<span class="sd">    param_values : array-like</span>
+<span class="sd">        Values to set hyperparameter to.</span>
+<span class="sd">    feature_list : list, optional</span>
+<span class="sd">        List of training feature columns to use (default is to use</span>
+<span class="sd">        comptools.get_training_features()).</span>
+<span class="sd">    target : str, optional</span>
+<span class="sd">        Training target to use (default is &#39;comp_target_2&#39;).</span>
+<span class="sd">    scoring : str, optional</span>
+<span class="sd">        Scoring metric to calculate for each CV fold (default is &#39;accuracy&#39;).</span>
+<span class="sd">    num_groups : int, optional</span>
+<span class="sd">        Number of composition class groups to use (default is 2).</span>
+<span class="sd">    n_splits : int, optional</span>
+<span class="sd">        Number of folds to use in (KFold) cross-validation</span>
+<span class="sd">        (default is 10).</span>
+<span class="sd">    n_jobs : int, optional</span>
+<span class="sd">        Number of jobs to run in parallel (default is 1).</span>
+<span class="sd">    verbose : bool, optional</span>
+<span class="sd">        Option to print a progress bar (default is False).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        df_cv : pandas.DataFrame</span>
+<span class="sd">            Returns a DataFrame with average scores as well as CV errors</span>
+<span class="sd">            on those scores for each composition.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cv_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">param_value</span> <span class="ow">in</span> <span class="n">param_values</span><span class="p">:</span>
+        <span class="n">cv_dict</span> <span class="o">=</span> <span class="n">_cross_validate_comp</span><span class="p">(</span>
+                    <span class="n">df_train</span><span class="p">,</span> <span class="n">df_test</span><span class="p">,</span> <span class="n">pipeline_str</span><span class="p">,</span>
+                    <span class="n">param_name</span><span class="p">,</span> <span class="n">param_value</span><span class="p">,</span>
+                    <span class="n">feature_list</span><span class="o">=</span><span class="n">feature_list</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+                    <span class="n">scoring</span><span class="o">=</span><span class="n">scoring</span><span class="p">,</span> <span class="n">num_groups</span><span class="o">=</span><span class="n">num_groups</span><span class="p">,</span> <span class="n">n_splits</span><span class="o">=</span><span class="n">n_splits</span><span class="p">)</span>
+        <span class="n">cv_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cv_dict</span><span class="p">)</span>
+
+    <span class="n">df_cv</span> <span class="o">=</span> <span class="n">delayed</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">)(</span><span class="n">cv_dicts</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s1">&#39;param_value&#39;</span><span class="p">)</span>
+
+    <span class="n">get</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">get</span> <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">threaded</span><span class="o">.</span><span class="n">get</span>
+    <span class="c1"># get = dask.get if n_jobs == 1 else multiprocessing.get</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">ProgressBar</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Performing </span><span class="si">{}</span><span class="s1">-fold CV on </span><span class="si">{}</span><span class="s1"> hyperparameter values (</span><span class="si">{}</span><span class="s1"> fits):&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">n_splits</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_values</span><span class="p">),</span>  <span class="n">n_splits</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">param_values</span><span class="p">)))</span>
+            <span class="n">df_cv</span> <span class="o">=</span> <span class="n">df_cv</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">get</span><span class="p">,</span> <span class="n">num_works</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df_cv</span> <span class="o">=</span> <span class="n">df_cv</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">get</span><span class="p">,</span> <span class="n">num_works</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df_cv</span></div>
+
+
+<div class="viewcode-block" id="get_param_grid"><a class="viewcode-back" href="../../comptools.html#comptools.model_selection.get_param_grid">[docs]</a><span class="k">def</span> <span class="nf">get_param_grid</span><span class="p">(</span><span class="n">pipeline_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns dictionary with hyperparameter values to search</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pipeline_name : str, optional</span>
+<span class="sd">        Pipeline name. Should be formatted as</span>
+<span class="sd">        &lt;name&gt;_comp_&lt;config&gt;_&lt;num_groups&gt;-groups. For example,</span>
+<span class="sd">        pipeline_name=BDT_comp_IC86.2012_2-groups (default is None).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    param_grid : dict</span>
+<span class="sd">        Dictionary with hyperparameter names / values to be passed to</span>
+<span class="sd">        GridSearchCV.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">pipeline_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Must enter a value for pipeline_name.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;BDT&#39;</span> <span class="ow">in</span> <span class="n">pipeline_name</span><span class="p">:</span>
+        <span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;classifier__n_estimators&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">300</span><span class="p">],</span>
+                      <span class="s1">&#39;classifier__max_depth&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">)),</span>
+                      <span class="s1">&#39;classifier__learning_rate&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]}</span>
+    <span class="k">elif</span> <span class="s1">&#39;xgboost&#39;</span> <span class="ow">in</span> <span class="n">pipeline_name</span><span class="p">:</span>
+        <span class="c1"># param_grid = {&#39;classifier__n_estimators&#39;: [100, 150, 200],</span>
+        <span class="c1">#               &#39;classifier__max_depth&#39;: list(range(3, 7)),</span>
+        <span class="c1">#               &#39;classifier__learning_rate&#39;: [0.1, 0.15, 0.2]}</span>
+        <span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;classifier__n_estimators&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">250</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">600</span><span class="p">],</span>
+                      <span class="s1">&#39;classifier__max_depth&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">11</span><span class="p">)),</span>
+                      <span class="s1">&#39;classifier__learning_rate&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.025</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>
+                      <span class="c1"># &#39;classifier__subsample&#39;: [0.5, 0.75, 1.0],</span>
+                      <span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid pipeline entered: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pipeline_name</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">param_grid</span></div>
+
+
+<div class="viewcode-block" id="gridsearch_optimize"><a class="viewcode-back" href="../../comptools.html#comptools.model_selection.gridsearch_optimize">[docs]</a><span class="k">def</span> <span class="nf">gridsearch_optimize</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">param_grid</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span>
+                        <span class="n">scoring</span><span class="o">=</span><span class="s1">&#39;accuracy&#39;</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">return_gridsearch</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Runs a grid search to optimize hyperparameters</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pipeline : sklearn.model_selection.Pipeline</span>
+<span class="sd">        Pipeline to fit.</span>
+<span class="sd">    param_grid : dict</span>
+<span class="sd">        Dictionary with hyperparameter names / values to be passed to</span>
+<span class="sd">        GridSearchCV.</span>
+<span class="sd">    X_train : array_like</span>
+<span class="sd">        Training features.</span>
+<span class="sd">    y_train : array_like</span>
+<span class="sd">        Training labels.</span>
+<span class="sd">    scoring : str</span>
+<span class="sd">        Scoring metric to use (default is &#39;accuracy&#39;).</span>
+<span class="sd">    n_jobs : int, optional</span>
+<span class="sd">        Number of jobs to run in parallel (default is 1).</span>
+<span class="sd">    return_gridsearch : bool, optional</span>
+<span class="sd">        Whether to return the fitted GridSearchCV object, or the</span>
+<span class="sd">        best_estimator_ object (default is False, so will return the</span>
+<span class="sd">        best_estimator_).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    best_pipeline : sklearn.model_selection.Pipeline</span>
+<span class="sd">        Pipeline with optimal hyperparameter values that has been trained on</span>
+<span class="sd">        the entire training dataset (X_train, y_train).</span>
+<span class="sd">    gridsearch : sklearn.model_selection.GridSearchCV</span>
+<span class="sd">        Fitted GridSearchCV object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Want to make sure pipeline isn&#39;t running in parallel</span>
+    <span class="c1"># Will run GridSearchCV in parallel instead</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="s1">&#39;classifier__n_jobs&#39;</span><span class="p">):</span>
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">classifier__n_jobs</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">param_str</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">param_grid</span><span class="o">.</span><span class="n">iteritems</span><span class="p">()])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Running grid search over the following hyperparameters:</span><span class="se">\n\t</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">param_str</span><span class="p">))</span>
+    <span class="n">gridsearch</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span>
+                              <span class="n">param_grid</span><span class="o">=</span><span class="n">param_grid</span><span class="p">,</span>
+                              <span class="n">cv</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                              <span class="n">scoring</span><span class="o">=</span><span class="n">scoring</span><span class="p">,</span>
+                              <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                              <span class="n">return_train_score</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                              <span class="n">verbose</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">gridsearch</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;best GridSearchCV params = </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">gridsearch</span><span class="o">.</span><span class="n">best_params_</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">return_gridsearch</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">gridsearch</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">best_pipeline</span> <span class="o">=</span> <span class="n">gridsearch</span><span class="o">.</span><span class="n">best_estimator_</span>
+        <span class="k">return</span> <span class="n">best_pipeline</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

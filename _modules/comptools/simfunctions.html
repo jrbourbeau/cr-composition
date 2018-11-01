@@ -1,0 +1,495 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>comptools.simfunctions &mdash; cr-composition  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> cr-composition
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../setup.html">Installation &amp; setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comptools.html"><code class="docutils literal notranslate"><span class="pre">comptools</span></code> API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">cr-composition</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>comptools.simfunctions</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for comptools.simfunctions</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">icecube.weighting.weighting</span> <span class="k">import</span> <span class="n">from_simprod</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="n">requires_icecube</span><span class="p">,</span> <span class="n">partition</span>
+
+
+<div class="viewcode-block" id="comp2mass"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.comp2mass">[docs]</a><span class="k">def</span> <span class="nf">comp2mass</span><span class="p">(</span><span class="n">composition</span><span class="p">):</span>
+    <span class="n">mass_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;P&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                 <span class="s1">&#39;He&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                 <span class="s1">&#39;O&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                 <span class="s1">&#39;Fe&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+    <span class="c1"># mass_dict = {&#39;P&#39;: 0.938272013,</span>
+    <span class="c1">#              &#39;He&#39;: 3.727379,</span>
+    <span class="c1">#              &#39;O&#39;: 14.8950815346,</span>
+    <span class="c1">#              &#39;Fe&#39;: 52.0898090795}</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mass_dict</span><span class="p">[</span><span class="n">composition</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="k">raise</span><span class="p">(</span><span class="s1">&#39;Got a KeyError:</span><span class="se">\n\t</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">error</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_sim_configs"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.get_sim_configs">[docs]</a><span class="k">def</span> <span class="nf">get_sim_configs</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;IC79.2010&#39;</span><span class="p">,</span> <span class="s1">&#39;IC86.2012&#39;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="get_sim_dict"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.get_sim_dict">[docs]</a><span class="k">def</span> <span class="nf">get_sim_dict</span><span class="p">():</span>
+
+    <span class="n">sim_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Add IC79.2010 simulation sets</span>
+    <span class="n">IC79_sims</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7006</span><span class="p">,</span> <span class="mi">7579</span><span class="p">,</span> <span class="mi">7241</span><span class="p">,</span> <span class="mi">7263</span><span class="p">,</span> <span class="mi">7791</span><span class="p">,</span> <span class="mi">7242</span><span class="p">,</span> <span class="mi">7262</span><span class="p">,</span>
+                 <span class="mi">7851</span><span class="p">,</span> <span class="mi">7007</span><span class="p">,</span> <span class="mi">7784</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">IC79_sims</span><span class="p">:</span>
+        <span class="n">sim_dict</span><span class="p">[</span><span class="n">sim</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;IC79.2010&#39;</span>
+
+    <span class="c1"># Add IC86.2012 simulation sets</span>
+    <span class="n">IC86_2012_sims</span> <span class="o">=</span> <span class="p">[</span><span class="mi">12360</span><span class="p">,</span> <span class="mi">12362</span><span class="p">,</span> <span class="mi">12630</span><span class="p">,</span> <span class="mi">12631</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">IC86_2012_sims</span><span class="p">:</span>
+        <span class="n">sim_dict</span><span class="p">[</span><span class="n">sim</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;IC86.2012&#39;</span>
+
+    <span class="k">return</span> <span class="n">sim_dict</span></div>
+
+
+<div class="viewcode-block" id="sim_to_config"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.sim_to_config">[docs]</a><span class="k">def</span> <span class="nf">sim_to_config</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;sim must be an integer (the simulation set ID)&#39;</span><span class="p">)</span>
+
+    <span class="n">sim_dict</span> <span class="o">=</span> <span class="n">get_sim_dict</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sim_dict</span><span class="p">[</span><span class="n">sim</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid simulation set, </span><span class="si">{}</span><span class="s1">, entered&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="config_to_sim"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.config_to_sim">[docs]</a><span class="k">def</span> <span class="nf">config_to_sim</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">get_sim_configs</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid config entered&#39;</span><span class="p">)</span>
+
+    <span class="n">sim_dict</span> <span class="o">=</span> <span class="n">get_sim_dict</span><span class="p">()</span>
+    <span class="n">sim_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">sim</span><span class="p">,</span> <span class="n">sim_config</span> <span class="ow">in</span> <span class="n">sim_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">sim_config</span> <span class="o">==</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">sim_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sim_list</span></div>
+
+
+<div class="viewcode-block" id="sim_to_comp"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.sim_to_comp">[docs]</a><span class="nd">@requires_icecube</span>
+<span class="k">def</span> <span class="nf">sim_to_comp</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+    <span class="c1"># Will utilize the weighting project found here</span>
+    <span class="c1"># http://software.icecube.wisc.edu/documentation/projects/weighting</span>
+
+    <span class="c1"># Query database to extract composition from simulation set</span>
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">from_simprod</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span>
+    <span class="c1"># Ensure that there is only one composition</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">generator</span><span class="o">.</span><span class="n">spectra</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="n">composition</span> <span class="o">=</span> <span class="n">generator</span><span class="o">.</span><span class="n">spectra</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="k">return</span> <span class="n">composition</span></div>
+
+
+<div class="viewcode-block" id="sim_to_thinned"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.sim_to_thinned">[docs]</a><span class="k">def</span> <span class="nf">sim_to_thinned</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+    <span class="c1"># IC79.2010 simulation sets</span>
+    <span class="n">not_thinned</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7006</span><span class="p">,</span> <span class="mi">7241</span><span class="p">,</span> <span class="mi">7263</span><span class="p">,</span> <span class="mi">7242</span><span class="p">,</span> <span class="mi">7262</span><span class="p">,</span> <span class="mi">7007</span><span class="p">]</span>
+    <span class="n">is_thinned</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7579</span><span class="p">,</span> <span class="mi">7791</span><span class="p">,</span> <span class="mi">7851</span><span class="p">,</span> <span class="mi">7784</span><span class="p">]</span>
+    <span class="c1"># IC82.2012 simulation sets</span>
+    <span class="n">not_thinned</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="mi">12360</span><span class="p">,</span> <span class="mi">12362</span><span class="p">,</span> <span class="mi">12630</span><span class="p">,</span> <span class="mi">12631</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">not_thinned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">elif</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">is_thinned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid simulation set, </span><span class="si">{}</span><span class="s1">, entered&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="sim_to_energy_bins"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.sim_to_energy_bins">[docs]</a><span class="k">def</span> <span class="nf">sim_to_energy_bins</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+    <span class="c1"># IC79.2010 simulation sets</span>
+    <span class="n">not_thinned</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7006</span><span class="p">,</span> <span class="mi">7241</span><span class="p">,</span> <span class="mi">7263</span><span class="p">,</span> <span class="mi">7242</span><span class="p">,</span> <span class="mi">7262</span><span class="p">,</span> <span class="mi">7007</span><span class="p">]</span>
+    <span class="n">is_thinned</span> <span class="o">=</span> <span class="p">[</span><span class="mi">7579</span><span class="p">,</span> <span class="mi">7791</span><span class="p">,</span> <span class="mi">7851</span><span class="p">,</span> <span class="mi">7784</span><span class="p">]</span>
+    <span class="c1"># IC82.2012 simulation sets</span>
+    <span class="n">not_thinned</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="mi">12360</span><span class="p">,</span> <span class="mi">12362</span><span class="p">,</span> <span class="mi">12630</span><span class="p">,</span> <span class="mi">12631</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">not_thinned</span><span class="p">:</span>
+        <span class="n">ebin_first</span> <span class="o">=</span> <span class="mf">5.0</span>
+        <span class="n">ebin_last</span> <span class="o">=</span> <span class="mf">7.9</span>
+    <span class="k">elif</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">is_thinned</span><span class="p">:</span>
+        <span class="n">ebin_first</span> <span class="o">=</span> <span class="mf">7.0</span>
+        <span class="n">ebin_last</span> <span class="o">=</span> <span class="mf">9.4</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid simulation set, </span><span class="si">{}</span><span class="s1">, entered&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">ebin_first</span><span class="p">,</span> <span class="n">ebin_last</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_level3_sim_file_pattern</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">sim_to_config</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="o">==</span> <span class="s1">&#39;IC79.2010&#39;</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="s1">&#39;IC79&#39;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;ana&#39;</span><span class="p">,</span> <span class="s1">&#39;CosmicRay&#39;</span><span class="p">,</span>
+                                          <span class="s1">&#39;IceTop_level3&#39;</span><span class="p">,</span> <span class="s1">&#39;sim&#39;</span><span class="p">,</span> <span class="n">config</span><span class="p">))</span>
+    <span class="n">sim_file_pattern</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">sim</span><span class="p">),</span> <span class="s1">&#39;Level3_*.i3.gz&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sim_file_pattern</span>
+
+
+<div class="viewcode-block" id="level3_sim_files"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.level3_sim_files">[docs]</a><span class="k">def</span> <span class="nf">level3_sim_files</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">files_per_batch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">_get_level3_sim_file_pattern</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">files</span></div>
+
+
+<div class="viewcode-block" id="level3_sim_file_batches"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.level3_sim_file_batches">[docs]</a><span class="k">def</span> <span class="nf">level3_sim_file_batches</span><span class="p">(</span><span class="n">sim</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Generates level3 simulation file paths in batches</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sim : int</span>
+<span class="sd">        Simulation dataset (e.g. 7006, 7241)</span>
+<span class="sd">    size: int</span>
+<span class="sd">        Number of files in each batch</span>
+<span class="sd">    max_batches : int, optional</span>
+<span class="sd">        Option to only yield ``max_batches`` number of file batches (default</span>
+<span class="sd">        is to yield all batches)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    generator</span>
+<span class="sd">        Generator that yields batches of simulation files</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Basic usage:</span>
+
+<span class="sd">    &gt;&gt;&gt; from comptools.simfunctions import level3_sim_file_batches</span>
+<span class="sd">    &gt;&gt;&gt; list(level3_sim_file_batches(7241, size=3, max_batches=2))</span>
+<span class="sd">    [(&#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005347.i3.gz&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run005393.i3.gz&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run009678.i3.gz&#39;),</span>
+<span class="sd">     (&#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run001015.i3.gz&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run002597.i3.gz&#39;,</span>
+<span class="sd">      &#39;/data/ana/CosmicRay/IceTop_level3/sim/IC79/7241/Level3_IC79_7241_Run007939.i3.gz&#39;)]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">files_iter</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">_get_level3_sim_file_pattern</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">partition</span><span class="p">(</span><span class="n">files_iter</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">,</span> <span class="n">max_batches</span><span class="o">=</span><span class="n">max_batches</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="level3_sim_GCD_file"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.level3_sim_GCD_file">[docs]</a><span class="k">def</span> <span class="nf">level3_sim_GCD_file</span><span class="p">(</span><span class="n">sim</span><span class="p">):</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">sim_to_config</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="o">==</span> <span class="s1">&#39;IC79.2010&#39;</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="s1">&#39;IC79&#39;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;/data/ana/CosmicRay/IceTop_level3/sim/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">gcd_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="s1">&#39;GCD&#39;</span><span class="p">,</span> <span class="s1">&#39;Level3_</span><span class="si">{}</span><span class="s1">_GCD.i3.gz&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">sim</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">gcd_file</span></div>
+
+
+<div class="viewcode-block" id="get_level3_sim_files_iterator"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.get_level3_sim_files_iterator">[docs]</a><span class="k">def</span> <span class="nf">get_level3_sim_files_iterator</span><span class="p">(</span><span class="n">sim_list</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Function to return an iterable of simulation files</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sim_list : int, array-like</span>
+<span class="sd">        Simulation(s) sets to get i3 files for (e.g. 12360 or</span>
+<span class="sd">        [12360, 12362, 12630, 12631]).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    file_iter : itertools.chain</span>
+<span class="sd">        Iterable of simulation i3 files.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sim_list</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">sim_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">sim_list</span><span class="p">]</span>
+
+    <span class="n">file_patterns</span> <span class="o">=</span> <span class="p">[</span><span class="n">_get_level3_sim_file_pattern</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span> <span class="k">for</span> <span class="n">sim</span> <span class="ow">in</span> <span class="n">sim_list</span><span class="p">]</span>
+    <span class="n">file_iter</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">iglob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span> <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">file_patterns</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">file_iter</span></div>
+
+
+<div class="viewcode-block" id="run_to_energy_bin"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.run_to_energy_bin">[docs]</a><span class="k">def</span> <span class="nf">run_to_energy_bin</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="n">sim</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Gives the CORSIKA energy bin for a given simulation run</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    run : int</span>
+<span class="sd">        Run number for a simulation set.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    energy_bin : float</span>
+<span class="sd">        Corresponding CORSIKA energy bin for run.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">ebin_first</span><span class="p">,</span> <span class="n">ebin_last</span> <span class="o">=</span> <span class="n">sim_to_energy_bins</span><span class="p">(</span><span class="n">sim</span><span class="p">)</span>
+    <span class="c1"># Taken from simulation production webpage:</span>
+    <span class="c1"># http://simprod.icecube.wisc.edu/cgi-bin/simulation/cgi/cfg?dataset=12360</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">ebin_first</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="p">(</span><span class="n">run</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">ebin_last</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">-</span> <span class="n">ebin_first</span> <span class="o">*</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="mi">10</span></div>
+
+
+<span class="nd">@np</span><span class="o">.</span><span class="n">vectorize</span>
+<span class="k">def</span> <span class="nf">get_sim_thrown_radius</span><span class="p">(</span><span class="n">log_energy</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Gives the thrown simulation radius for a given log_energy</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    log_energy : float, array-like</span>
+<span class="sd">        Log energy (in GeV) for a CR shower.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    thrown_radius : float, array-like</span>
+<span class="sd">        Corresponding thrown radius.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">log_energy</span> <span class="o">&lt;=</span> <span class="mi">6</span><span class="p">:</span>
+        <span class="n">thrown_radius</span> <span class="o">=</span> <span class="mf">800.0</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&gt;</span> <span class="mi">6</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&lt;=</span> <span class="mi">7</span><span class="p">):</span>
+        <span class="n">thrown_radius</span> <span class="o">=</span> <span class="mf">1100.0</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&gt;</span> <span class="mi">7</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&lt;=</span> <span class="mi">8</span><span class="p">):</span>
+        <span class="n">thrown_radius</span> <span class="o">=</span> <span class="mf">1700.0</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&lt;=</span> <span class="mi">9</span><span class="p">):</span>
+        <span class="n">thrown_radius</span> <span class="o">=</span> <span class="mf">2600.0</span>
+    <span class="k">elif</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">log_energy</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">):</span>
+        <span class="n">thrown_radius</span> <span class="o">=</span> <span class="mf">2900.0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid energy entered&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">thrown_radius</span>
+
+
+<div class="viewcode-block" id="reco_pulses"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.reco_pulses">[docs]</a><span class="k">def</span> <span class="nf">reco_pulses</span><span class="p">():</span>
+
+    <span class="n">IT_pulses</span> <span class="o">=</span> <span class="s1">&#39;IceTopHLCSeedRTPulses&#39;</span>
+    <span class="n">inice_pulses</span> <span class="o">=</span> <span class="s1">&#39;SRTCoincPulses&#39;</span>
+
+    <span class="k">return</span> <span class="n">IT_pulses</span><span class="p">,</span> <span class="n">inice_pulses</span></div>
+
+
+<div class="viewcode-block" id="null_stream"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.null_stream">[docs]</a><span class="k">def</span> <span class="nf">null_stream</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">nullstream</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">nullstream</span><span class="p">[</span><span class="s1">&#39;IT73&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;nullsplit&#39;</span>
+    <span class="n">nullstream</span><span class="p">[</span><span class="s1">&#39;IT81&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;in_ice&#39;</span>
+    <span class="k">return</span> <span class="n">nullstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="it_stream"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.it_stream">[docs]</a><span class="k">def</span> <span class="nf">it_stream</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+
+    <span class="n">itstream</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">itstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ice_top&#39;</span>
+
+    <span class="k">return</span> <span class="n">itstream</span><span class="p">[</span><span class="n">config</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="filter_mask"><a class="viewcode-back" href="../../comptools.html#comptools.simfunctions.filter_mask">[docs]</a><span class="k">def</span> <span class="nf">filter_mask</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+
+    <span class="n">filtermask</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;IT59&#39;</span><span class="p">,</span> <span class="s1">&#39;IT73&#39;</span><span class="p">,</span> <span class="s1">&#39;IT81&#39;</span><span class="p">]:</span>
+        <span class="n">filtermask</span><span class="p">[</span><span class="n">cfg</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;FilterMask&#39;</span>
+    <span class="k">for</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;IT81-II&#39;</span><span class="p">,</span> <span class="s1">&#39;IT81-III&#39;</span><span class="p">]:</span>
+        <span class="n">filtermask</span><span class="p">[</span><span class="n">cfg</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;QFilterMask&#39;</span>
+
+    <span class="k">return</span> <span class="n">filtermask</span><span class="p">[</span><span class="n">config</span><span class="p">]</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, James Bourbeau
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
