@@ -40,20 +40,30 @@ dag : pycondor.Dagman
 
 
 def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False,
-                              snow_lambda=None):
+                              snow_lambda=None, dom_eff=None):
+    
+    if all([snow_lambda, dom_eff]):
+        raise NotImplementedError('Specifying a value for both snow_lambda '
+                                  'and dom_eff is not currently supported.')
+
     base_dir = os.path.join(comp.paths.comp_data_dir,
                             config,
                             'sim',
                             'test' if test else '')
-    if snow_lambda is None:
-        i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf', 'nominal')
-        df_hdf_outdir = os.path.join(base_dir, 'processed_hdf', 'nominal')
-    else:
+    if snow_lambda is not None:
         # snow_lambda_str = str(snow_lambda).replace('.', '-')
         i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf',
                                      'snow_lambda_{}'.format(snow_lambda))
         df_hdf_outdir = os.path.join(base_dir, 'processed_hdf',
                                      'snow_lambda_{}'.format(snow_lambda))
+    elif dom_eff is not None:
+        i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf',
+                                     'dom_eff_{}'.format(dom_eff))
+        df_hdf_outdir = os.path.join(base_dir, 'processed_hdf',
+                                     'dom_eff_{}'.format(dom_eff))
+    else:
+        i3_hdf_outdir = os.path.join(base_dir, 'i3_hdf', 'nominal')
+        df_hdf_outdir = os.path.join(base_dir, 'processed_hdf', 'nominal')
 
     # Create data processing Jobs / Dagman
     dag_name = 'sim_processing_{}'.format(args.config.replace('.', '-'))
@@ -70,6 +80,7 @@ def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False,
                                       log=PYCONDOR_LOG,
                                       submit=PYCONDOR_SUBMIT,
                                       getenv=False,
+                                      request_memory='3GB' if dom_eff else None,
                                       dag=dag)
         save_df_job = pycondor.Job(name='save_dataframe_{}'.format(sim),
                                    executable=WRAPPER_EX,
@@ -107,7 +118,9 @@ def simulation_processing_dag(config='IC86.2012', batch_size=1000, test=False,
                                                             outfile=process_i3_outfile)
             if snow_lambda is not None: 
                 process_i3_arg += ' --snow_lambda {}'.format(snow_lambda)
-            process_i3_job.add_arg(process_i3_arg, retry=3)
+            if dom_eff is not None: 
+                process_i3_arg += ' --dom_eff {}'.format(dom_eff)
+            process_i3_job.add_arg(process_i3_arg)
             # Set up save_df_job arguments
             save_df_outfile = os.path.join(df_hdf_outdir, outfile_basename)
             save_df_arg_template = '{ex} --input {input} --output {output} --type sim --sim {sim} --config {config}'
@@ -234,6 +247,10 @@ if __name__ == '__main__':
                         dest='snow_lambda',
                         type=float,
                         help='Snow lambda to use with Laputop reconstruction')
+    parser.add_argument('--dom_eff', 
+                        dest='dom_eff',
+                        type=float,
+                        help='DOM efficiency to use with Millipede reconstruction')
     parser.add_argument('--test',
                         dest='test',
                         action='store_true',
@@ -247,7 +264,8 @@ if __name__ == '__main__':
         sim_dag = simulation_processing_dag(config=args.config,
                                             batch_size=args.batch_size_sim,
                                             test=args.test,
-                                            snow_lambda=args.snow_lambda)
+                                            snow_lambda=args.snow_lambda,
+                                            dom_eff=args.dom_eff)
         dags.append(sim_dag)
 
     if args.data:

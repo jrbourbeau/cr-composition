@@ -541,17 +541,17 @@ def rerun_reconstructions_snow_lambda(tray, snow_lambda):
     # Remove the L2 reconstructions
     tray.Add(level2_IceTop.RemoveOldLevel2, 'RemoveOldLevel2')
     extra_keys = ['LaputopSnowDiagnostics',
-                    'IceTopHLCSeedRTPulses_SnowCorrected',
-                    'StationDensity',
-                    'IceTopMaxSignalTank',
-                    'IceTopMaxSignalString',
-                    'IceTopMaxSignal',
-                    'IceTopMaxSignalInEdge',
-                    'IceTopNeighbourMaxSignal',
-                    'Laputop_OnionContainment',
-                    'Laputop_FractionContainment',
-                    'Laputop_NearestStationIsInfill',
-                    ]
+                  'IceTopHLCSeedRTPulses_SnowCorrected',
+                  'StationDensity',
+                  'IceTopMaxSignalTank',
+                  'IceTopMaxSignalString',
+                  'IceTopMaxSignal',
+                  'IceTopMaxSignalInEdge',
+                  'IceTopNeighbourMaxSignal',
+                  'Laputop_OnionContainment',
+                  'Laputop_FractionContainment',
+                  'Laputop_NearestStationIsInfill',
+                  ]
     tray.Add('Delete', keys=extra_keys)
 
     CleanHLCTankPulses=icetop_globals.icetop_HLCseed_clean_hlc_pulses

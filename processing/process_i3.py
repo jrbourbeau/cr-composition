@@ -4,6 +4,7 @@ import time
 import argparse
 import os
 import socket
+import math
 import numpy as np
 
 from icecube import (dataio, tableio, astro, toprec, dataclasses, icetray,
@@ -13,6 +14,11 @@ from I3Tray import *
 from icecube.tableio import I3TableWriter
 from icecube.hdfwriter import I3HDFTableService
 from icecube.icetop_Level3_scripts.functions import count_stations
+
+
+from icecube import icetop_Level3_scripts, stochastics, dataclasses, millipede, photonics_service, ddddr, STTools
+from icecube.icetop_Level3_scripts.segments import EnergylossReco
+
 
 import comptools as comp
 import icetray_software
@@ -107,6 +113,10 @@ if __name__ == '__main__':
                         dest='snow_lambda',
                         type=float,
                         help='Snow lambda to use with Laputop reconstruction')
+    parser.add_argument('--dom_eff', 
+                        dest='dom_eff',
+                        type=float,
+                        help='DOM efficiency to use with Millipede reconstruction')
     parser.add_argument('-o', '--outfile',
                         dest='outfile',
                         help='Output file')
@@ -175,6 +185,60 @@ if __name__ == '__main__':
             # Re-run Laputop reconstruction with specified snow correction lambda value
             tray = icetray_software.rerun_reconstructions_snow_lambda(tray, 
                                                                       snow_lambda=args.snow_lambda)
+        
+
+        if args.dom_eff is not None:
+            delete_keys = ['Millipede',
+                           'MillipedeFitParams',
+                           'Stoch_Reco',
+                           'Stoch_Reco2',
+                           'Millipede_dEdX',
+                           'I3MuonEnergyLaputopParams',
+                           'I3MuonEnergyLaputopCascadeParams',
+                           'IT73AnalysisInIceQualityCuts',
+                           ]
+            tray.Add('Delete', keys=delete_keys)
+
+            from icecube.icetop_Level3_scripts import icetop_globals
+            # from icecube.icetop_Level3_scripts.segments import muonReconstructions
+            from icecube.icetop_Level3_scripts.modules import MakeQualityCuts
+            name = 'reco'
+            spline_dir="/data/sim/sim-new/downloads/spline-tables/"
+            inice_clean_coinc_pulses = icetop_globals.inice_clean_coinc_pulses
+            tray.AddSegment(EnergylossReco,
+                            name+'_ElossReco',
+                            InIcePulses=inice_clean_coinc_pulses,
+                            dom_eff=args.dom_eff,
+                            splinedir=spline_dir,
+                            IceTopTrack='Laputop',
+                            If=lambda fr: "NCh_"+inice_clean_coinc_pulses in fr and fr['NCh_' + inice_clean_coinc_pulses].value
+                            )
+
+            # Collect in IT73AnalysisInIceQualityCuts
+            CutOrder = ["NCh_"+inice_clean_coinc_pulses,
+                        "MilliRlogl",
+                        "MilliQtot",
+                        "MilliNCasc",
+                        "StochReco"]
+            CutsToEvaluate={"NCh_"+inice_clean_coinc_pulses:(lambda fr: fr["NCh_"+inice_clean_coinc_pulses].value),
+                            "MilliRlogl":(lambda fr: "MillipedeFitParams" in fr and math.log10(fr["MillipedeFitParams"].rlogl)<2),
+                            "MilliQtot": (lambda fr: "MillipedeFitParams" in fr and math.log10(fr["MillipedeFitParams"].predicted_qtotal/fr["MillipedeFitParams"].qtotal)>-0.03),
+                            "MilliNCasc": (lambda fr: "Millipede_dEdX" in fr and len([part for part in fr["Millipede_dEdX"] if part.energy > 0]) >= 3),
+                            "StochReco": (lambda fr: "Stoch_Reco" in fr and fr["Stoch_Reco"].status == dataclasses.I3Particle.OK)}
+            CutsNames={"NCh_"+inice_clean_coinc_pulses:"NCh_"+inice_clean_coinc_pulses+"Above7",
+                       "MilliRlogl":"MilliRloglBelow2",
+                       "MilliQtot":"MilliQtotRatio",
+                       "MilliNCasc":"MilliNCascAbove2",
+                       "StochReco":"StochRecoSucceeded"}
+            tray.AddModule(MakeQualityCuts,
+                           name+'_DoInIceCuts',
+                           RemoveEvents=False,
+                           CutOrder=CutOrder,
+                           CutsToEvaluate=CutsToEvaluate,
+                           CutsNames=CutsNames,
+                           CollectBools="IT73AnalysisInIceQualityCuts"
+                           )  
+
 
         if args.type == 'data':
             # Filter out all events that don't pass standard IceTop cuts

@@ -216,11 +216,15 @@ def load_sim(df_file=None, config='IC86.2012', test_size=0.5,
     if not isinstance(test_size, (int, float)):
         raise TypeError('test_size must be a floating-point number')
 
-    df = _load_basic_dataframe(df_file=df_file, datatype='sim', config=config,
+    df = _load_basic_dataframe(df_file=df_file,
+                               datatype='sim',
+                               config=config,
                                energy_reco=energy_reco,
-                               energy_cut_key=energy_cut_key, columns=columns,
+                               energy_cut_key=energy_cut_key,
+                               columns=columns,
                                log_energy_min=log_energy_min,
-                               log_energy_max=log_energy_max, n_jobs=n_jobs,
+                               log_energy_max=log_energy_max,
+                               n_jobs=n_jobs,
                                verbose=verbose,
                                compute=compute)
 
@@ -277,11 +281,15 @@ def load_data(df_file=None, config='IC86.2012', energy_reco=True,
     else:
         print('FYI: Loading non-processed dataset. This takes longer than '
               'loading the processed dataset...')
-        df = _load_basic_dataframe(df_file=df_file, datatype='data', config=config,
+        df = _load_basic_dataframe(df_file=df_file,
+                                   datatype='data',
+                                   config=config,
                                    energy_reco=energy_reco,
-                                   energy_cut_key=energy_cut_key, columns=columns,
+                                   energy_cut_key=energy_cut_key,
+                                   columns=columns,
                                    log_energy_min=log_energy_min,
-                                   log_energy_max=log_energy_max, n_jobs=n_jobs,
+                                   log_energy_max=log_energy_max,
+                                   n_jobs=n_jobs,
                                    verbose=verbose,
                                    compute=compute)
 
